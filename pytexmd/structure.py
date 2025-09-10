@@ -1,6 +1,6 @@
 
-from .core import SECTION_COMMANDS
-from .core import masked_begin_end_split
+from .filter.core import SECTION_COMMANDS
+from .filter.core import masked_begin_end_split
 
 from typing import List, Tuple, Dict, Optional,NamedTuple
 import regex

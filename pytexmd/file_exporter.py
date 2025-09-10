@@ -2,7 +2,7 @@ from .structure import FileStructure
 import os
 from pathlib import Path
 from typing import Dict
-from .core import TAB
+from .filter.core import TAB
 
 def export_myst(file_structure: FileStructure, output_folder: str):
     """

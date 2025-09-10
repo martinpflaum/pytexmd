@@ -1,5 +1,5 @@
 #from easylatex2image_core import latex_to_image,generate_latexfile
-from core import *
+from pytexmd.filter.core import *
 
 def load_file(file_name):
     data = None

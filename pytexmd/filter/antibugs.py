@@ -44,9 +44,11 @@ def raw_remove_comments(input: str) -> str:
     Returns:
         str: The string with comments removed.
 
-    Example:
-        >>> raw_remove_comments("Hello % comment\nWorld")
-        'Hello \nWorld'
+    Examples:
+        ```python
+        raw_remove_comments("Hello % comment\nWorld")
+        # 'Hello \nWorld'
+        ```
     """
     comment = False
     out = ""
@@ -69,25 +71,27 @@ def raw_remove_comments(input: str) -> str:
     return out
 
 def no_more_html_bugs(input: str) -> str:
-    r"""
+    """
     Fixes HTML bugs by adding spaces around '<' and '>' characters.
 
     Args:
-        input (str): The input HTML string.
+        input (str): The input string.
 
     Returns:
-        str: The processed HTML string with spaces around '<' and '>'.
+        str: The processed string with spaces around '<' and '>'.
 
-    Example:
-        >>> no_more_html_bugs("<div>")
-        ' < div > '
+    Examples:
+        ```python
+        no_more_html_bugs("<div>")
+        # ' < div > '
+        ```
     """
     input = input.replace("<"," < ")
     input = input.replace(">"," > ")
     return input
 
 def no_more_dolar_bugs_begin(input: str) -> str:
-    r"""
+    """
     Replaces escaped dollar signs (\\$) with a placeholder.
 
     Args:
@@ -96,9 +100,11 @@ def no_more_dolar_bugs_begin(input: str) -> str:
     Returns:
         str: The string with '\\$' replaced by 'BACKSLASHDOLLAR'.
 
-    Example:
-        >>> no_more_dolar_bugs_begin("Price is \\$5")
-        'Price is BACKSLASHDOLLAR5'
+    Examples:
+        ```python
+        no_more_dolar_bugs_begin("Price is \\$5")
+        # 'Price is BACKSLASHDOLLAR5'
+        ```
     """
     input = input.replace("\\$","BACKSLASHDOLLAR")
     return input
@@ -113,9 +119,11 @@ def no_more_dolar_bugs_end(input: str) -> str:
     Returns:
         str: The string with 'BACKSLASHDOLLAR' replaced by '$'.
 
-    Example:
-        >>> no_more_dolar_bugs_end("Price is BACKSLASHDOLLAR5")
-        'Price is $5'
+    Examples:
+        ```python
+        no_more_dolar_bugs_end("Price is BACKSLASHDOLLAR5")
+        # 'Price is $5'
+        ```
     """
     input = input.replace("BACKSLASHDOLLAR","$")
     return input
@@ -130,9 +138,11 @@ def no_more_textup_bugs_begin(input: str) -> str:
     Returns:
         str: The string with '\\textup' removed.
 
-    Example:
-        >>> no_more_textup_bugs_begin("This is \\textup{important}")
-        'This is {important}'
+    Examples:
+        ```python
+        no_more_textup_bugs_begin("This is \\textup{important}")
+        # 'This is {important}'
+        ```
     """
     input = input.replace("\\textup","")
     return input
@@ -148,9 +158,11 @@ def remove_empty_at_begin(input: str) -> str:
     Returns:
         str: The string with leading spaces and newlines removed.
 
-    Example:
-        >>> remove_empty_at_begin("   \nHello")
-        'Hello'
+    Examples:
+        ```python
+        remove_empty_at_begin("   \nHello")
+        # 'Hello'
+        ```
     """
     out = 0
     for k,elem in enumerate(input):
@@ -162,17 +174,19 @@ def remove_empty_at_begin(input: str) -> str:
 
 def only_two_breaks(input: str) -> str:
     """
-    Ensures that there are at most two consecutive <br> tags in the input string.
+    Ensures that there are at most two consecutive line breaks in the input string.
 
     Args:
         input (str): The input string.
 
     Returns:
-        str: The processed string with at most two consecutive <br> tags.
+        str: The processed string with at most two consecutive line breaks.
 
-    Example:
-        >>> only_two_breaks("a<br><br><br>b")
-        'a<br><br>b'
+    Examples:
+        ```python
+        only_two_breaks("a<br><br><br>b")
+        # 'a<br><br>b'
+        ```
     """
     input += "  "
     input = input.split("<br>")
@@ -200,9 +214,11 @@ def no_more_bugs_begin(input: str) -> str:
     Returns:
         str: The processed string after applying bug fixes.
 
-    Example:
-        >>> no_more_bugs_begin("Some \\$text <div> \\textup{here}")
-        'Some BACKSLASHDOLLARtext  < div >  {here}'
+    Examples:
+        ```python
+        no_more_bugs_begin("Some \\$text <div> \\textup{here}")
+        # 'Some BACKSLASHDOLLARtext  < div >  {here}'
+        ```
     """
     input = raw_remove_comments(input)
     input = no_more_html_bugs(input)
@@ -221,9 +237,11 @@ def no_more_bugs_end(input: str) -> str:
     Returns:
         str: The processed string after applying bug fixes.
 
-    Example:
-        >>> no_more_bugs_end("Some BACKSLASHDOLLARtext")
-        'Some $text'
+    Examples:
+        ```python
+        no_more_bugs_end("Some BACKSLASHDOLLARtext")
+        # 'Some $text'
+        ```
     """
     input = no_more_dolar_bugs_end(input)
     #input = only_two_breaks(input)

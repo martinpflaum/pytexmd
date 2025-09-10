@@ -1,15 +1,48 @@
-from core import *
+__all__ = ["Itemize","ItemizeItem","Enumeration","EnumerationItem"]
+
+from .core import (Element,
+                   Undefined,
+                   has_value_equal,
+                   TAB)
+
+from . import splitting
+
+def enum_style_roman(index: int) -> str:
+    roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
+    return roman[index].upper()
+
+def enum_style_Roman(index: int) -> str:
+    roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
+    return roman[index]
+
+def enum_style_arabic(index: int) -> str:
+    return str(index + 1)
+
+def enum_style_alph(index: int) -> str:
+    lowercase = 'abcdefghijklmnopqrstuvwxyz'
+    return lowercase[index]
+
+def enum_style_Alph(index: int) -> str:
+    uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    return uppercase[index]
+
+def enum_style_empty(index: int) -> str:
+    return ""
+
+enum_styles = {"\\roman":enum_style_roman,"\\Roman":enum_style_Roman,"\\arabic":enum_style_arabic,"\\alph":enum_style_alph,"\\Alph":enum_style_Alph}
+
 
 class ItemizeItem(Element):
-    def __init__(self,modifiable_content,parent,label = "•"):
+    def __init__(self, modifiable_content: str, parent: Element, label: str = "•"):
         super().__init__("",parent)
         self.label = label
 
         self.children = [Undefined(label,self),Undefined(modifiable_content,self)]
-    def label_name(self):
+    
+    def label_name(self) -> str:
         return self.label#self.children[0].to_string()
 
-    def to_string(self):
+    def to_string(self, tab_level: int) -> str:
         
         out = "<li value='"+self.children[0].to_string()+"'>" 
         self.children = self.children[1:]
@@ -19,45 +52,46 @@ class ItemizeItem(Element):
         return out
 
     @staticmethod
-    def position(input):
-        return position_of(input,"\\item")
+    def position(string: str) -> int:
+        return splitting.position_of(string,"\\item")
             
     @staticmethod
-    def split_and_create(input,parent):
-        pre,content = split_on_next(input,"\\item")
+    def split_and_create(string: str, parent: Element) -> tuple:
+        pre,content = splitting.split_on_next(string,"\\item")
 
         if "\\item" in content:
-            content,post = split_on_next(content,"\\item")
+            content,post = splitting.split_on_next(content,"\\item")
             post = "\\item" + post
         else:
             post = ""
 
         label = ""
-        if first_char_brace(content,"["):
-            label,content = split_on_first_brace(content,"[","]")
+        if splitting.first_char_brace(content,"["):
+            label,content = splitting.split_on_first_brace(content,"[","]")
         elem_out = ItemizeItem(content,parent,label)
         
         return pre,elem_out,post
 
 class Itemize(Element):
     current_index = 0
-    def __init__(self,modifiable_content,parent):
+    def __init__(self, modifiable_content: str, parent: Element):
         super().__init__(modifiable_content,parent)
         
-    def to_string(self):
+    def to_string(self, tab_level: int) -> str:
         out = "</p><ol class='enumeration'>" 
         for child in self.children:
             out += child.to_string()
         out += "</ol><p>"
         return out
+    
     @staticmethod
-    def position(input):
-        return position_of(input,"\\begin{itemize}")
+    def position(string: str) -> int:
+        return splitting.position_of(string,"\\begin{itemize}")
 
     @staticmethod
-    def split_and_create(input,parent):
+    def split_and_create(string: str, parent: Element) -> tuple:
         
-        pre,content,post = begin_end_split(input,"\\begin{itemize}","\\end{itemize}")
+        pre,content,post = splitting.begin_end_split(string,"\\begin{itemize}","\\end{itemize}")
         
         elem_out = Itemize(content,parent)
         elem_out.expand([ItemizeItem])
@@ -66,7 +100,7 @@ class Itemize(Element):
 
 
 class EnumerationItem(Element):
-    def __init__(self,modifiable_content,parent,label = None):
+    def __init__(self, modifiable_content: str, parent: Element, label: str = None):
         super().__init__("",parent)
 
         self.label = ""
@@ -78,10 +112,10 @@ class EnumerationItem(Element):
             
         self.children = [Undefined(self.label,self),Undefined(modifiable_content,self)]
     
-    def label_name(self):
+    def label_name(self) -> str:
         return self.label
 
-    def to_string(self):
+    def to_string(self, tab_level: int) -> str:
         
         out = "<li value='"+self.children[0].to_string()+"'>" 
         self.children = self.children[1:]
@@ -91,12 +125,12 @@ class EnumerationItem(Element):
         return out
 
     @staticmethod
-    def position(input):
-        return position_of(input,"\\item")
+    def position(string: str) -> int:
+        return position_of(string,"\\item")
             
     @staticmethod
-    def split_and_create(input,parent):
-        pre,content = split_on_next(input,"\\item")
+    def split_and_create(string: str, parent: Element) -> tuple:
+        pre,content = split_on_next(string,"\\item")
 
         if "\\item" in content:
             content,post = split_on_next(content,"\\item")
@@ -110,66 +144,41 @@ class EnumerationItem(Element):
         elem_out = EnumerationItem(content,parent,label)
         
         return pre,elem_out,post
-
-
-def enum_style_roman(index):
-    roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
-    return roman[index].upper()
-
-def enum_style_Roman(index):
-    roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
-    return roman[index]
-
-def enum_style_arabic(index):
-    return str(index + 1)
-
-def enum_style_alph(index):
-    lowercase = 'abcdefghijklmnopqrstuvwxyz'
-    return lowercase[index]
-
-def enum_style_Alph(index):
-    uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    return uppercase[index]
-
-def enum_style_empty(index):
-    return ""
-
-enum_styles = {"\\roman":enum_style_roman,"\\Roman":enum_style_Roman,"\\arabic":enum_style_arabic,"\\alph":enum_style_alph,"\\Alph":enum_style_Alph}
        
 class Enumeration(Element):
     current_index = 0
-    def __init__(self,modifiable_content,parent,style_func,left,right):
+    def __init__(self, modifiable_content: str, parent: Element, style_func: callable, left: str, right: str):
         super().__init__(modifiable_content,parent)
         self.style_func,self.left,self.right = style_func,left,right
 
-    def to_string(self):
+    def to_string(self, tab_level: int) -> str:
         out = "</p><ol class='enumeration'>" 
         for child in self.children:
             out += child.to_string()
         out += "</ol><p>"
         return out
+    
     @staticmethod
-    def position(input):
-        return position_of(input,"\\begin{enumerate}")
+    def position(string: str) -> int:
+        return position_of(string,"\\begin{enumerate}")
 
     @staticmethod
-    def split_and_create(input,parent):
+    def split_and_create(string: str, parent: Element) -> tuple:
         
-        pre,content,post = begin_end_split(input,"\\begin{enumerate}","\\end{enumerate}")
+        pre,content,post = splitting.begin_end_split(string,"\\begin{enumerate}","\\end{enumerate}")
         
         style_func = None
         left = ""
         right = ""
         
-        if first_char_brace(content,"["):
-            options,content = split_on_first_brace(content,"[","]")
-            options_pre,options_post = split_on_next(options,"label")
-            options_post = remove_empty_at_begin(options_post)
+        if splitting.first_char_brace(content,"["):
+            options,content = splitting.split_on_first_brace(content,"[","]")
+            options_pre,options_post = splitting.split_on_next(options,"label")
+            options_post = splitting.remove_empty_at_begin(options_post)
             options_post = options_post[1:]#remove = 
             options_label = ""
-            #print("options_post",options_post)
-            if first_char_brace(options_post,"{"):
-                options_label,options_post = split_on_first_brace(options_post)
+            if splitting.first_char_brace(options_post,"{"):
+                options_label,options_post = splitting.split_on_first_brace(options_post)
             
             tmp = options_post.split(",")[0]
             options_label = options_label + tmp
@@ -203,7 +212,7 @@ class Enumeration(Element):
 
         return pre,elem_out,post
 
-    def generate_item_label(self):
+    def generate_item_label(self) -> str:
         self.current_index = self.current_index + 1
         return self.left + self.style_func(self.current_index-1)+ self.right
 
