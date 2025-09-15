@@ -8,9 +8,9 @@ def string_to_tree(string:str):
     string  = preprocessor.run_preprocessor(string)
     all_expands = []
     #basic_expands += junkSearcher+replaceSearcher
-    basic_expands += [section.get_all_filters()] 
-    basic_expands += [enumitem.get_all_filters()]
-    basic_expands += [equations.get_all_filters()]
+    all_expands += [section.get_all_filters()] 
+    all_expands += [enumitem.get_all_filters()]
+    all_expands += [equations.get_all_filters()]
     #basic_expands += get_drawtex_searchers()
     
     #all_expands = [basic_expands]
@@ -20,7 +20,7 @@ def string_to_tree(string:str):
     all_expands[0].extend(section.get_theoremSearchers(string))
     number_within_equation = section.get_number_within_equation(string)
     
-    pre_docmuent,document,post_document = section.Document.split_and_create(input,None)
+    pre_docmuent,document,post_document = section.Document.split_and_create(string,None)
     document.globals.number_within_equation = number_within_equation
     
     for expand_on in all_expands:
@@ -36,18 +36,20 @@ def string_to_tree(string:str):
     
     return document
 
-def string_to_file_name(string:str):
+def string_to_file_name(string: str):
     global NUM_FILES
-    file_name = string
+    file_name = string.strip()
     if file_name == "":
         file_name = "section"
-    file_name = file_name.replace(" ","_").replace("\n","")
-    file_name += "_"+str(NUM_FILES)
+    # Replace spaces and newlines with underscores
+    file_name = file_name.replace(" ", "_").replace("\n", "")
+    # Remove all non-alphanumeric and non-underscore characters, and make lowercase
+    file_name = ''.join([c.lower() if c.isalpha() else c if c.isdigit() or c == '_' else '_' for c in file_name])
+    file_name += "_" + str(NUM_FILES)
     return file_name
 
-def element_to_file_whole(element:section.SectionEnumerate,output_folder:str,output_suffix:str=".md"):
+def element_to_file_whole(element:section.SectionEnumerate,output_folder:str,file_name:str,output_suffix:str=".md"):
     global NUM_FILES
-    file_name = string_to_file_name(element.children[0].to_string())
     NUM_FILES += 1
 
     file_name = output_folder+"/"+file_name+output_suffix
@@ -55,9 +57,8 @@ def element_to_file_whole(element:section.SectionEnumerate,output_folder:str,out
         f.write(element.to_string())
     print(f"File {file_name} created.")
 
-def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:str,output_suffix:str=".md"):
+def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:str,file_name:str,output_suffix:str=".md"):
     global NUM_FILES
-    file_name = string_to_file_name(element.children[0].to_string())
     NUM_FILES += 1
 
     file_name = output_folder+"/"+file_name+output_suffix
@@ -68,23 +69,30 @@ def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:st
         out_str += child.to_string()
     
     out_str += "\n\n"
-    out_str += "\n```{toctree}"
+    out_str += "\n```{toctree}\n"
     for child in element.children:
         if isinstance(child,section.SectionEnumerate):
-            child_file_name = string_to_file_name(child.children[0].to_string())
+            child_file_name = string_to_file_name(child.children[0].to_string())+"\n"
             out_str += core.TAB+f"{child_file_name}"
                 
-    out_str.append("```\n")
+    out_str += "```\n"
     
     with open(file_name,"w",encoding="utf-8") as f:
         f.write(out_str)
 
     print(f"File {file_name} created.")
     
-def tree_to_files(output_folder:str,element:section.SectionEnumerate,num_lvls:int,output_suffix:str=".md"):
+def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:str,depth:int,output_suffix:str=".md"):
+    if not isinstance(element,section.SectionEnumerate):
+        raise ValueError("element must be a SectionEnumerate")
+    if not isinstance(depth,int) or depth < 0:
+        raise ValueError("depth must be a non-negative integer")
+    if not isinstance(output_folder,str):
+        raise ValueError("output_folder must be a string")
+    
     global NUM_FILES
-    if num_lvls == 0:
-        element_to_file_whole(element,output_folder,output_suffix)
+    if depth == 0:
+        element_to_file_whole(element,output_folder,file_name,output_suffix)
         return 
     
     has_found_childs = False
@@ -94,16 +102,25 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,num_lvls:in
             break
 
     if not has_found_childs:
-        element_to_file_whole(element,output_folder,output_suffix)
+        element_to_file_whole(element,output_folder,file_name,output_suffix)
         return
-    element_to_file_only_begin(element,output_folder,output_suffix)
+    element_to_file_only_begin(element,output_folder,file_name,output_suffix)
 
     for child in element.children:
         if isinstance(child,section.SectionEnumerate):
-            tree_to_files(output_folder,child,num_lvls-1,output_suffix)
+            child_file_name = string_to_file_name(child.children[0].to_string())
+    
+            tree_to_files(output_folder,child,child_file_name,depth-1,output_suffix)
 
 
-def process_string(output_folder:str,string:str,num_lvls=3):
+def process_string(output_folder:str,string:str,depth=3,output_suffix:str=".md"):
+    if not isinstance(depth,int) or depth < 0:
+        raise ValueError("depth must be a non-negative integer")
+    if not isinstance(output_folder,str):
+        raise ValueError("output_folder must be a string")
+    if not isinstance(string,str):
+        raise ValueError("string must be a string")
     document = string_to_tree(string)
-    tree_to_files(output_folder,document,num_lvls,".md")
+    element_to_file_whole(document,output_folder,"index",output_suffix)
+    #tree_to_files(output_folder,document,"index",depth,output_suffix)
     

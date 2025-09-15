@@ -10,7 +10,7 @@ def apply_latex_protection(string: Element) -> Element:
     expandon = [JunkSearch("\\begin{" + elem + "}",save_split=False) for elem in multiline]
     expandon += [JunkSearch("\\end{" + elem + "}",save_split=False) for elem in multiline]
 
-    expandon += [Label,Cases,LatexText,ReplaceSearch("\mathbbm","\mathbb"),ReplaceSearch("\widebar","\overline")]
+    expandon += [Label,Cases,LatexText,ReplaceSearch(r"\mathbbm",r"\mathbb"),ReplaceSearch(r"\widebar",r"\overline")]
     expandon += [TexArray,GuardianSearch("{",save_split=False),GuardianSearch("}",save_split=False)]
     string.expand(expandon) #lol -- was das für ein fehler
     return string

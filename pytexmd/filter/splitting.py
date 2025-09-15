@@ -12,6 +12,10 @@ def get_all_allchars_no_abc()->str:
     return '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~\n ' # is removed
 
 def save_command_split(string:str, split_on:str)->List[str]:
+    if not isinstance(string,str):
+        raise ValueError("Input must be a string")
+    if not isinstance(split_on,str):
+        raise ValueError("split_on must be a string")
     if split_on == "$":
         return string.split("$")
     for appendix in get_all_allchars_no_abc():
@@ -35,12 +39,20 @@ def remove_empty_at_begin(string:str)->str:
 """
 
 def first_char_brace(string:str, begin_brace:str = "{")->bool:
+    if not isinstance(string,str):
+        raise ValueError("Input must be a string")
+    if not isinstance(begin_brace,str):
+        raise ValueError("begin_brace must be a string")
     string = string.lstrip()
     if len(string) == 0:
         return False
     return string[0] == begin_brace
 
 def split_on_first_brace(string:str, begin_brace = "{",end_brace = "}", error_replacement="brace_error")->Tuple[str,str]:
+    if not isinstance(string,str):
+        raise ValueError("Input must be a string")
+    if not isinstance(begin_brace,str) or not isinstance(end_brace,str):
+        raise ValueError("begin_brace and end_brace must be strings")
     string = string.lstrip()
     if len(string) == 0:
         return error_replacement,string
@@ -71,6 +83,8 @@ def split_rename(string: str) -> Optional[Tuple[str, str]]:
     Returns:
         Optional[Tuple[str, str]]: A tuple containing the name and the remaining string, or None if the first character is not '['.
     """
+    if not isinstance(string, str):
+        raise ValueError("Input must be a string")
     string = string.lstrip()
     if len(string) == 0:
         return None
@@ -82,6 +96,11 @@ def split_rename(string: str) -> Optional[Tuple[str, str]]:
 
 
 def split_on_next(string:str, split_on:str, save_split:bool = True)->Tuple[str,str]:
+    if not isinstance(string,str):
+        raise ValueError("Input must be a string")
+    if not isinstance(split_on,str):
+        raise ValueError("split_on must be a string")
+    
     if save_split:
         tmp = save_command_split(string,split_on)
     else:
@@ -92,6 +111,12 @@ def split_on_next(string:str, split_on:str, save_split:bool = True)->Tuple[str,s
 
 
 def begin_end_split(string:str, begin_name:str, end_name:str, save_split:bool = False)->Tuple[str,str,str]:
+    if not isinstance(string,str):
+        raise ValueError("Input must be a string")
+    if not isinstance(begin_name,str):
+        raise ValueError("begin_name must be a string")
+    if not isinstance(end_name,str):
+        raise ValueError("end_name must be a string")
     pre,xanda = split_on_next(string,begin_name,save_split)
     begin_num = 1
     middle = ""
@@ -116,6 +141,10 @@ def begin_end_split(string:str, begin_name:str, end_name:str, save_split:bool = 
                 xanda = xtmp
     
 def position_of(string:str, begin_name:str, save_split:bool = True)->int:
+    if not isinstance(string,str):
+        raise ValueError("Input must be a string")
+    if not isinstance(begin_name,str):
+        raise ValueError("begin_name must be a string")
     if begin_name in string:
         if save_split:
             tmp = save_command_split(string,begin_name)
