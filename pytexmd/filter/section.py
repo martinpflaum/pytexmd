@@ -14,10 +14,13 @@ __all__ = [
     "Para",
     "SectionEnumerate",
     "Cite"
+    "get_all_filters",
+    "get_number_within_equation",
+    "get_theoremSearchers"
 ]
 
-from .core import Element,Undefined,Document,SectionEnumerate
-from . import splitting
+from .core import *
+from .splitting import *
 from . import misc
 
 class Para(SectionEnumerate):
@@ -32,17 +35,17 @@ class Para(SectionEnumerate):
         first children ist name of Section
         """
 
-        out = "<br><br><strong>"+ self.get_section_enum()[:-1]+"</strong>"
+        out = "\n#"+ self.get_section_enum()[:-1]+"\n"
         
         return out
 
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\para")
+        return position_of(input,"\\para")
 
     @staticmethod
     def split_and_create(input: str, parent: SectionEnumerate) -> tuple:
-        pre,post = splitting.split_on_next(input,"\\para")
+        pre,post = split_on_next(input,"\\para")
         section_number = parent.search_class(SectionEnumerate).generate_child_section_number()
         return pre,Para("",section_number,parent),post
 
@@ -56,16 +59,16 @@ class Chapter(SectionEnumerate):
         
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\chapter")
+        return position_of(input,"\\chapter")
             
     @staticmethod
     def split_and_create(input: str, parent: SectionEnumerate) -> tuple:
-        pre,content = splitting.split_on_next(input,"\\chapter")
+        pre,content = split_on_next(input,"\\chapter")
         
         section_number = parent.search_class(SectionEnumerate).generate_child_section_number()
-        name,content =  splitting.split_on_first_brace(content,error_replacement="chapter_error")
+        name,content =  split_on_first_brace(content,error_replacement="chapter_error")
         if "\\chapter" in content:
-            content,post = splitting.split_on_next(content,"\\chapter")
+            content,post = split_on_next(content,"\\chapter")
             post = "\\chapter" + post
         else:
             post = ""
@@ -76,7 +79,7 @@ class Chapter(SectionEnumerate):
         """
         first children ist name of Section
         """
-        out = "</p><h1 style='font-size:50px;line-height: 80%;'>" + str(self.section_number) + " "+ self.children[0].to_string()  + "</h1><p>"
+        out = "\n#" + str(self.section_number) + " "+ self.children[0].to_string()  + "\n"
         for child in self.children[1:]:
             out += child.to_string()
         #print("out ",out)
@@ -90,16 +93,16 @@ class ChapterStar(Element):
         
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\chapter*")
+        return position_of(input,"\\chapter*")
 
 
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,content = splitting.split_on_next(input,"\\chapter*")
+        pre,content = split_on_next(input,"\\chapter*")
         
-        name,content =  splitting.split_on_first_brace(content)
+        name,content =  split_on_first_brace(content)
         if "\\chapter" in content:
-            content,post = splitting.split_on_next(content,"\\chapter")
+            content,post = split_on_next(content,"\\chapter")
             post = "\\chapter" + post
         else:
             post = ""
@@ -110,7 +113,7 @@ class ChapterStar(Element):
         """
         first children ist name of Section
         """
-        out = "</p><h1 style='font-size:50px;line-height: 80%;'>" + self.children[0].to_string()  + "</h1><p>"
+        out = "\n#" + self.children[0].to_string()  + "\n"
         for child in self.children[1:]:
             out += child.to_string()
         #print("out ",out)
@@ -125,15 +128,15 @@ class SectionStar(Element):
         
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\section*")
+        return position_of(input,"\\section*")
             
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,content = splitting.split_on_next(input,"\\section*")
+        pre,content = split_on_next(input,"\\section*")
         
-        name,content = splitting.split_on_first_brace(content)
+        name,content = split_on_first_brace(content)
         if "\\section" in content:
-            content,post = splitting.split_on_next(content,"\\section")
+            content,post = split_on_next(content,"\\section")
             post = "\\section" + post
         else:
             post = ""
@@ -144,7 +147,7 @@ class SectionStar(Element):
         """
         first children ist name of Section
         """
-        out = "</p><h1>" + self.children[0].to_string()  + "</h1><p>"
+        out = "\n#" + self.children[0].to_string()  + "\n"
         for child in self.children[1:]:
             out += child.to_string()
         #print("out ",out)
@@ -160,16 +163,16 @@ class Subsection(SectionEnumerate):
         
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\subsection")
+        return position_of(input,"\\subsection")
             
     @staticmethod
     def split_and_create(input: str, parent: SectionEnumerate) -> tuple:
-        pre,content = splitting.split_on_next(input,"\\subsection")
+        pre,content = split_on_next(input,"\\subsection")
         
         section_number = parent.search_class(SectionEnumerate).generate_child_section_number()
-        name,content =  splitting.split_on_first_brace(content)
+        name,content =  split_on_first_brace(content)
         if "\\subsection" in content:
-            content,post = splitting.split_on_next(content,"\\subsection")
+            content,post = split_on_next(content,"\\subsection")
             post = "\\subsection" + post
         else:
             post = ""
@@ -180,7 +183,7 @@ class Subsection(SectionEnumerate):
         """
         first children ist name of Section
         """
-        out = "</p><h2>" + self.get_section_enum()[:-1] + " "+ self.children[0].to_string()  + "</h2><p>"
+        out = "\n##" + self.get_section_enum()[:-1] + " "+ self.children[0].to_string()  + "\n"
         for child in self.children[1:]:
             out += child.to_string()
         #print("out ",out)
@@ -197,16 +200,16 @@ class Section(SectionEnumerate):
         
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\section")
+        return position_of(input,"\\section")
             
     @staticmethod
     def split_and_create(input: str, parent: SectionEnumerate) -> tuple:
-        pre,content = splitting.split_on_next(input,"\\section")
+        pre,content = split_on_next(input,"\\section")
         
         section_number = parent.search_class(SectionEnumerate).generate_child_section_number()
-        name,content = splitting.split_on_first_brace(content)
+        name,content = split_on_first_brace(content)
         if "\\section" in content:
-            content,post = splitting.split_on_next(content,"\\section")
+            content,post = split_on_next(content,"\\section")
             post = "\\section" + post
         else:
             post = ""
@@ -217,7 +220,7 @@ class Section(SectionEnumerate):
         """
         first children ist name of Section
         """
-        out = "</p><h1>" + self.get_section_enum()[:-1] + " "+ self.children[0].to_string()  + "</h1><p>"
+        out = "\n#" + self.get_section_enum()[:-1] + " "+ self.children[0].to_string()  + "\n"
         for child in self.children[1:]:
             out += child.to_string()
         #print("out ",out)
@@ -230,19 +233,19 @@ class SubsectionStar(Element):
 
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\subsection*")
+        return position_of(input,"\\subsection*")
 
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,post = splitting.split_on_next(input,"\\subsection*")
-        name,post = splitting.split_on_first_brace(post)
+        pre,post = split_on_next(input,"\\subsection*")
+        name,post = split_on_first_brace(post)
         return pre,SubsectionStar(name,parent),post
 
     def to_string(self) -> str:
-        out = "</p><h2>"
-        for child in self.children:
+        out = "\n#"+" "+ self.children[0].to_string()  + "\n"
+        for child in self.children[1:]:
             out += child.to_string()
-        out += "</h2><p>"
+        #print("out ",out)
         return out
 
 
@@ -256,12 +259,12 @@ class Ref(Element):
 
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\ref")
+        return position_of(input,"\\ref")
 
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,post = splitting.split_on_next(input,"\\ref")
-        label_ref,post = splitting.split_on_first_brace(post)
+        pre,post = split_on_next(input,"\\ref")
+        label_ref,post = split_on_first_brace(post)
         return pre,Ref("",parent,label_ref),post
 
     def to_string(self) -> str:
@@ -278,12 +281,12 @@ class EqRef(Element):
 
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\eqref")
+        return position_of(input,"\\eqref")
 
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,post = splitting.split_on_next(input,"\\eqref")
-        label_ref,post = splitting.split_on_first_brace(post)
+        pre,post = split_on_next(input,"\\eqref")
+        label_ref,post = split_on_first_brace(post)
         return pre,Ref("",parent,label_ref),post
 
     def to_string(self) -> str:
@@ -292,24 +295,31 @@ class EqRef(Element):
 class Proof(Element):
     def __init__(self, modifiable_content: str, parent: Element):
         self.name = "Proof"
-        if not splitting.split_rename(modifiable_content) is None:
-            self.name,modifiable_content = splitting.split_rename(modifiable_content) 
+        if not split_rename(modifiable_content) is None:
+            self.name,modifiable_content = split_rename(modifiable_content) 
         self.name += "."
         super().__init__(modifiable_content,parent)
         
     @staticmethod
     def position(input: str) -> int:
         if "\\begin{proof}" in input:
-            return splitting.position_of(input,"\\begin{proof}")
+            return position_of(input,"\\begin{proof}")
         else:
             return -1
         
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,content,post = splitting.begin_end_split(input,"\\begin{proof}","\\end{proof}")
+        pre,content,post = begin_end_split(input,"\\begin{proof}","\\end{proof}")
         return pre,Proof(content,parent),post
 
     def to_string(self) -> str:
+        out = f"\n:::{{.proof}} {self.name}\n"
+        for child in self.children:
+            out += child.to_string()
+        out += "\n:::\n"
+        return out
+
+        
         out = f"<br><i>{self.name}</i>"
         for child in self.children:
             #print(type(child))
@@ -323,19 +333,19 @@ class Textbf(Element):
 
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\textbf")
+        return position_of(input,"\\textbf")
 
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,post = splitting.split_on_next(input,"\\textbf")
-        name,post = splitting.split_on_first_brace(post)
+        pre,post = split_on_next(input,"\\textbf")
+        name,post = split_on_first_brace(post)
         return pre,Textbf(name,parent),post
 
     def to_string(self) -> str:
-        out = "<strong>"
+        out = "**"
         for child in self.children:
             out += child.to_string()
-        out += "</strong>"
+        out += "**"
         return out
 
 class Cite(Element):
@@ -345,12 +355,12 @@ class Cite(Element):
     
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\cite")
+        return position_of(input,"\\cite")
 
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,post = splitting.split_on_next(input,"\\cite")
-        name,post = splitting.split_on_first_brace(post)
+        pre,post = split_on_next(input,"\\cite")
+        name,post = split_on_first_brace(post)
         tmp = ""
         for elem in name.split(" "):
             tmp += elem
@@ -370,19 +380,19 @@ class Emph(Element):
 
     @staticmethod
     def position(input: str) -> int:
-        return splitting.position_of(input,"\\emph")
+        return position_of(input,"\\emph")
 
     @staticmethod
     def split_and_create(input: str, parent: Element) -> tuple:
-        pre,post = splitting.split_on_next(input,"\\emph")
-        name,post = splitting.split_on_first_brace(post)
+        pre,post = split_on_next(input,"\\emph")
+        name,post = split_on_first_brace(post)
         return pre,Emph(name,parent),post
 
     def to_string(self) -> str:
-        out = "<i>"
+        out = "*"
         for child in self.children:
             out += child.to_string()
-        out += "</i>"
+        out += "*"
         return out
     
 class TheoremElement(SectionEnumerate):
@@ -395,13 +405,13 @@ class TheoremElement(SectionEnumerate):
     def label_name(self) -> str:
         return self.get_section_enum()[:-1]
     
-    def to_string(self, tab_lvl: int) -> str:
+    def to_string(self) -> str:
         """
         Output markdown myst string for theorem block.
         """
         out = f"\n:::{{.theorem}} {self.display_name} {self.get_section_enum()[:-1]}\n"
         for child in self.children:
-            out += child.to_string(tab_lvl)
+            out += child.to_string()
         out += "\n:::\n"
         return out
 
@@ -412,10 +422,10 @@ class TheoremSearcher():
         self.theorem_env_name = theorem_env_name
         self.enum_parent_class = enum_parent_class
     def position(self, input: str) -> int:
-        return splitting.position_of(input,"\\begin{" + self.theorem_env_name + "}")
+        return position_of(input,"\\begin{" + self.theorem_env_name + "}")
             
     def split_and_create(self, input: str, parent: Element) -> tuple:
-        pre,content,post = splitting.begin_end_split(input,"\\begin{"+self.theorem_env_name+"}","\\end{"+self.theorem_env_name+"}")
+        pre,content,post = begin_end_split(input,"\\begin{"+self.theorem_env_name+"}","\\end{"+self.theorem_env_name+"}")
         
         search_func = lambda instance : misc.has_value_equal(instance,"theorem_env_name",self.enum_parent_class)
         
@@ -430,24 +440,24 @@ def get_theoremSearchers(input: str) -> list:
     pending_envs = []
     shared_parent_fixer = {"section":"document","subsection":"section"}
     while True:
-        pre,post = splitting.split_on_next(input,"\\newtheorem")
+        pre,post = split_on_next(input,"\\newtheorem")
         if input == pre:
             break
-        theorem_env_name,post = splitting.split_on_first_brace(post)
+        theorem_env_name,post = split_on_first_brace(post)
         display_name = ""
-        if splitting.first_char_brace(post):
+        if first_char_brace(post):
             enum_parent_class = ""
-            display_name,post = splitting.split_on_first_brace(post)
-            if splitting.first_char_brace(post,"["):
-                enum_parent_class,post = splitting.split_on_first_brace(post,"[","]")
+            display_name,post = split_on_first_brace(post)
+            if first_char_brace(post,"["):
+                enum_parent_class,post = split_on_first_brace(post,"[","]")
             else:
                 enum_parent_class = None
             shared_parent_fixer[theorem_env_name] = enum_parent_class
             pending_envs.append((theorem_env_name,enum_parent_class,display_name))
         else:
-            if splitting.first_char_brace(post,"["):
-                shared_parent,post = splitting.split_on_first_brace(post,"[","]")
-                display_name,post = splitting.split_on_first_brace(post)
+            if first_char_brace(post,"["):
+                shared_parent,post = split_on_first_brace(post,"[","]")
+                display_name,post = split_on_first_brace(post)
                 need_fix.append((theorem_env_name,shared_parent,display_name))
             else:
                 print("theoremenv error in ",theorem_env_name)
@@ -462,6 +472,12 @@ def get_theoremSearchers(input: str) -> list:
         out.append(TheoremSearcher(*elem))
     return out
 
+def get_number_within_equation(input:str)->str:
+    input = input.split("\\numberwithin{equation}")
+    if len(input) == 1:
+        return "document" 
+    out,_ = split_on_first_brace(input[1])
+    return out
 
 def get_all_filters() -> list:
     return [SectionStar,Para,Chapter,Section,ChapterStar,SubsectionStar,Proof,Emph,Textbf]

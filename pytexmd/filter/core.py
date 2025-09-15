@@ -1,5 +1,5 @@
 
-__all__ = ["Element","Document","Undefined","RawText","Globals","JunkSearch","ReplaceSearch","GuardianSearch","OneArgumentJunkSearch","OneArgumentCommandSearch","Label","SectionEnumerate"]
+__all__ = ["Element","Document","Undefined","RawText","Globals","JunkSearch","ReplaceSearch","GuardianSearch","OneArgumentJunkSearch","OneArgumentCommandSearch","Label","SectionEnumerate","find_nearest_classes","has_value_equal","TAB","get_number_within_equation"]
 
 from typing import List, Optional, Tuple, Union, Callable
 from . import splitting
@@ -175,12 +175,24 @@ class Element():
                 out = out or child._process_children(all_classes)
             return out
 
-    def to_string(self,tab_level:int)->str:
+    def to_string(self)->str:
         """
         Output markdown myst string.
         """
         raise NotImplementedError("no function to_string found")
 
+def get_number_within_equation(string:str)->str:
+    string = string.split("\\numberwithin{equation}")
+    if len(string) == 1:
+        return "document" 
+    out,_ = splitting.split_on_first_brace(string[1])
+    return out
+
+def has_value_equal(instance:Element, attribute_name:str, value) -> bool:
+    if instance.hasattr(attribute_name):
+        return (object.__getattribute__(instance,attribute_name)==value)
+    else:
+        return False
 
 def find_nearest_classes(string: str, all_classes: List[Element]) -> List[Element]:
     min_distance = 99999
@@ -287,26 +299,26 @@ class Document(SectionEnumerate):
         pre,content,post = splitting.begin_end_split(string,"\\begin{document}","\\end{document}")
         return pre,Document(content,parent),post
 
-    def to_string(self,tab_level: int) -> str:
+    def to_string(self) -> str:
         """
         Output markdown myst string for document.
         """
         out = ""
         for child in self.children:
-            out += child.to_string(tab_level)
+            out += child.to_string()
         return out
 
 class Undefined(Element):
     def __init__(self,modifiable_content: str, parent: Element):
         super().__init__(modifiable_content,parent)
 
-    def to_string(self,tab_level: int) -> str:
+    def to_string(self) -> str:
         """
         Output markdown myst string for undefined content.
         """
         out = ""
         for child in self.children:
-            out += child.to_string(tab_level)
+            out += child.to_string()
         return out
 
 class RawText(Element):
@@ -314,11 +326,11 @@ class RawText(Element):
         super().__init__("",parent)
         self.text = string
 
-    def to_string(self, tab_level: int) -> str:
+    def to_string(self) -> str:
         """
         Output markdown myst string for raw text.
         """
-        return tab_level+self.text
+        return self.text
 
 class Globals():
     pass

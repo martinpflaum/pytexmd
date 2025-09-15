@@ -1,18 +1,20 @@
 __all__ = ["Itemize","ItemizeItem","Enumeration","EnumerationItem"]
 
-from .core import (Element,
-                   Undefined,
-                   has_value_equal,
-                   TAB)
-
-from . import splitting
+from .core import *
+from .splitting import * 
 
 def enum_style_roman(index: int) -> str:
-    roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
+    roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x",
+         "xi","xii","xiii","xiv","xv","xvi","xvii","xviii","xix","xx",
+         "xxi","xxii","xxiii","xxiv","xxv","xxvi","xxvii","xxviii","xxix","xxx"]
+    
     return roman[index].upper()
 
 def enum_style_Roman(index: int) -> str:
-    roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
+    #roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
+    roman = ["I","II","III","IV","V","VI","VII","VIII","IX","X",
+         "XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX",
+         "XXI","XXII","XXIII","XXIV","XXV","XXVI","XXVII","XXVIII","XXIX","XXX"]
     return roman[index]
 
 def enum_style_arabic(index: int) -> str:
@@ -42,32 +44,33 @@ class ItemizeItem(Element):
     def label_name(self) -> str:
         return self.label#self.children[0].to_string()
 
-    def to_string(self, tab_level: int) -> str:
-        
-        out = "<li value='"+self.children[0].to_string()+"'>" 
+    def to_string(self) -> str:
+        out = self.children[0].to_string()+"  "
+        string_len = len(self.children[0].to_string()) + 2 
+
         self.children = self.children[1:]
         for child in self.children:
-            out += child.to_string()
-        out += "</li>"
+            out += child.to_string().lstrip().rstrip()+"\n"
+        out = out.replace("\n","\n"+ " " * string_len)
         return out
 
     @staticmethod
     def position(string: str) -> int:
-        return splitting.position_of(string,"\\item")
+        return position_of(string,"\\item")
             
     @staticmethod
     def split_and_create(string: str, parent: Element) -> tuple:
-        pre,content = splitting.split_on_next(string,"\\item")
+        pre,content = split_on_next(string,"\\item")
 
         if "\\item" in content:
-            content,post = splitting.split_on_next(content,"\\item")
+            content,post = split_on_next(content,"\\item")
             post = "\\item" + post
         else:
             post = ""
 
         label = ""
-        if splitting.first_char_brace(content,"["):
-            label,content = splitting.split_on_first_brace(content,"[","]")
+        if first_char_brace(content,"["):
+            label,content = split_on_first_brace(content,"[","]")
         elem_out = ItemizeItem(content,parent,label)
         
         return pre,elem_out,post
@@ -77,21 +80,21 @@ class Itemize(Element):
     def __init__(self, modifiable_content: str, parent: Element):
         super().__init__(modifiable_content,parent)
         
-    def to_string(self, tab_level: int) -> str:
-        out = "</p><ol class='enumeration'>" 
+    def to_string(self) -> str:
+        out = "\n" 
         for child in self.children:
-            out += child.to_string()
-        out += "</ol><p>"
+            out += child.to_string().rstrip().lstrip() + "\n"
+        out = out.replace("\n","\n"+TAB)
         return out
     
     @staticmethod
     def position(string: str) -> int:
-        return splitting.position_of(string,"\\begin{itemize}")
+        return position_of(string,"\\begin{itemize}")
 
     @staticmethod
     def split_and_create(string: str, parent: Element) -> tuple:
         
-        pre,content,post = splitting.begin_end_split(string,"\\begin{itemize}","\\end{itemize}")
+        pre,content,post = begin_end_split(string,"\\begin{itemize}","\\end{itemize}")
         
         elem_out = Itemize(content,parent)
         elem_out.expand([ItemizeItem])
@@ -115,13 +118,15 @@ class EnumerationItem(Element):
     def label_name(self) -> str:
         return self.label
 
-    def to_string(self, tab_level: int) -> str:
+    def to_string(self) -> str:
         
-        out = "<li value='"+self.children[0].to_string()+"'>" 
+        out = self.children[0].to_string()+"  "
+        string_len = len(self.children[0].to_string()) + 2 
+
         self.children = self.children[1:]
         for child in self.children:
-            out += child.to_string()
-        out += "</li>"
+            out += child.to_string().lstrip().rstrip()+"\n"
+        out = out.replace("\n","\n"+ " " * string_len)
         return out
 
     @staticmethod
@@ -151,11 +156,11 @@ class Enumeration(Element):
         super().__init__(modifiable_content,parent)
         self.style_func,self.left,self.right = style_func,left,right
 
-    def to_string(self, tab_level: int) -> str:
-        out = "</p><ol class='enumeration'>" 
+    def to_string(self) -> str:
+        out = "\n" 
         for child in self.children:
-            out += child.to_string()
-        out += "</ol><p>"
+            out += child.to_string().rstrip().lstrip() + "\n"
+        out = out.replace("\n","\n"+TAB)
         return out
     
     @staticmethod
@@ -165,20 +170,20 @@ class Enumeration(Element):
     @staticmethod
     def split_and_create(string: str, parent: Element) -> tuple:
         
-        pre,content,post = splitting.begin_end_split(string,"\\begin{enumerate}","\\end{enumerate}")
+        pre,content,post = begin_end_split(string,"\\begin{enumerate}","\\end{enumerate}")
         
         style_func = None
         left = ""
         right = ""
         
-        if splitting.first_char_brace(content,"["):
-            options,content = splitting.split_on_first_brace(content,"[","]")
-            options_pre,options_post = splitting.split_on_next(options,"label")
-            options_post = splitting.remove_empty_at_begin(options_post)
+        if first_char_brace(content,"["):
+            options,content = split_on_first_brace(content,"[","]")
+            options_pre,options_post = split_on_next(options,"label")
+            options_post = options_post.lstrip()
             options_post = options_post[1:]#remove = 
             options_label = ""
-            if splitting.first_char_brace(options_post,"{"):
-                options_label,options_post = splitting.split_on_first_brace(options_post)
+            if first_char_brace(options_post,"{"):
+                options_label,options_post = split_on_first_brace(options_post)
             
             tmp = options_post.split(",")[0]
             options_label = options_label + tmp
@@ -218,3 +223,5 @@ class Enumeration(Element):
 
 
 
+def get_all_filters():
+    return [Itemize,Enumeration]

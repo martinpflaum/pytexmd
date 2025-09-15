@@ -111,5 +111,32 @@ def do_newenvironment(string: str) -> str:
 
 
 
+def clean_junk_safe(latex_content:str)->str:
+    """Cleans up LaTeX content by removing unnecessary characters and formatting issues.
+
+    Args:
+        latex_content (str): The LaTeX content to be cleaned.
+    
+    Returns:
+        str: The cleaned LaTeX content.
+    """
+    while "\\"*4 in latex_content:
+        latex_content = latex_content.replace("\\"*4, "")
+    while "\n\n\n" in latex_content:
+        latex_content = latex_content.replace("\n\n\n","\n\n")
+    while "  " in latex_content:
+        latex_content = latex_content.replace("  "," ")
+    while "\t" in latex_content:
+        latex_content = latex_content.replace("\t"," ")
+    while " \n" in latex_content:
+        latex_content = latex_content.replace(" \n","\n")
+    while "\n " in latex_content:
+        latex_content = latex_content.replace("\n ","\n")
+    return latex_content
 
 
+def run_preprocessor(string: str) -> str:
+    string = clean_junk_safe(string)
+    string = do_commands(string)
+    string = do_newenvironment(string)
+    return string
