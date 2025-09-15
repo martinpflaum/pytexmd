@@ -1,17 +1,40 @@
+__all__ = ["get_all_allchars_no_abc","save_command_split","first_char_brace","split_on_first_brace","split_rename","split_on_next","begin_end_split","position_of"]
+
 from typing import Tuple, List, Optional, Union, Callable
 
 def get_all_allchars_no_abc()->str:
     """
-    super small subset of - this really makes this programm slow otherwise :D
-    allchars_no_abc = [chr(k) for k in range(256)]
-    allchars_no_abc = ''.join(allchars_no_abc)
-    allchars_no_abc = allchars_no_abc.replace("ABCDEFGHIJKLMNOPQRSTUVWXYZ","")
-    allchars_no_abc = allchars_no_abc.replace("abcdefghijklmnopqrstuvwxyz","")
-    return allchars_no_abc
+    Returns a string of non-alphabetic ASCII characters.
+
+    Returns:
+        str: String containing non-alphabetic ASCII characters.
+
+    Example:
+        ```python
+        chars = get_all_allchars_no_abc()
+        ```
     """
     return '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~\n ' # is removed
 
 def save_command_split(string:str, split_on:str)->List[str]:
+    """
+    Splits a string on a given substring, preserving certain patterns.
+
+    Args:
+        string (str): The input string to split.
+        split_on (str): The substring to split on.
+
+    Returns:
+        List[str]: List of split string segments.
+
+    Raises:
+        ValueError: If input types are incorrect.
+
+    Example:
+        ```python
+        parts = save_command_split("foo$bar$baz", "$")
+        ```
+    """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
     if not isinstance(split_on,str):
@@ -23,22 +46,25 @@ def save_command_split(string:str, split_on:str)->List[str]:
     string = string.split("XXXsplit_meXXX")
     return string
 
-"""
-def remove_empty_at_begin(string:str)->str:
-    return string.lstrip()
-    out = 0
-    for k,elem in enumerate(string):
-        if elem == " " or elem == "\n" or elem =="*":
-            if elem =="*":
-                print("unexpected * your numbering is probably wrong :'D")
-            out = k + 1
-        else:
-            break
-    
-    #return string[out:]
-"""
-
 def first_char_brace(string:str, begin_brace:str = "{")->bool:
+    """
+    Checks if the first non-whitespace character of a string is a given brace.
+
+    Args:
+        string (str): The input string.
+        begin_brace (str, optional): The brace character to check. Defaults to "{".
+
+    Returns:
+        bool: True if first character is the brace, False otherwise.
+
+    Raises:
+        ValueError: If input types are incorrect.
+
+    Example:
+        ```python
+        is_brace = first_char_brace(" {foo}")
+        ```
+    """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
     if not isinstance(begin_brace,str):
@@ -49,6 +75,26 @@ def first_char_brace(string:str, begin_brace:str = "{")->bool:
     return string[0] == begin_brace
 
 def split_on_first_brace(string:str, begin_brace = "{",end_brace = "}", error_replacement="brace_error")->Tuple[str,str]:
+    """
+    Splits a string on the first matching pair of braces.
+
+    Args:
+        string (str): The input string.
+        begin_brace (str, optional): The opening brace. Defaults to "{".
+        end_brace (str, optional): The closing brace. Defaults to "}".
+        error_replacement (str, optional): Replacement string if brace not found. Defaults to "brace_error".
+
+    Returns:
+        Tuple[str, str]: Content inside braces, and the remaining string.
+
+    Raises:
+        ValueError: If input types are incorrect.
+
+    Example:
+        ```python
+        inside, rest = split_on_first_brace("{foo}bar")
+        ```
+    """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
     if not isinstance(begin_brace,str) or not isinstance(end_brace,str):
@@ -82,6 +128,14 @@ def split_rename(string: str) -> Optional[Tuple[str, str]]:
 
     Returns:
         Optional[Tuple[str, str]]: A tuple containing the name and the remaining string, or None if the first character is not '['.
+
+    Raises:
+        ValueError: If input is not a string.
+
+    Example:
+        ```python
+        name, rest = split_rename("[foo]bar")
+        ```
     """
     if not isinstance(string, str):
         raise ValueError("Input must be a string")
@@ -94,8 +148,26 @@ def split_rename(string: str) -> Optional[Tuple[str, str]]:
     else:
         return None
 
-
 def split_on_next(string:str, split_on:str, save_split:bool = True)->Tuple[str,str]:
+    """
+    Splits a string on the next occurrence of a substring.
+
+    Args:
+        string (str): The input string.
+        split_on (str): The substring to split on.
+        save_split (bool, optional): Whether to use save_command_split. Defaults to True.
+
+    Returns:
+        Tuple[str, str]: The part before and after the split.
+
+    Raises:
+        ValueError: If input types are incorrect.
+
+    Example:
+        ```python
+        before, after = split_on_next("foo$bar$baz", "$")
+        ```
+    """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
     if not isinstance(split_on,str):
@@ -109,8 +181,27 @@ def split_on_next(string:str, split_on:str, save_split:bool = True)->Tuple[str,s
     post = string[len(pre + split_on):]
     return pre, post
 
-
 def begin_end_split(string:str, begin_name:str, end_name:str, save_split:bool = False)->Tuple[str,str,str]:
+    """
+    Splits a string into three parts: before, between, and after given begin and end substrings.
+
+    Args:
+        string (str): The input string.
+        begin_name (str): The substring marking the beginning.
+        end_name (str): The substring marking the end.
+        save_split (bool, optional): Whether to use save_command_split. Defaults to False.
+
+    Returns:
+        Tuple[str, str, str]: The parts before, between, and after the delimiters.
+
+    Raises:
+        ValueError: If input types are incorrect.
+
+    Example:
+        ```python
+        pre, mid, post = begin_end_split("a\\begin{env}b\\end{env}c", "\\begin{env}", "\\end{env}")
+        ```
+    """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
     if not isinstance(begin_name,str):
@@ -139,8 +230,27 @@ def begin_end_split(string:str, begin_name:str, end_name:str, save_split:bool = 
             else:
                 middle += ptmp + end_name
                 xanda = xtmp
-    
+
 def position_of(string:str, begin_name:str, save_split:bool = True)->int:
+    """
+    Finds the position of a substring in a string.
+
+    Args:
+        string (str): The input string.
+        begin_name (str): The substring to find.
+        save_split (bool, optional): Whether to use save_command_split. Defaults to True.
+
+    Returns:
+        int: The position index, or -1 if not found.
+
+    Raises:
+        ValueError: If input types are incorrect.
+
+    Example:
+        ```python
+        pos = position_of("foo$bar", "$")
+        ```
+    """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
     if not isinstance(begin_name,str):

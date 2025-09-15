@@ -3,6 +3,25 @@ __all__ = ["do_commands","do_newenvironment"]
 from .splitting import first_char_brace,split_on_first_brace,split_on_next,begin_end_split,position_of
 
 def execute_on_pattern(string: str, arg_num: int, command_name: str, command_pattern: str) -> str:
+    """
+    Expands a LaTeX command pattern in the string.
+
+    Args:
+        string (str): The input string.
+        arg_num (int): Number of arguments for the command.
+        command_name (str): The command name to match.
+        command_pattern (str): The pattern to replace.
+
+    Returns:
+        str: The string with expanded command patterns.
+
+    Example:
+        ```python
+        s = r"\\foo{a}{b}"
+        execute_on_pattern(s, 2, "\\foo", "#1+#2")
+        # returns "a+b"
+        ```
+    """
     out = ""
     while(True):
         pattern_instance = command_pattern
@@ -25,6 +44,22 @@ def execute_on_pattern(string: str, arg_num: int, command_name: str, command_pat
     return out
 
 def do_commands(string: str) -> str:
+    """
+    Processes all LaTeX \\newcommand definitions and applies them.
+
+    Args:
+        string (str): The input string.
+
+    Returns:
+        str: The string with commands expanded.
+
+    Example:
+        ```python
+        s = r"\\newcommand{\\foo}[2]{#1+#2} \\foo{a}{b}"
+        do_commands(s)
+        # returns "a+b"
+        ```
+    """
     toprocess = string
     out = ""
     all_commands = []
@@ -55,6 +90,26 @@ def do_commands(string: str) -> str:
 
 
 def execute_enviroment_on_pattern(string: str, environment_name: str, arg_num: int, begin: str, end: str) -> str:
+    """
+    Expands a LaTeX environment pattern in the string.
+
+    Args:
+        string (str): The input string.
+        environment_name (str): The environment name to match.
+        arg_num (int): Number of arguments for the environment.
+        begin (str): Begin pattern.
+        end (str): End pattern.
+
+    Returns:
+        str: The string with expanded environment patterns.
+
+    Example:
+        ```python
+        s = r"\\begin{foo}{a}{b}content\\end{foo}"
+        execute_enviroment_on_pattern(s, "foo", 2, "<b>#1 #2>", "</b>")
+        # returns "<b>a b>content</b>"
+        ```
+    """
     out = ""
     while(True):
         begin_instance = begin
@@ -79,6 +134,22 @@ def execute_enviroment_on_pattern(string: str, environment_name: str, arg_num: i
 
 
 def do_newenvironment(string: str) -> str:
+    """
+    Processes all LaTeX \\newenvironment definitions and applies them.
+
+    Args:
+        string (str): The input string.
+
+    Returns:
+        str: The string with environments expanded.
+
+    Example:
+        ```python
+        s = r"\\newenvironment{foo}[2]{<b>#1 #2>}{</b>} \\begin{foo}{a}{b}content\\end{foo}"
+        do_newenvironment(s)
+        # returns "<b>a b>content</b>"
+        ```
+    """
     toprocess = string
     out = ""
     all_env = []
@@ -112,13 +183,20 @@ def do_newenvironment(string: str) -> str:
 
 
 def clean_junk_safe(latex_content:str)->str:
-    """Cleans up LaTeX content by removing unnecessary characters and formatting issues.
+    """
+    Cleans up LaTeX content by removing unnecessary characters and formatting issues.
 
     Args:
         latex_content (str): The LaTeX content to be cleaned.
     
     Returns:
         str: The cleaned LaTeX content.
+
+    Example:
+        ```python
+        clean_junk_safe("foo    bar\\n\\n\\n")
+        # returns "foo bar\\n\\n"
+        ```
     """
     while "\\"*4 in latex_content:
         latex_content = latex_content.replace("\\"*4, "")
@@ -136,6 +214,22 @@ def clean_junk_safe(latex_content:str)->str:
 
 
 def run_preprocessor(string: str) -> str:
+    """
+    Runs the full preprocessor pipeline on the input string.
+
+    Args:
+        string (str): The input string.
+
+    Returns:
+        str: The processed string.
+
+    Example:
+        ```python
+        s = r"\\newcommand{\\foo}[1]{#1!} \\foo{bar}"
+        run_preprocessor(s)
+        # returns "bar!"
+        ```
+    """
     string = clean_junk_safe(string)
     string = do_commands(string)
     string = do_newenvironment(string)

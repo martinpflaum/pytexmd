@@ -4,6 +4,20 @@ from .core import *
 from .splitting import * 
 
 def enum_style_roman(index: int) -> str:
+    """
+    Converts an index to an uppercase Roman numeral.
+
+    Args:
+        index (int): The index to convert.
+
+    Returns:
+        str: Uppercase Roman numeral.
+
+    Example:
+        ```python
+        enum_style_roman(2)  # 'III'
+        ```
+    """
     roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x",
          "xi","xii","xiii","xiv","xv","xvi","xvii","xviii","xix","xx",
          "xxi","xxii","xxiii","xxiv","xxv","xxvi","xxvii","xxviii","xxix","xxx"]
@@ -11,6 +25,20 @@ def enum_style_roman(index: int) -> str:
     return roman[index].upper()
 
 def enum_style_Roman(index: int) -> str:
+    """
+    Converts an index to an uppercase Roman numeral.
+
+    Args:
+        index (int): The index to convert.
+
+    Returns:
+        str: Uppercase Roman numeral.
+
+    Example:
+        ```python
+        enum_style_Roman(0)  # 'I'
+        ```
+    """
     #roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
     roman = ["I","II","III","IV","V","VI","VII","VIII","IX","X",
          "XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX",
@@ -18,33 +46,117 @@ def enum_style_Roman(index: int) -> str:
     return roman[index]
 
 def enum_style_arabic(index: int) -> str:
+    """
+    Converts an index to an Arabic numeral (1-based).
+
+    Args:
+        index (int): The index to convert.
+
+    Returns:
+        str: Arabic numeral as string.
+
+    Example:
+        ```python
+        enum_style_arabic(0)  # '1'
+        ```
+    """
     return str(index + 1)
 
 def enum_style_alph(index: int) -> str:
+    """
+    Converts an index to a lowercase alphabet letter.
+
+    Args:
+        index (int): The index to convert.
+
+    Returns:
+        str: Lowercase letter.
+
+    Example:
+        ```python
+        enum_style_alph(0)  # 'a'
+        ```
+    """
     lowercase = 'abcdefghijklmnopqrstuvwxyz'
     return lowercase[index]
 
 def enum_style_Alph(index: int) -> str:
+    """
+    Converts an index to an uppercase alphabet letter.
+
+    Args:
+        index (int): The index to convert.
+
+    Returns:
+        str: Uppercase letter.
+
+    Example:
+        ```python
+        enum_style_Alph(0)  # 'A'
+        ```
+    """
     uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     return uppercase[index]
 
 def enum_style_empty(index: int) -> str:
+    """
+    Returns an empty string for the label.
+
+    Args:
+        index (int): The index (unused).
+
+    Returns:
+        str: Empty string.
+
+    Example:
+        ```python
+        enum_style_empty(0)  # ''
+        ```
+    """
+
     return ""
 
 enum_styles = {"\\roman":enum_style_roman,"\\Roman":enum_style_Roman,"\\arabic":enum_style_arabic,"\\alph":enum_style_alph,"\\Alph":enum_style_Alph}
 
 
 class ItemizeItem(Element):
+    """
+    Represents an item in a LaTeX itemize environment.
+
+    Example:
+        ```python
+        item = ItemizeItem("First item", parent)
+        print(item.to_string())
+        ```
+    """
     def __init__(self, modifiable_content: str, parent: Element, label: str = "•"):
+        """
+        Args:
+            modifiable_content (str): The content of the item.
+            parent (Element): The parent element.
+            label (str, optional): The label for the item. Defaults to "•".
+        """
         super().__init__("",parent)
         self.label = label
 
         self.children = [Undefined(label,self),Undefined(modifiable_content,self)]
     
     def label_name(self) -> str:
+        """
+        Returns the label of the item.
+
+        Returns:
+            str: The label.
+        """
         return self.label#self.children[0].to_string()
 
     def to_string(self) -> str:
+        """
+        Converts the item to a formatted string.
+
+        Returns:
+            str: The formatted item string.
+        """
         out = self.children[0].to_string()+"  "
         string_len = len(self.children[0].to_string()) + 2 
 
@@ -56,10 +168,29 @@ class ItemizeItem(Element):
 
     @staticmethod
     def position(string: str) -> int:
+        """
+        Finds the position of '\\item' in the string.
+
+        Args:
+            string (str): The input string.
+
+        Returns:
+            int: The position index.
+        """
         return position_of(string,"\\item")
             
     @staticmethod
     def split_and_create(string: str, parent: Element) -> tuple:
+        """
+        Splits the string on '\\item' and creates an ItemizeItem.
+
+        Args:
+            string (str): The input string.
+            parent (Element): The parent element.
+
+        Returns:
+            tuple: (pre, ItemizeItem, post)
+        """
         pre,content = split_on_next(string,"\\item")
 
         if "\\item" in content:
@@ -76,11 +207,31 @@ class ItemizeItem(Element):
         return pre,elem_out,post
 
 class Itemize(Element):
+    """
+    Represents a LaTeX itemize environment.
+
+    Example:
+        ```python
+        itemize = Itemize("content", parent)
+        print(itemize.to_string())
+        ```
+    """
     current_index = 0
     def __init__(self, modifiable_content: str, parent: Element):
+        """
+        Args:
+            modifiable_content (str): The content of the itemize.
+            parent (Element): The parent element.
+        """
         super().__init__(modifiable_content,parent)
         
     def to_string(self) -> str:
+        """
+        Converts the itemize to a formatted string.
+
+        Returns:
+            str: The formatted itemize string.
+        """
         out = "\n" 
         for child in self.children:
             out += child.to_string().rstrip().lstrip() + "\n"
@@ -89,10 +240,29 @@ class Itemize(Element):
     
     @staticmethod
     def position(string: str) -> int:
+        """
+        Finds the position of '\\begin{itemize}' in the string.
+
+        Args:
+            string (str): The input string.
+
+        Returns:
+            int: The position index.
+        """
         return position_of(string,"\\begin{itemize}")
 
     @staticmethod
     def split_and_create(string: str, parent: Element) -> tuple:
+        """
+        Splits the string on itemize environment and creates an Itemize.
+
+        Args:
+            string (str): The input string.
+            parent (Element): The parent element.
+
+        Returns:
+            tuple: (pre, Itemize, post)
+        """
         
         pre,content,post = begin_end_split(string,"\\begin{itemize}","\\end{itemize}")
         
@@ -103,7 +273,22 @@ class Itemize(Element):
 
 
 class EnumerationItem(Element):
+    """
+    Represents an item in a LaTeX enumerate environment.
+
+    Example:
+        ```python
+        enum_item = EnumerationItem("First", parent)
+        print(enum_item.to_string())
+        ```
+    """
     def __init__(self, modifiable_content: str, parent: Element, label: str = None):
+        """
+        Args:
+            modifiable_content (str): The content of the item.
+            parent (Element): The parent element.
+            label (str, optional): The label for the item.
+        """
         super().__init__("",parent)
 
         self.label = ""
@@ -116,6 +301,12 @@ class EnumerationItem(Element):
         self.children = [Undefined(self.label,self),Undefined(modifiable_content,self)]
     
     def label_name(self) -> str:
+        """
+        Returns the label of the enumeration item.
+
+        Returns:
+            str: The label.
+        """
         return self.label
 
     def to_string(self) -> str:
@@ -131,10 +322,29 @@ class EnumerationItem(Element):
 
     @staticmethod
     def position(string: str) -> int:
+        """
+        Finds the position of '\\item' in the string.
+
+        Args:
+            string (str): The input string.
+
+        Returns:
+            int: The position index.
+        """
         return position_of(string,"\\item")
             
     @staticmethod
     def split_and_create(string: str, parent: Element) -> tuple:
+        """
+        Splits the string on '\\item' and creates an EnumerationItem.
+
+        Args:
+            string (str): The input string.
+            parent (Element): The parent element.
+
+        Returns:
+            tuple: (pre, EnumerationItem, post)
+        """
         pre,content = split_on_next(string,"\\item")
 
         if "\\item" in content:
@@ -151,12 +361,35 @@ class EnumerationItem(Element):
         return pre,elem_out,post
        
 class Enumeration(Element):
+    """
+    Represents a LaTeX enumerate environment.
+
+    Example:
+        ```python
+        enum = Enumeration("content", parent, enum_style_arabic, "(", ")")
+        print(enum.to_string())
+        ```
+    """
     current_index = 0
     def __init__(self, modifiable_content: str, parent: Element, style_func: callable, left: str, right: str):
+        """
+        Args:
+            modifiable_content (str): The content of the enumerate.
+            parent (Element): The parent element.
+            style_func (callable): Function to generate item labels.
+            left (str): Left delimiter for label.
+            right (str): Right delimiter for label.
+        """
         super().__init__(modifiable_content,parent)
         self.style_func,self.left,self.right = style_func,left,right
 
     def to_string(self) -> str:
+        """
+        Converts the enumerate to a formatted string.
+
+        Returns:
+            str: The formatted enumerate string.
+        """
         out = "\n" 
         for child in self.children:
             out += child.to_string().rstrip().lstrip() + "\n"
@@ -165,10 +398,29 @@ class Enumeration(Element):
     
     @staticmethod
     def position(string: str) -> int:
+        """
+        Finds the position of '\\begin{enumerate}' in the string.
+
+        Args:
+            string (str): The input string.
+
+        Returns:
+            int: The position index.
+        """
         return position_of(string,"\\begin{enumerate}")
 
     @staticmethod
     def split_and_create(string: str, parent: Element) -> tuple:
+        """
+        Splits the string on enumerate environment and creates an Enumeration.
+
+        Args:
+            string (str): The input string.
+            parent (Element): The parent element.
+
+        Returns:
+            tuple: (pre, Enumeration, post)
+        """
         
         pre,content,post = begin_end_split(string,"\\begin{enumerate}","\\end{enumerate}")
         
@@ -218,10 +470,27 @@ class Enumeration(Element):
         return pre,elem_out,post
 
     def generate_item_label(self) -> str:
+        """
+        Generates the label for the next item.
+
+        Returns:
+            str: The generated label.
+        """
         self.current_index = self.current_index + 1
         return self.left + self.style_func(self.current_index-1)+ self.right
 
 
 
 def get_all_filters():
+    """
+    Returns all filter classes for enum environments.
+
+    Returns:
+        list: List of filter classes.
+
+    Example:
+        ```python
+        filters = get_all_filters()
+        ```
+    """
     return [Itemize,Enumeration]

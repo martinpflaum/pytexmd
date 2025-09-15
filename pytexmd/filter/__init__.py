@@ -1,8 +1,39 @@
+__all__ = ["string_to_tree",
+           "tree_to_files",
+           "process_string",
+           "string_to_file_name",
+           "element_to_file_whole",
+           "element_to_file_only_begin"
+           "preprocessor",
+           "section",
+           "enumitem",
+           "equations",
+           "antibugs",
+           "core"
+           "splitting"
+           ]
 
-from . import preprocessor,section,enumitem,equations,antibugs,core
+
+from . import preprocessor,section,enumitem,equations,antibugs,core,splitting
 NUM_FILES = 0
 
 def string_to_tree(string:str):
+    """
+    Converts a string to a document tree structure.
+
+    Args:
+        string (str): The input string to process.
+
+    Returns:
+        Document: The processed document tree.
+
+    Example:
+        ```python
+        latex = r\"""\\section{Intro}\\begin{equation}E=mc^2\\end{equation}\"""
+        doc = string_to_tree(latex)
+        print(doc.to_string())
+        ```
+    """
     string = antibugs.no_more_bugs_begin(string)
     
     string  = preprocessor.run_preprocessor(string)
@@ -37,6 +68,23 @@ def string_to_tree(string:str):
     return document
 
 def string_to_file_name(string: str):
+    """
+    Generates a file name from a string.
+
+    Args:
+        string (str): The input string.
+
+    Returns:
+        str: A sanitized file name.
+
+    Example:
+        ```python
+        # Produces 'section_0' for empty string
+        print(string_to_file_name(""))  
+        # Produces 'my_section_1' for "My Section"
+        print(string_to_file_name("My Section"))
+        ```
+    """
     global NUM_FILES
     file_name = string.strip()
     if file_name == "":
@@ -49,6 +97,25 @@ def string_to_file_name(string: str):
     return file_name
 
 def element_to_file_whole(element:section.SectionEnumerate,output_folder:str,file_name:str,output_suffix:str=".md"):
+    """
+    Writes the whole element to a file.
+
+    Args:
+        element (SectionEnumerate): The element to write.
+        output_folder (str): The output folder path.
+        file_name (str): The file name.
+        output_suffix (str, optional): The file suffix. Defaults to ".md".
+
+    Returns:
+        None
+
+    Example:
+        ```python
+        # Save the entire document as 'output/index.md'
+        doc = string_to_tree(r"\\section{Intro}")
+        element_to_file_whole(doc, "output", "index")
+        ```
+    """
     global NUM_FILES
     NUM_FILES += 1
 
@@ -58,6 +125,25 @@ def element_to_file_whole(element:section.SectionEnumerate,output_folder:str,fil
     print(f"File {file_name} created.")
 
 def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:str,file_name:str,output_suffix:str=".md"):
+    """
+    Writes only the beginning part of the element to a file, with a toctree.
+
+    Args:
+        element (SectionEnumerate): The element to write.
+        output_folder (str): The output folder path.
+        file_name (str): The file name.
+        output_suffix (str, optional): The file suffix. Defaults to ".md".
+
+    Returns:
+        None
+
+    Example:
+        ```python
+        # Save only the introduction and generate a toctree for subsections
+        doc = string_to_tree(r"\\section{Intro}\\section{Background}")
+        element_to_file_only_begin(doc, "output", "index")
+        ```
+    """
     global NUM_FILES
     NUM_FILES += 1
 
@@ -83,6 +169,26 @@ def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:st
     print(f"File {file_name} created.")
     
 def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:str,depth:int,output_suffix:str=".md"):
+    """
+    Recursively writes tree elements to files up to a given depth.
+
+    Args:
+        output_folder (str): The output folder path.
+        element (SectionEnumerate): The root element.
+        file_name (str): The base file name.
+        depth (int): The recursion depth.
+        output_suffix (str, optional): The file suffix. Defaults to ".md".
+
+    Returns:
+        None
+
+    Example:
+        ```python
+        # Recursively split document into files for each section up to depth 2
+        doc = string_to_tree(r"\\section{Intro}\\section{Background}")
+        tree_to_files("output", doc, "index", 2)
+        ```
+    """
     if not isinstance(element,section.SectionEnumerate):
         raise ValueError("element must be a SectionEnumerate")
     if not isinstance(depth,int) or depth < 0:
@@ -114,6 +220,25 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:s
 
 
 def process_string(output_folder:str,string:str,depth=3,output_suffix:str=".md"):
+    """
+    Processes a string and writes the document to files.
+
+    Args:
+        output_folder (str): The output folder path.
+        string (str): The input string.
+        depth (int, optional): The recursion depth. Defaults to 3.
+        output_suffix (str, optional): The file suffix. Defaults to ".md".
+
+    Returns:
+        None
+
+    Example:
+        ```python
+        # Process a LaTeX string and write the main file to 'output/index.md'
+        latex = r\"""\\section{Intro}\\begin{equation}E=mc^2\\end{equation}\"""
+        process_string("output", latex)
+        ```
+    """
     if not isinstance(depth,int) or depth < 0:
         raise ValueError("depth must be a non-negative integer")
     if not isinstance(output_folder,str):
@@ -123,4 +248,3 @@ def process_string(output_folder:str,string:str,depth=3,output_suffix:str=".md")
     document = string_to_tree(string)
     element_to_file_whole(document,output_folder,"index",output_suffix)
     #tree_to_files(output_folder,document,"index",depth,output_suffix)
-    

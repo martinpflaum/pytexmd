@@ -14,6 +14,7 @@ class DrawTexElement(Element):
         self.content = content
         self.packages_and_commands = packages_and_commands
         super().__init__("",parent)
+        
     def to_string(self):
         """global image_count
         out_file_name = f"image_{image_count}"

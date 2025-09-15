@@ -1,4 +1,6 @@
 #%%
+__all__ = ["load_tex_file", "LatexFile"]
+
 import os
 import regex
 from typing import List, Dict, Tuple,Optional,Any,NamedTuple
@@ -10,13 +12,13 @@ class LatexFile(NamedTuple):
     image_files:Dict[str,str]
     all_files:Dict[str,str]
 
-def load_file(file_name:str)->str:
-    data = None
-    with open(file_name, 'r') as f:
-        data = f.read()
-    return data
 
-def load_main_file(file_name:str)->LatexFile:
+def load_tex_file(file_name:str)->LatexFile:
+    def load_file(file_name:str)->str:
+        data = None
+        with open(file_name, 'r') as f:
+            data = f.read()
+        return data
     
     # Get the folder where file_name resides
     #folder_path = os.path.dirname(file_name)

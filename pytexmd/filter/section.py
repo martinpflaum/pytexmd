@@ -21,7 +21,6 @@ __all__ = [
 
 from .core import *
 from .splitting import *
-from . import misc
 
 class Para(SectionEnumerate):
     def __init__(self, modifiable_content: str, section_number: int, parent: SectionEnumerate):
@@ -349,7 +348,7 @@ class Textbf(Element):
         return out
 
 class Cite(Element):
-    def __init__(self, modifiable_content: str, parent: Element, citations: list):
+    def __init__(self, modifiable_content: str, parent: Element, citations: list[str]):
         super().__init__(modifiable_content,parent)
         self.citations = citations
     
@@ -368,9 +367,10 @@ class Cite(Element):
         return pre,Cite("",parent,citations),post
 
     def to_string(self) -> str:
-        out = ""
+        out = "["
         for elem in self.citations:
-            out += "<dt-cite key=\"" + elem +"\"></dt-cite>"
+            out += f"@{elem.lstrip().rstrip()}; "
+        out = out[:-2]+"]"
         return out
 
 
@@ -409,9 +409,13 @@ class TheoremElement(SectionEnumerate):
         """
         Output markdown myst string for theorem block.
         """
-        out = f"\n:::{{.theorem}} {self.display_name} {self.get_section_enum()[:-1]}\n"
+        pre = "\n:::{admonition} "+f"{self.display_name} {self.get_section_enum()[:-1]}\n"
+        out = ""
         for child in self.children:
             out += child.to_string()
+        out = out.lstrip().rstrip()
+        out = pre + out
+        
         out += "\n:::\n"
         return out
 
@@ -427,7 +431,7 @@ class TheoremSearcher():
     def split_and_create(self, input: str, parent: Element) -> tuple:
         pre,content,post = begin_end_split(input,"\\begin{"+self.theorem_env_name+"}","\\end{"+self.theorem_env_name+"}")
         
-        search_func = lambda instance : misc.has_value_equal(instance,"theorem_env_name",self.enum_parent_class)
+        search_func = lambda instance : has_value_equal(instance,"theorem_env_name",self.enum_parent_class)
         
         #potential bug - normaly you would have a space or new line
         section_enum = parent.children[-1].search_up_on_func(search_func)
