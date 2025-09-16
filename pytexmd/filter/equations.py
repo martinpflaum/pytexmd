@@ -2,6 +2,7 @@
 #from drawtex import contains_drawtex,get_drawtex_searchers
 from .splitting import *
 from .core import *
+from .section import Label
 
 def apply_latex_protection(string: Element) -> Element:
     """

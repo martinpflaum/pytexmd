@@ -398,29 +398,3 @@ class OneArgumentCommandSearch():
         name,post = splitting.split_on_first_brace(post)
         return pre,Undefined(self.begin + name + self.end,parent),post
 
-
-class Label(Element):
-    def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
-        super().__init__(modifiable_content, parent)
-        
-        if not hasattr(self.search_class(Document).globals,"labels"):
-            self.search_class(Document).globals.labels = {}
-        
-        holder = self.search_attribute_holder("label_name")
-        label_name = "label_error"
-        if not holder is None:
-            label_name = holder.label_name()
-        self.search_class(Document).globals.labels[label_ref] = label_name
-    
-    @staticmethod
-    def position(string: str) -> int:
-        return splitting.position_of(string,"\\label")
-
-    @staticmethod
-    def split_and_create(string: str, parent: Element) -> Tuple[str, 'Label', str]:
-        pre,post = splitting.split_on_next(string,"\\label")
-        label_ref,post = splitting.split_on_first_brace(post)
-        return pre,Label("",parent,label_ref),post
-
-    def to_string(self) -> str:
-        return ""
