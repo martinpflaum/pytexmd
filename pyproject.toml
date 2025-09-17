@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytexmd"
+version = "0.1.0"
+description = "Translate LaTeX documents to Markdown/MyST and HTML, with CLI and Sphinx integration."
+authors = [
+    { name = "Martin Pflaum", email = "author@example.com" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "sphinx",
+    "myst-parser",
+    "sphinx-proof",
+    "furo",
+    "regex"
+]
+
+[project.scripts]
+pytexmd = "pytexmd.cli:main"

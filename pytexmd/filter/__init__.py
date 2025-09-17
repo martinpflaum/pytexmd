@@ -5,7 +5,7 @@ __all__ = ["string_to_tree",
            "element_to_file_whole",
            "element_to_file_only_begin"
            "preprocessor",
-           "section",
+           "text",
            "enumitem",
            "equations",
            "antibugs",
@@ -14,7 +14,7 @@ __all__ = ["string_to_tree",
            ]
 
 
-from . import preprocessor,section,enumitem,equations,antibugs,core,splitting
+from . import preprocessor,enumitem,equations,antibugs,core,splitting, text
 from typing import List
 NUM_FILES = 0
 
@@ -41,30 +41,31 @@ def string_to_tree(string:str):
     all_expands = []
     
     #basic_expands += junkSearcher+replaceSearcher
-    all_expands += [section.get_all_filters()] 
-    all_expands += [enumitem.get_all_filters()]
+    all_expands += [core.get_section_like_filters()]
+    all_expands += [text.get_theoremSearchers(string)]+[[text.Proof]]+ [enumitem.get_all_filters()]
     all_expands += [equations.get_all_filters()]
-    all_expands += [[core.OneArgumentJunkSearch(r"\hspace")]]
+    all_expands += [text.get_all_filters()] 
+    all_expands += [[core.OneArgumentJunkSearcher(r"\hspace")]]
     junk_commands = ["\\sffamily","\\itshape","\\nonumber","\\noindent","\\indent","\\newpage"]
     #replace_mentdict = {"\\noindent":""}#"\\prerequisites ":"</p><h1 style=\"font-size:20px\">Prerequisites</h1><p>","\\N ":"\\mathbb{N}","\\id ":"id","\\GL ":"GL","\\Mat ":"\mathfrak{M}"}
-    all_expands += [[core.JunkSearch(elem) for elem in junk_commands]]
+    all_expands += [[core.JunkSearcher(elem) for elem in junk_commands]]
 
     #basic_expands += get_drawtex_searchers()
     
     #all_expands = [basic_expands]
     #all_expands.append([section.Label])
-    all_expands.append([section.EqRef,section.Ref,section.Cite])
+    all_expands.append([text.EqRef,text.Ref,text.Cite])
 
-    all_expands[0].extend(section.get_theoremSearchers(string))
-    number_within_equation = section.get_number_within_equation(string)
     
-    pre_docmuent,document,post_document = section.Document.split_and_create(string,None)
-    document.globals.number_within_equation = number_within_equation
+    number_within_equation = text.get_number_within_equation(string)
+    
+    pre_docmuent,document,post_document = text.Document.split_and_create(string,None)
+    #document.globals.number_within_equation = number_within_equation
     
     for expand_on in all_expands:
         document.expand(expand_on)
-    document.expand([core.JunkSearch("{",save_split=False),core.JunkSearch("}",save_split=False)])
-    document.expand([core.JunkSearch("\\ ",save_split=False)])
+    document.expand([core.JunkSearcher("{",save_split=False),core.JunkSearcher("}",save_split=False)])
+    document.expand([core.JunkSearcher("\\ ",save_split=False)])
     
     
     #pre_content are just commands
@@ -92,7 +93,10 @@ def string_to_file_name(string: str):
         print(string_to_file_name("My Section"))
         ```
     """
+    if string == "index":
+        return "index"
     global NUM_FILES
+    
     file_name = string.strip()
     file_name = file_name.split("\n")[0]
     if file_name == "":
@@ -104,7 +108,7 @@ def string_to_file_name(string: str):
     file_name += "_" + str(NUM_FILES)
     return file_name
 
-def element_to_file_whole(element:section.SectionEnumerate,output_folder:str,file_name:str,output_suffix:str=".md"):
+def element_to_file_whole(element:core.SectionLike,output_folder:str,file_name:str,output_suffix:str=".md"):
     """
     Writes the whole element to a file.
 
@@ -133,7 +137,7 @@ def element_to_file_whole(element:section.SectionEnumerate,output_folder:str,fil
     print(f"File {file_name} created.")
     return [file_name.replace(output_suffix,"")]
 
-def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:str,file_name:str,file_names:List[str],output_suffix:str=".md"):
+def element_to_file_only_begin(element:core.SectionLike,output_folder:str,file_name:str,file_names:List[str],output_suffix:str=".md"):
     """
     Writes only the beginning part of the element to a file, with a toctree.
 
@@ -159,7 +163,7 @@ def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:st
     file_name = output_folder+"/"+file_name+output_suffix
     out_str = ""
     for child in element.children:
-        if isinstance(child,section.SectionEnumerate):
+        if isinstance(child,core.SectionLike):
             break
         out_str += child.to_string()
     
@@ -176,7 +180,7 @@ def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:st
     print(f"File {file_name} created.")
     return [file_name.replace(output_suffix,"")]
 
-def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:str,depth:int,output_suffix:str=".md"):
+def tree_to_files(output_folder:str,element:core.SectionLike,file_name:str,depth:int,output_suffix:str=".md"):
     """
     Recursively writes tree elements to files up to a given depth.
 
@@ -197,10 +201,14 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:s
         tree_to_files("output", doc, "index", 2)
         ```
     """
-    if not isinstance(element,section.SectionEnumerate):
+    global NUM_FILES
+    if depth == 0:
+        return element_to_file_whole(element,output_folder,string_to_file_name(file_name),output_suffix)
+    
+    if not isinstance(element,(core.SectionLike,core.Document)):
         has_found_childs = False
         for child in element.children:
-            if isinstance(child,section.SectionEnumerate):
+            if isinstance(child,(core.SectionLike,core.Document)):
                 has_found_childs = True
                 break
         if not has_found_childs:
@@ -209,11 +217,11 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:s
             child_file_names = []
     
             for child in element.children:
-                if isinstance(child,section.SectionEnumerate):
+                if isinstance(child,(core.SectionLike,core.Document)):
                     child_file_name = string_to_file_name(child.children[0].to_string())
                     child_file_names.extend(tree_to_files(output_folder,child,None,depth-1,output_suffix))
                 else:
-                    child_file_names.extend(tree_to_files(output_folder,child,None,depth-1,output_suffix))
+                    child_file_names.extend(tree_to_files(output_folder,child,None,depth,output_suffix))
             
             return child_file_names
     else:
@@ -224,14 +232,11 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:s
     if not isinstance(output_folder,str):
         raise ValueError("output_folder must be a string")
     
-    global NUM_FILES
-    if depth == 0:
-        return element_to_file_whole(element,output_folder,file_name,output_suffix)
          
     
     has_found_childs = False
     for child in element.children:
-        if isinstance(child,section.SectionEnumerate):
+        if isinstance(child,(core.SectionLike,core.Document)):
             has_found_childs = True
             break
 
@@ -240,13 +245,14 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:s
         
     child_file_names = []
     for child in element.children:
-        if isinstance(child,section.SectionEnumerate):
+        if isinstance(child,(core.SectionLike,core.Document)):
             child_file_names.extend(tree_to_files(output_folder,child,None,depth-1,output_suffix))
         else:
-            pass
+            child_file_names.extend(tree_to_files(output_folder,child,None,depth,output_suffix))
+            
     return element_to_file_only_begin(element,output_folder,file_name,child_file_names,output_suffix)
 
-def process_string(output_folder:str,string:str,depth=3,output_suffix:str=".md"):
+def process_string(output_folder:str,string:str,depth=2,output_suffix:str=".md"):
     """
     Processes a string and writes the document to files.
 

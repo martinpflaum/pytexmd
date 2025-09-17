@@ -9,24 +9,33 @@ __all__ = [
     "Document",
     "Undefined",
     "RawText",
-    "Globals",
-    "JunkSearch",
-    "ReplaceSearch",
-    "GuardianSearch",
-    "OneArgumentJunkSearch",
-    "OneArgumentCommandSearch",
-    "SectionEnumerate",
+    "JunkSearcher",
+    "ReplaceSearcher",
+    "GuardianSearcher",
+    "OneArgumentJunkSearcher",
+    "OneArgumentCommandSearcher",
     "find_nearest_classes",
     "has_value_equal",
     "TAB",
-    "get_number_within_equation"
+    "get_number_within_equation",
+    "Searcher",
+    "BeginEndSearcher",
+    "SectionLikeSearcher",
+    "SectionLike",
 ]
 
-from typing import List, Optional, Tuple, Union, Callable
+from typing import List, Optional, Tuple, Union, Callable,NamedTuple
 from . import splitting
 
 TAB = "    "
 call_num = 0
+
+class FileStructure():
+    def __init__(self,file_name:str,content: str="",children:List["FileStructure"]=[]):
+        self.file_name = file_name
+        self.content = content
+        self.children = children
+
 
 class Element():
     """Base class for LaTeX tree elements.
@@ -342,6 +351,21 @@ class Element():
             'dummy'
         """
         raise NotImplementedError("no function to_string found")
+    
+    def to_file_structure(self)->FileStructure|str:
+        """Convert element to FileStructure representation.
+
+        Returns:
+            FileStructure | str: FileStructure or string representation.
+
+        Example:
+            >>> class Dummy(Element):
+            ...     def to_structure(self): return "dummy"
+            >>> Dummy("abc", None).to_structure()
+            'dummy'
+        """
+        return self.to_string()
+
 
 def get_number_within_equation(string: str) -> str:
     """Extract equation numbering context from LaTeX string.
@@ -424,104 +448,162 @@ def find_nearest_classes(string: str, all_classes: List[Element]) -> List[Elemen
                 pass
     return out
 
-class SectionEnumerate(Element):
-    """Element for section and equation enumeration.
 
-    Attributes:
-        section_count (int): Section counter.
-        equation_count (int): Equation counter.
-        enum_parent_class (list): Parent classes for enumeration.
-        theorem_env_name (str): Theorem environment name.
+class Searcher():
+    """Base class for searchers to find LaTeX constructs.
 
     Example:
-        >>> class Dummy(SectionEnumerate):
-        ...     def __init__(self): super().__init__("", None, "dummy", None)
-        >>> d = Dummy()
-        >>> d.generate_child_section_number()
-        1
+        >>> class DummySearcher(Searcher):
+        ...     def position(self, s): return s.find("x")
+        ...     def split_and_create(self, s, p): return "", Element("x", p), ""
+        >>> ds = DummySearcher()
+        >>> ds.position("abcxdef")
+        3
     """
-    section_count = 0
-    equation_count = 0
+    def __init__(self):
+        super().__init__()
     
-    def __init__(self, modifiable_content:str, parent, theorem_env_name, enum_parent_class):
-        super().__init__(modifiable_content,parent)
-        if (not isinstance(enum_parent_class,list)) and (not enum_parent_class is None):            
-            enum_parent_class = [enum_parent_class]
-        self.enum_parent_class = enum_parent_class
-        self.theorem_env_name = theorem_env_name
-    
-    
-    def try_get_section_enum(self, class_name) -> Optional[str]:
-        """Try to get section enumeration for a class.
+    def position(self, string: str) -> int:
+        """Find position of construct in string.
 
         Args:
-            class_name: Class name.
+            string (str): Input string.
+        
+        Returns:
+            int: Position index, or -1 if not found.
+        """
+        raise NotImplementedError("no function position found")
+    
+    def split_and_create(self, string: str, parent: Element) -> Tuple[str, Element, str]:
+        """Split string and create element for construct.
+
+        Args:
+            string (str): Input string.
+            parent (Element): Parent element.
 
         Returns:
-            Optional[str]: Section enumeration string or None.
+            Tuple[str, Element, str]: Pre-content, created element, post-content.
         """
-        if class_name is None:
-            return str(self.section_number) + "."
+        raise NotImplementedError("no function split_and_create found")
+    
+class BeginEndSearcher(Searcher):
+    """Searcher for LaTeX environments with \begin and \end.
+
+    Attributes:
+        name (str): Environment name.
+        save_split (bool): Whether to save the split command.
+
+    Example:
+        >>> searcher = BeginEndSearcher("itemize")
+        >>> searcher.name
+        'itemize'
+    """
+    def __init__(self, command_name: str, element_type:type, save_split: bool = True):
+        """
+        Args:
+            name (str): Environment name.
+            save_split (bool, optional): Whether to save the split command. Defaults to True.
+        """
+        super().__init__()
+        self.command_name = command_name
+        self.save_split = save_split
+        self.element_type = element_type
+    
+    def position(self, string: str) -> int:
+        return splitting.position_of(string,"\\begin{"+self.command_name+ "}",self.save_split)
+    
+    def split_and_create(self, string: str, parent: Element) -> Tuple[str, Element, str]:
+        pre,content,post = splitting.begin_end_split(string,"\\begin{"+self.command_name+"}","\\end{"+self.command_name+"}")
+        out = self.element_type(content,parent)
+        return pre,out,post
+
+SECTION_LIKE_COMMANDS = [
+    "\\part",
+    "\\chapter",
+    "\\section",
+    "\\subsection",
+    "\\subsubsection",
+    "\\paragraph",
+    "\\subparagraph"
+]
+
+SECTION_LIKE_COMMANDS_TO_HASHTAGS = {
+    "\\part": "# ",
+    "\\chapter": "# ",
+    "\\section": "# ",
+    "\\subsection": "## ",
+    "\\subsubsection": "### ",
+    "\\paragraph": "#### ",
+    "\\subparagraph": "#### ",
+    "\\part*": "# ",
+    "\\chapter*": "# ",
+    "\\section*": "# ",
+    "\\subsection*": "## ",
+    "\\subsubsection*": "### ",
+    "\\paragraph*": "#### ",
+    "\\subparagraph*": "#### ",
+}
+class SectionLike(Element):
+    """Element for section-like LaTeX commands.
+
+    """
+    def __init__(self, modifiable_content:str, parent,command_name:str, name:str):
+        super().__init__(modifiable_content,parent)
+        self.name = name
+        self.command_name = command_name
+
+    def to_string(self) -> str:
+        pre = "\n" + SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+        out = ""
+        for child in self.children:
+            out += child.to_string()
+        out = pre + out.lstrip()
+        return out
+        
+class SectionLikeSearcher(Searcher):
+    """Searcher for LaTeX commands.
+
+    Attributes:
+        name (str): Command name.
+        save_split (bool): Whether to save the split command.
+    """
+    def __init__(self, command_name: str):
+        """
+        Args:
+            name (str): Command name.
+            save_split (bool, optional): Whether to save the split command. Defaults to True.
+        """
+        super().__init__()
+        self.command_name = command_name
+        
+    
+    def position(self, string: str) -> int:
+        return splitting.position_of(string,self.command_name+"{",False)
+    
+    def split_and_create(self,input: str, parent: Element) -> Tuple[str, Element, str]:
+        pre,content = splitting.split_on_next(input,self.command_name)
+        name,content = splitting.split_on_first_brace(content)
+        if self.command_name + "{" in content:
+            content,post = splitting.split_on_next(content,self.command_name + "{",False)
+            post = self.command_name + "{" + post
         else:
-            search_func = lambda instance : has_value_equal(instance,"theorem_env_name",class_name)
+            post = ""
+        
+        return pre,SectionLike(content,parent,self.command_name,name),post
 
-            section_enum = self.search_up_on_func(search_func)
-            
-            if section_enum is None:
-                return None
-            else:
-                out = section_enum.get_section_enum()
-                out += str(self.section_number) + "."
-                return out
+def get_section_like_filters() -> List[Searcher]:
+    out = []
+    for command in SECTION_LIKE_COMMANDS:
+        out.append(SectionLikeSearcher(command))
+        out.append(SectionLikeSearcher(command+"*"))
+        
+    return out
 
-    def get_section_enum(self) -> str:
-        """Get section enumeration string.
-
-        Returns:
-            str: Section enumeration.
-        """
-        if self.enum_parent_class is None:
-            return str(self.section_number) + "."
-        else:
-            out = None
-            for elem in self.enum_parent_class:
-                out = self.try_get_section_enum(elem)
-                if not out is None:
-                    break
-            if out is None:
-                out = "E"
-                print("couldn't find enumaration parent: --"+self.enum_parent_class +"-- in enviroment: --" + self.theorem_env_name +"--")
-            return out
-
-    def generate_child_equation_number(self) -> int:
-        """Generate next equation number.
-
-        Returns:
-            int: Equation number.
-        """
-        equation_number = self.equation_count + 1
-        self.equation_count = self.equation_count + 1
-        return equation_number
-
-    def generate_child_section_number(self) -> int:
-        """Generate next section number.
-
-        Returns:
-            int: Section number.
-        """
-        section_number = self.section_count + 1
-        self.section_count = self.section_count + 1
-        return section_number
-
-class Document(SectionEnumerate):
+class Document(Element):
     """Element representing a LaTeX document."""
     def __init__(self,modifiable_content: str, parent: Element):
-        super().__init__(modifiable_content,parent,"document",None)
-        self.globals = Globals()
-    
-
-    def get_section_enum(self) -> str:
-        return ""
+        super().__init__(modifiable_content,parent)
+        
 
     @staticmethod
     def position(string: str) -> int:
@@ -541,6 +623,18 @@ class Document(SectionEnumerate):
             out += child.to_string()
         return out
 
+    def to_file_structure(self)->FileStructure:
+        out = ""
+        childs = []
+        current_struct = None
+        for child in self.children:
+            struct = child.to_file_structure()
+            if isinstance(struct,str):
+                out += struct
+            else:
+                childs.append(struct)
+        return FileStructure("index",out,childs)
+            
 class Undefined(Element):
     """Element for undefined LaTeX content."""
     def __init__(self,modifiable_content: str, parent: Element):
@@ -552,6 +646,18 @@ class Undefined(Element):
             out += child.to_string()
         return out
 
+    def to_file_structure(self)->FileStructure:
+        out = ""
+        childs = []
+        for child in self.children:
+            struct = child.to_file_structure()
+            if isinstance(struct,str):
+                out += struct
+            else:
+                childs.append(struct)
+        return FileStructure("index",out,childs)
+
+
 class RawText(Element):
     """Element for raw text content."""
     def __init__(self,string: str, parent: Element):
@@ -561,42 +667,33 @@ class RawText(Element):
     def to_string(self) -> str:
         return self.text
 
-class Globals():
-    """Global settings for document parsing."""
-    pass
+    def to_file_structure(self)->FileStructure:
+        out = ""
+        childs = []
+        for child in self.children:
+            struct = child.to_file_structure()
+            if isinstance(struct,str):
+                out += struct
+            else:
+                childs.append(struct)
+        return FileStructure("index",out,childs)
 
-class JunkSearch():
+
+class JunkSearcher(Searcher):
     """Searcher for junk LaTeX commands."""
     def __init__(self,junk_name: str, save_split: bool = True):
         self.junk_name = junk_name
         self.save_split = save_split
 
     def position(self, string: str) -> int:
-        """Find position of junk command in string.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index.
-        """
         return splitting.position_of(string,self.junk_name,self.save_split)
 
     def split_and_create(self, string: str, parent: Element) -> Tuple[str, Undefined, str]:
-        """Split string and create Undefined element for junk.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            Tuple[str, Undefined, str]: Pre-content, Undefined element, post-content.
-        """
         pre,post = splitting.split_on_next(string,self.junk_name,self.save_split)
         return pre,Undefined("",parent),post
 
 
-class ReplaceSearch():
+class ReplaceSearcher(Searcher):
     """Searcher for replacing LaTeX commands."""
     def __init__(self,junk_name: str, replacement: str, save_split: bool = True):
         self.junk_name = junk_name
@@ -604,116 +701,48 @@ class ReplaceSearch():
         self.save_split = save_split
 
     def position(self, string: str) -> int:
-        """Find position of command to replace.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index.
-        """
         return splitting.position_of(string,self.junk_name,self.save_split)
 
     def split_and_create(self, string: str, parent: Element) -> Tuple[str, Undefined, str]:
-        """Split string and create Undefined element with replacement.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            Tuple[str, Undefined, str]: Pre-content, Undefined element, post-content.
-        """
         pre,post = splitting.split_on_next(string,self.junk_name,self.save_split)
         return pre,Undefined(self.replacement,parent),post
 
-class GuardianSearch():
+class GuardianSearcher(Searcher):
     """Searcher for guarding LaTeX commands."""
     def __init__(self,name: str, save_split: bool = True):
         self.name = name
         self.save_split = save_split
 
     def position(self, string: str) -> int:
-        """Find position of guardian command.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index.
-        """
         return splitting.position_of(string,self.name,self.save_split)
 
     def split_and_create(self, string: str, parent: Element) -> Tuple[str, RawText, str]:
-        """Split string and create RawText element for guardian.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            Tuple[str, RawText, str]: Pre-content, RawText element, post-content.
-        """
         pre,post = splitting.split_on_next(string,self.name,self.save_split)
         return pre,RawText(self.name,parent),post
 
 
-class OneArgumentJunkSearch():
+class OneArgumentJunkSearcher(Searcher):
     """Searcher for junk commands with one argument."""
     def __init__(self, command_name: str, begin_brace: str = "{", end_brace: str = "}"):
         self.command_name,self.begin,self.end = command_name,begin_brace,end_brace
 
     def position(self, string: str) -> int:
-        """Find position of command.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index.
-        """
         return splitting.position_of(string,self.command_name)
 
     def split_and_create(self, string: str, parent: Element) -> Tuple[str, Undefined, str]:
-        """Split string and create Undefined element for one-argument junk.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            Tuple[str, Undefined, str]: Pre-content, Undefined element, post-content.
-        """
         pre,post = splitting.split_on_next(string,self.command_name)
         name,post = splitting.split_on_first_brace(post,self.begin,self.end)
         return pre,Undefined("",parent),post
 
-class OneArgumentCommandSearch():
+class OneArgumentCommandSearcher(Searcher):
     """Searcher for commands with one argument."""
     def __init__(self, command_name: str, begin: str, end: str):
         self.command_name,self.begin,self.end = command_name,begin,end
 
     def position(self, string: str) -> int:
-        """Find position of command.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index.
-        """
         return splitting.position_of(string,self.command_name)
 
     def split_and_create(self, string: str, parent: Element) -> Tuple[str, Undefined, str]:
-        """Split string and create Undefined element for one-argument command.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            Tuple[str, Undefined, str]: Pre-content, Undefined element, post-content.
-        """
         pre,post = splitting.split_on_next(string,self.command_name)
         name,post = splitting.split_on_first_brace(post)
         return pre,Undefined(self.begin + name + self.end,parent),post

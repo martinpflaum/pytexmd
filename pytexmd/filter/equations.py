@@ -38,15 +38,15 @@ class EquationLabel(Element):
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
         
-        if not hasattr(self.search_class(Document).globals,"labels"):
-            self.search_class(Document).globals.labels = {}
+        #if not hasattr(self.search_class(Document).globals,"labels"):
+        #    self.search_class(Document).globals.labels = {}
         
-        holder = self.search_attribute_holder("label_name")
-        label_name = "label_error"
-        if not holder is None:
-            label_name = holder.label_name()
+        #holder = self.search_attribute_holder("label_name")
+        #label_name = "label_error"
+        #if not holder is None:
+        #    label_name = holder.label_name()
         self.label_ref = label_ref
-        self.search_class(Document).globals.labels[label_ref] = label_name
+        #self.search_class(Document).globals.labels[label_ref] = label_name
     
     @staticmethod
     def position(string: str) -> int:
@@ -75,8 +75,8 @@ def apply_latex_protection(string: Element) -> Element:
     #expandon = [JunkSearch("\\begin{" + elem + "}",save_split=False) for elem in multiline]
     #expandon += [JunkSearch("\\end{" + elem + "}",save_split=False) for elem in multiline]
     expandon = [EquationLabel]
-    expandon += [Cases,LatexText,ReplaceSearch(r"\mathbbm",r"\mathbb"),ReplaceSearch(r"\widebar",r"\overline")]
-    expandon += [TexArray,GuardianSearch("$",save_split=False),GuardianSearch("{",save_split=False),GuardianSearch("}",save_split=False)]
+    expandon += [Cases,LatexText,ReplaceSearcher(r"\mathbbm",r"\mathbb"),ReplaceSearcher(r"\widebar",r"\overline")]
+    expandon += [TexArray,GuardianSearcher("$",save_split=False),GuardianSearcher("{",save_split=False),GuardianSearcher("}",save_split=False)]
     string.expand(expandon) #lol -- was das für ein fehler
     return string
 
@@ -109,7 +109,7 @@ class TexArray(Element):
         pre,content,post = begin_end_split(string,"\\begin{array}","\\end{array}")
         out = TexArray(content,parent)
         out.expand([LatexText])
-        out.expand([GuardianSearch("\\\\"),GuardianSearch("\\&"),GuardianSearch("&")])
+        out.expand([GuardianSearcher("\\\\"),GuardianSearcher("\\&"),GuardianSearcher("&")])
         
         return pre,out,post
 
@@ -136,12 +136,10 @@ class BeginEquationEnumElement(Element):
             parent (Element): Parent element.
         """
         super().__init__(modifiable_content,parent)
-        number_within_equation = parent.search_class(Document).globals.number_within_equation
 
-        search_func = lambda instance : has_value_equal(instance,"theorem_env_name",number_within_equation)
-        section_enum = parent.search_up_on_func(search_func)
-        self.section_number = section_enum.generate_child_equation_number()
-    
+        #search_func = lambda instance : has_value_equal(instance,"theorem_env_name",number_within_equation)
+        #section_enum = parent.search_up_on_func(search_func)
+        
 
     def to_string(self) -> str:
         pre = f"\n$$\n"
@@ -161,21 +159,21 @@ class BeginEquationEnumSearcher():
         >>> isinstance(searcher, BeginEquationEnumSearcher)
         True
     """
-    def __init__(self, name: str):
+    def __init__(self, command_name: str):
         """
         Args:
             name (str): Environment name.
         """
         super().__init__()
-        self.name = name
+        self.begin_end_search = BeginEndSearcher(command_name,)
+        
     def position(self, string: str) -> int:
-        return position_of(string,"\\begin{"+self.name+ "}")
+        return self.begin_end_search.position(string)
     
     def split_and_create(self, string: str, parent: Element) -> Tuple[str, BeginEquationEnumElement, str]:
-        pre,content,post = begin_end_split(string,"\\begin{"+self.name+"}","\\end{"+self.name+"}")
+        pre,content,post = self.begin_end_search.split_and_create(string, parent)
         out = BeginEquationEnumElement(content,parent)
         out = apply_latex_protection(out)
-        #section_number = parent.search_class(SectionEnumerate).generate_child_section_number()
         return pre,out,post
 
 
@@ -266,7 +264,7 @@ class LatexText(Element):
         pre,post = split_on_next(string,"\\text")
         content,post = split_on_first_brace(post)
         out = LatexText(content,parent)
-        out.expand([GuardianSearch("$"),GuardianSearch("\\\\"),GuardianSearch("\\text")])
+        out.expand([GuardianSearcher("$"),GuardianSearcher("\\\\"),GuardianSearcher("\\text")])
         return pre,out,post
 
     def to_string(self) -> str:
@@ -295,26 +293,18 @@ class Cases(Element):
         
     @staticmethod
     def position(string: str) -> int:
-        if "\\begin{cases}" in string:
-            return position_of(string,"\\begin{cases}")
-        else:
-            return -1
+        return position_of(string,"\\begin{cases}")
         
     @staticmethod
     def split_and_create(string: str, parent: Element) -> Tuple[str, 'Cases', str]:
         pre,content,post = begin_end_split(string,"\\begin{cases}","\\end{cases}")
         out = Cases(content,parent)
         out.expand([LatexText])
-        out.expand([GuardianSearch("\\\\"),GuardianSearch("\\&"),GuardianSearch("&")])
+        out.expand([GuardianSearcher("\\\\"),GuardianSearcher("\\&"),GuardianSearcher("&")])
         
         return pre,out,post
 
     def to_string(self) -> str:
-        """Convert to LaTeX cases string.
-
-        Returns:
-            str: LaTeX cases string.
-        """
         out = "\\begin{cases}"
         for child in self.children:
             out += child.to_string()
@@ -349,7 +339,7 @@ class DoubleDolarLatex(Element):
         content,post = split_on_next(modifiable_content,"$$",save_split=False)  
         out = Undefined("\n$$\n" + content.rstrip().lstrip() + "\n$$\n",parent)
         out = apply_latex_protection(out)
-        out.expand([GuardianSearch("\\\\")])
+        out.expand([GuardianSearcher("\\\\")])
         #out.expand([ReplaceSearch("\\\\","</span><br><br><span class='display'>"),JunkSearch("&")])
         return pre,out,post
 
@@ -397,6 +387,7 @@ class BeginAlignStar():
         """
         super().__init__()
         self.begin,self.end = begin,end
+
     def position(self, string: str) -> int:
         """Find position of begin delimiter.
 
@@ -428,7 +419,7 @@ class BeginAlignStar():
         """
         out = Undefined("\n$$\n" + content.lstrip().rstrip() + "\n$$\n",parent)
         out = apply_latex_protection(out)
-        out.expand([GuardianSearch("\\\\")])
+        out.expand([GuardianSearcher("\\\\")])
         return pre,out,post
 
 
@@ -481,7 +472,7 @@ class BeginAlignSearcher():
         
         out = BeginEquationEnumElement(content,parent)
         out = apply_latex_protection(out)
-        out.expand([GuardianSearch("\\\\")])
+        out.expand([GuardianSearcher("\\\\")])
         return pre,out,post
        
 def get_all_filters() -> list:

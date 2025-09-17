@@ -29,6 +29,8 @@ myst_enable_extensions = [
     "ref",
 ]
 
+math_number_all = True             # number *all* displayed equations
+math_eqref_format = "({number})"   # how equation refs look
 
 html_theme = 'furo'
 html_static_path = ['_static']

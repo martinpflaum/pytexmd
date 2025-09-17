@@ -95,3 +95,29 @@ def create_sphinx_documentation(
     except:
         print("An error occurred while creating Sphinx documentation. -- Maybe Quickstart is already run?")
         pass
+
+    output_dir = os.path.abspath(output_dir)
+    create_config_file(output_dir, project_name, author, version)
+
+
+def make_html(output_dir: str) -> None:
+    """Build HTML documentation using Sphinx.
+
+    Args:
+        output_dir (str): Directory where the Sphinx documentation is located.
+
+    Returns:
+        None
+    """
+    try:
+        output_dir = os.path.abspath(output_dir)
+        cmd = [
+                    "sphinx-build",
+                    "-b", "html",
+                    f"{output_dir}/source",
+                    f"{output_dir}/build/html"
+                ]
+        result = subprocess.run(cmd, text=True, capture_output=True, check=True)
+        print(f"HTML documentation built in {output_dir}/build/html")
+    except Exception as e:
+        print(f"An error occurred while building HTML documentation: {e}")

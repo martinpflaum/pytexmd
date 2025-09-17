@@ -14,21 +14,39 @@ def main() -> None:
     Parses command-line arguments and processes the specified LaTeX file.
 
     Args:
-        None
+        input_file (str): File to process.
+        output_folder (str): Output folder.
+        depth (int): How many sub files should be created according to sections and paragraphs etc.
+        output_suffix (str): Suffix for output files.
+        project_name (str): Project name.
+        author (str): Author name.
+        version (str): Version string.
 
     Returns:
         None
 
     Example:
-        python -m pytexmd.cli main.tex output_folder --file_depth 3
+        python -m pytexmd.cli main.tex output_folder --depth 3 --output_suffix .md --project_name "My Project" --author "Author" --version "1.0"
     """
     parser = argparse.ArgumentParser(description="My Library CLI")
-    parser.add_argument("filename", help="File to process",type=str)
-    parser.add_argument("output_folder", help="File to process",type=str)
-    parser.add_argument("--file_depth", help="How many sub files should be created according to sections and paragraphs etc..", default=3,type=int)
+    parser.add_argument("input_file", help="File to process", type=str)
+    parser.add_argument("output_folder", help="Output folder", type=str)
+    parser.add_argument("--depth", help="(not supported yet)How many sub files should be created according to sections and paragraphs etc.", default=0, type=int)
+    parser.add_argument("--output_suffix", help="Suffix for output files", default=".md", type=str)
+    parser.add_argument("--project_name", help="Project name", default="My Project", type=str)
+    parser.add_argument("--author", help="Author name", default="Author", type=str)
+    parser.add_argument("--version", help="Version string", default="1.0", type=str)
     args = parser.parse_args()
-    print(f"Processing {args.filename}")
-    process_file(args.filename,args.output_folder,args.file_depth)
+    print(f"Processing {args.input_file}")
+    process_file(
+        args.input_file,
+        args.output_folder,
+        args.depth,
+        args.output_suffix,
+        args.project_name,
+        args.author,
+        args.version
+    )
 
 if __name__ == "__main__":
     main()
