@@ -13,6 +13,10 @@ import os
 import sys
 from pathlib import Path
 import subprocess
+import time
+from sphinx.cmd.quickstart import main as sphinx_quickstart
+from sphinx.cmd.build import main as sphinx_build
+
 
 def load_config_template() -> str:
     """Load the Sphinx configuration template.
@@ -71,53 +75,34 @@ def create_sphinx_documentation(
         None
     """
     
+    # Run sphinx-quickstart with automated answers
+    output_dir = os.path.abspath(output_dir)
+    
+    # The API takes a list of CLI-like args (without the program name)
+    sphinx_quickstart([
+        output_dir,
+        "--release", version,
+        "--sep",
+        "--project", project_name,
+        "--author", author,
+        "--makefile",
+        "--batchfile",
+        "--language", "en",
+    ])
+
+
+    #cmd = f"sphinx-quickstart {output_dir} --sep --project={project_name.replace(" ","_")} --author={author.replace(" ","_")} --release={version.replace(" ","_")} --language=en"
+    
+    print("waiting 0.5 seconds to let the file system catch up")
+    time.sleep(0.5)
+
     try:
-        # Run sphinx-quickstart with automated answers
         output_dir = os.path.abspath(output_dir)
         Path(output_dir).mkdir(parents=True)
-        cmd = [
-                    "sphinx-quickstart",
-                    "--quiet",           # Suppress prompts
-                    "--sep",             # Separate source and build directories
-                    f"--project={project_name}",
-                    f"--author={author}",
-                    f"--release={version}",
-                    "--language=en",
-                    "--makefile",        # Create Makefile
-                    f"{output_dir}"                  # Current directory
-                ]
-                
-        result = subprocess.run(cmd, text=True, capture_output=True, check=True)
-        
-        
-        result = subprocess.run(cmd, text=True, capture_output=True, check=True)
-        print(f"Sphinx documentation created in {output_dir}")
     except:
-        print("An error occurred while creating Sphinx documentation. -- Maybe Quickstart is already run?")
         pass
-
+    
     output_dir = os.path.abspath(output_dir)
     create_config_file(output_dir, project_name, author, version)
+    
 
-
-def make_html(output_dir: str) -> None:
-    """Build HTML documentation using Sphinx.
-
-    Args:
-        output_dir (str): Directory where the Sphinx documentation is located.
-
-    Returns:
-        None
-    """
-    try:
-        output_dir = os.path.abspath(output_dir)
-        cmd = [
-                    "sphinx-build",
-                    "-b", "html",
-                    f"{output_dir}/source",
-                    f"{output_dir}/build/html"
-                ]
-        result = subprocess.run(cmd, text=True, capture_output=True, check=True)
-        print(f"HTML documentation built in {output_dir}/build/html")
-    except Exception as e:
-        print(f"An error occurred while building HTML documentation: {e}")

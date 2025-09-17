@@ -41,18 +41,18 @@ Preprocessor
    :undoc-members:
    :show-inheritance:
 
-Section
------------------------------
-
-.. automodule:: pytexmd.filter.section
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Splitting
 -------------------------------
 
 .. automodule:: pytexmd.filter.splitting
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Text
+--------------------------
+
+.. automodule:: pytexmd.filter.text
    :members:
    :undoc-members:
    :show-inheritance:

@@ -7,7 +7,7 @@ __all__ = ["process_file"]
 
 from .filter import process_string
 from .file_loader import load_tex_file
-from .sphinx_doc import create_sphinx_documentation,make_html
+from .sphinx_doc import create_sphinx_documentation
 
 
 def process_file(
@@ -39,4 +39,4 @@ def process_file(
     file_string = latex_content.content
     create_sphinx_documentation(output_folder,project_name,author,version)    
     process_string(output_folder+"\\"+"source",file_string,depth,output_suffix)
-    make_html(output_folder)
+    #make_html(output_folder)
