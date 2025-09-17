@@ -1,5 +1,6 @@
 example_tex
 examples/my_docs
+examples/my_docs2
 
 # Ignore Python cache files
 **/__pycache__/

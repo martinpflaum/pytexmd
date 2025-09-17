@@ -8,7 +8,7 @@ import pytexmd as ptm
 
 
 file_name = "../example_tex/FANCyProject/FaNCyProject.tex"
-ptm.process_file(file_name,"./my_docs",depth=3)
+ptm.process_file(file_name,"./my_docs2",depth=3)
 
 
 
