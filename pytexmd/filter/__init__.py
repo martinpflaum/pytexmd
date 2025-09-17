@@ -15,6 +15,7 @@ __all__ = ["string_to_tree",
 
 
 from . import preprocessor,section,enumitem,equations,antibugs,core,splitting
+from typing import List
 NUM_FILES = 0
 
 def string_to_tree(string:str):
@@ -38,14 +39,20 @@ def string_to_tree(string:str):
     
     string  = preprocessor.run_preprocessor(string)
     all_expands = []
+    
     #basic_expands += junkSearcher+replaceSearcher
     all_expands += [section.get_all_filters()] 
     all_expands += [enumitem.get_all_filters()]
     all_expands += [equations.get_all_filters()]
+    all_expands += [[core.OneArgumentJunkSearch(r"\hspace")]]
+    junk_commands = ["\\sffamily","\\itshape","\\nonumber","\\noindent","\\indent","\\newpage"]
+    #replace_mentdict = {"\\noindent":""}#"\\prerequisites ":"</p><h1 style=\"font-size:20px\">Prerequisites</h1><p>","\\N ":"\\mathbb{N}","\\id ":"id","\\GL ":"GL","\\Mat ":"\mathfrak{M}"}
+    all_expands += [[core.JunkSearch(elem) for elem in junk_commands]]
+
     #basic_expands += get_drawtex_searchers()
     
     #all_expands = [basic_expands]
-    all_expands.append([equations.Label])
+    #all_expands.append([section.Label])
     all_expands.append([section.EqRef,section.Ref,section.Cite])
 
     all_expands[0].extend(section.get_theoremSearchers(string))
@@ -87,6 +94,7 @@ def string_to_file_name(string: str):
     """
     global NUM_FILES
     file_name = string.strip()
+    file_name = file_name.split("\n")[0]
     if file_name == "":
         file_name = "section"
     # Replace spaces and newlines with underscores
@@ -123,8 +131,9 @@ def element_to_file_whole(element:section.SectionEnumerate,output_folder:str,fil
     with open(file_name,"w",encoding="utf-8") as f:
         f.write(element.to_string())
     print(f"File {file_name} created.")
+    return [file_name.replace(output_suffix,"")]
 
-def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:str,file_name:str,output_suffix:str=".md"):
+def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:str,file_name:str,file_names:List[str],output_suffix:str=".md"):
     """
     Writes only the beginning part of the element to a file, with a toctree.
 
@@ -156,10 +165,8 @@ def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:st
     
     out_str += "\n\n"
     out_str += "\n```{toctree}\n"
-    for child in element.children:
-        if isinstance(child,section.SectionEnumerate):
-            child_file_name = string_to_file_name(child.children[0].to_string())+"\n"
-            out_str += core.TAB+f"{child_file_name}"
+    for child_file_name in file_names:
+        out_str += core.TAB+f"{child_file_name}"
                 
     out_str += "```\n"
     
@@ -167,7 +174,8 @@ def element_to_file_only_begin(element:section.SectionEnumerate,output_folder:st
         f.write(out_str)
 
     print(f"File {file_name} created.")
-    
+    return [file_name.replace(output_suffix,"")]
+
 def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:str,depth:int,output_suffix:str=".md"):
     """
     Recursively writes tree elements to files up to a given depth.
@@ -190,7 +198,27 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:s
         ```
     """
     if not isinstance(element,section.SectionEnumerate):
-        raise ValueError("element must be a SectionEnumerate")
+        has_found_childs = False
+        for child in element.children:
+            if isinstance(child,section.SectionEnumerate):
+                has_found_childs = True
+                break
+        if not has_found_childs:
+            return []
+        else:
+            child_file_names = []
+    
+            for child in element.children:
+                if isinstance(child,section.SectionEnumerate):
+                    child_file_name = string_to_file_name(child.children[0].to_string())
+                    child_file_names.extend(tree_to_files(output_folder,child,None,depth-1,output_suffix))
+                else:
+                    child_file_names.extend(tree_to_files(output_folder,child,None,depth-1,output_suffix))
+            
+            return child_file_names
+    else:
+        if file_name is None:
+            file_name = string_to_file_name(element.children[0].to_string())
     if not isinstance(depth,int) or depth < 0:
         raise ValueError("depth must be a non-negative integer")
     if not isinstance(output_folder,str):
@@ -198,8 +226,8 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:s
     
     global NUM_FILES
     if depth == 0:
-        element_to_file_whole(element,output_folder,file_name,output_suffix)
-        return 
+        return element_to_file_whole(element,output_folder,file_name,output_suffix)
+         
     
     has_found_childs = False
     for child in element.children:
@@ -208,16 +236,15 @@ def tree_to_files(output_folder:str,element:section.SectionEnumerate,file_name:s
             break
 
     if not has_found_childs:
-        element_to_file_whole(element,output_folder,file_name,output_suffix)
-        return
-    element_to_file_only_begin(element,output_folder,file_name,output_suffix)
-
+        return element_to_file_whole(element,output_folder,file_name,output_suffix)
+        
+    child_file_names = []
     for child in element.children:
         if isinstance(child,section.SectionEnumerate):
-            child_file_name = string_to_file_name(child.children[0].to_string())
-    
-            tree_to_files(output_folder,child,child_file_name,depth-1,output_suffix)
-
+            child_file_names.extend(tree_to_files(output_folder,child,None,depth-1,output_suffix))
+        else:
+            pass
+    return element_to_file_only_begin(element,output_folder,file_name,child_file_names,output_suffix)
 
 def process_string(output_folder:str,string:str,depth=3,output_suffix:str=".md"):
     """

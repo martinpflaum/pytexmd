@@ -1,44 +1,93 @@
 #%%
+"""Equation filter classes and utilities for pytexmd.
+
+This module provides classes and functions for parsing and processing LaTeX equations,
+environments, and math for Markdown/MyST conversion.
+"""
+
+__all__ = [
+    "EquationLabel",
+    "apply_latex_protection",
+    "TexArray",
+    "BeginEquationEnumElement",
+    "BeginEquationEnumSearcher",
+    "InlineLatex",
+    "LatexText",
+    "Cases",
+    "DoubleDolarLatex",
+    "BeginEquationElement",
+    "BeginAlignStar",
+    "BeginAlignSearcher",
+    "get_all_filters"
+]
+
+#%%
 #from drawtex import contains_drawtex,get_drawtex_searchers
 from .splitting import *
 from .core import *
-from .section import Label
+from typing import List,Tuple,Union
+
+class EquationLabel(Element):
+    """Element for LaTeX equation labels.
+
+    Args:
+        modifiable_content (str): Content to process.
+        parent (Element): Parent element.
+        label_ref (str): Label reference.
+    """
+    def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
+        super().__init__(modifiable_content, parent)
+        
+        if not hasattr(self.search_class(Document).globals,"labels"):
+            self.search_class(Document).globals.labels = {}
+        
+        holder = self.search_attribute_holder("label_name")
+        label_name = "label_error"
+        if not holder is None:
+            label_name = holder.label_name()
+        self.label_ref = label_ref
+        self.search_class(Document).globals.labels[label_ref] = label_name
+    
+    @staticmethod
+    def position(string: str) -> int:
+        return position_of(string,"\\label")
+
+    @staticmethod
+    def split_and_create(string: str, parent: Element) -> Tuple[str, 'EquationLabel', str]:
+        pre,post = split_on_next(string,"\\label")
+        label_ref,post = split_on_first_brace(post)
+        return pre,EquationLabel("",parent,label_ref),post
+
+    def to_string(self) -> str:
+        return r"\label"+"{"+self.label_ref+"}"
 
 def apply_latex_protection(string: Element) -> Element:
-    """
-    Expands and protects LaTeX environments and commands in the given element.
+    """Expands and protects LaTeX environments and commands in the given element.
 
     Args:
         string (Element): The element to process.
 
     Returns:
         Element: The processed element.
-
-    Example:
-        ```python
-        protected = apply_latex_protection(some_element)
-        ```
     """
     multiline = ["split", "multline","align","breqn","equation"]
     
-    expandon = [JunkSearch("\\begin{" + elem + "}",save_split=False) for elem in multiline]
-    expandon += [JunkSearch("\\end{" + elem + "}",save_split=False) for elem in multiline]
-
-    expandon += [Label,Cases,LatexText,ReplaceSearch(r"\mathbbm",r"\mathbb"),ReplaceSearch(r"\widebar",r"\overline")]
+    #expandon = [JunkSearch("\\begin{" + elem + "}",save_split=False) for elem in multiline]
+    #expandon += [JunkSearch("\\end{" + elem + "}",save_split=False) for elem in multiline]
+    expandon = [EquationLabel]
+    expandon += [Cases,LatexText,ReplaceSearch(r"\mathbbm",r"\mathbb"),ReplaceSearch(r"\widebar",r"\overline")]
     expandon += [TexArray,GuardianSearch("$",save_split=False),GuardianSearch("{",save_split=False),GuardianSearch("}",save_split=False)]
     string.expand(expandon) #lol -- was das für ein fehler
     return string
 
 
 class TexArray(Element):
-    """
-    Represents a LaTeX array environment.
+    """Represents a LaTeX array environment.
 
     Example:
-        ```python
-        arr = TexArray("a & b \\\\ c & d", parent)
-        print(arr.to_string())
-        ```
+        >>> arr = TexArray("a & b \\\\ c & d", None)
+        >>> isinstance(arr.to_string(), str)
+        True
     """
     def __init__(self, modifiable_content: str, parent: Element):
         """
@@ -50,32 +99,13 @@ class TexArray(Element):
         
     @staticmethod
     def position(string: str) -> int:
-        """
-        Find position of '\\begin{array}' in string.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index or -1.
-        """
         if "\\begin{array}" in string:
             return position_of(string,"\\begin{array}")
         else:
             return -1
         
     @staticmethod
-    def split_and_create(string: str, parent: Element) -> tuple:
-        """
-        Split string on array environment and create TexArray.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            tuple: (pre, TexArray, post)
-        """
+    def split_and_create(string: str, parent: Element) -> Tuple[str, 'TexArray', str]:
         pre,content,post = begin_end_split(string,"\\begin{array}","\\end{array}")
         out = TexArray(content,parent)
         out.expand([LatexText])
@@ -84,12 +114,6 @@ class TexArray(Element):
         return pre,out,post
 
     def to_string(self) -> str:
-        """
-        Convert array to LaTeX string.
-
-        Returns:
-            str: LaTeX array string.
-        """
         out = "\\begin{array}"
         for child in self.children:
             out += child.to_string()
@@ -98,14 +122,12 @@ class TexArray(Element):
         return out
 
 class BeginEquationEnumElement(Element):
-    """
-    Represents an enumerated equation environment.
+    """Represents an enumerated equation environment.
 
     Example:
-        ```python
-        eq = BeginEquationEnumElement("E=mc^2", parent)
-        print(eq.to_string())
-        ```
+        >>> eq = BeginEquationEnumElement("E=mc^2", None)
+        >>> isinstance(eq.to_string(), str)
+        True
     """
     def __init__(self, modifiable_content: str, parent: Element):
         """
@@ -120,51 +142,8 @@ class BeginEquationEnumElement(Element):
         section_enum = parent.search_up_on_func(search_func)
         self.section_number = section_enum.generate_child_equation_number()
     
-    def label_name(self) -> str:
-        """
-        Returns the label name for the equation.
-
-        Returns:
-            str: Label name.
-        """
-        return "("+self.get_section_enum()[:-1] + ")"
-   
-    def get_section_enum(self) -> str:
-        """
-        Get section enumeration string.
-
-        Returns:
-            str: Section enumeration.
-        """
-        number_within_equation = self.search_class(Document).globals.number_within_equation
-        #print("number_within_equation",number_within_equation)
-        if number_within_equation is None:
-            return str(self.section_number) + "."
-        else:
-            search_func = lambda instance : has_value_equal(instance,"theorem_env_name",number_within_equation)
-            section_enum = None
-            if self.parent._modifiable_content != "":
-                if len(self.parent.children) > 0:
-                    section_enum = self.parent.children[-1].search_up_on_func(search_func)
-                else:
-                    section_enum = self.parent.search_up_on_func(search_func)
-            else:
-                section_enum = self.search_up_on_func(search_func)
-
-            if section_enum is None:
-                raise RuntimeError("couldn't find enumaration parent: --"+number_within_equation +"-- in BeginEquationEnumElement")
-
-            out = section_enum.get_section_enum()
-            out += str(self.section_number) + "."
-            return out
 
     def to_string(self) -> str:
-        """
-        Output markdown myst string for equation block with tag.
-
-        Returns:
-            str: Markdown string.
-        """
         pre = f"\n$$\n"
         out = ""
         for child in self.children:
@@ -175,14 +154,12 @@ class BeginEquationEnumElement(Element):
 
 
 class BeginEquationEnumSearcher():
-    """
-    Searches for enumerated equation environments.
+    """Searcher for enumerated equation environments.
 
     Example:
-        ```python
-        searcher = BeginEquationEnumSearcher("equation")
-        pos = searcher.position(some_string)
-        ```
+        >>> searcher = BeginEquationEnumSearcher("equation")
+        >>> isinstance(searcher, BeginEquationEnumSearcher)
+        True
     """
     def __init__(self, name: str):
         """
@@ -192,28 +169,9 @@ class BeginEquationEnumSearcher():
         super().__init__()
         self.name = name
     def position(self, string: str) -> int:
-        """
-        Find position of environment begin.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index.
-        """
         return position_of(string,"\\begin{"+self.name+ "}")
     
-    def split_and_create(self, string: str, parent: Element) -> tuple:
-        """
-        Split string and create enumerated equation element.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            tuple: (pre, element, post)
-        """
+    def split_and_create(self, string: str, parent: Element) -> Tuple[str, BeginEquationEnumElement, str]:
         pre,content,post = begin_end_split(string,"\\begin{"+self.name+"}","\\end{"+self.name+"}")
         out = BeginEquationEnumElement(content,parent)
         out = apply_latex_protection(out)
@@ -222,14 +180,12 @@ class BeginEquationEnumSearcher():
 
 
 class InlineLatex(Element):
-    """
-    Represents inline LaTeX math ($...$).
+    """Represents inline LaTeX math ($...$).
 
     Example:
-        ```python
-        inline = InlineLatex("x^2", parent)
-        print(inline.to_string())
-        ```
+        >>> inline = InlineLatex("x^2", None)
+        >>> isinstance(inline.to_string(), str)
+        True
     """
     def __init__(self, modifiable_content: str, parent: Element):
         """
@@ -241,31 +197,21 @@ class InlineLatex(Element):
 
     @staticmethod
     def position(string: str) -> int:
-        """
-        Find position of inline math.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index or -1.
-        """
         if position_of(string,"$",save_split=False) == position_of(string,"$$",save_split=False):
             return -1
         else:
             return position_of(string,"$",save_split=False)
         
     @staticmethod
-    def split_and_create(string: str, parent: Element) -> tuple:
-        """
-        Split string and create InlineLatex element.
+    def split_and_create(string: str, parent: Element) -> Tuple[str, 'InlineLatex', str]:
+        """Split string and create InlineLatex element.
 
         Args:
             string (str): Input string.
             parent (Element): Parent element.
 
         Returns:
-            tuple: (pre, InlineLatex, post)
+            Tuple[str, InlineLatex, str]: Pre-content, InlineLatex, post-content.
         """
         pre,modifiable_content = split_on_next(string,"$",save_split=False)
         in_outer_dollar = ""
@@ -289,12 +235,6 @@ class InlineLatex(Element):
         return pre,out,post
 
     def to_string(self) -> str:
-        """
-        Convert to inline math string.
-
-        Returns:
-            str: Inline math string.
-        """
         out = f"$"
         for child in self.children:
             out += child.to_string()
@@ -302,14 +242,12 @@ class InlineLatex(Element):
         return out
 
 class LatexText(Element):
-    """
-    Represents LaTeX text command.
+    """Represents LaTeX text command.
 
     Example:
-        ```python
-        text = LatexText("hello", parent)
-        print(text.to_string())
-        ```
+        >>> text = LatexText("hello", None)
+        >>> isinstance(text.to_string(), str)
+        True
     """
     def __init__(self, modifiable_content: str, parent: Element):
         """
@@ -321,29 +259,10 @@ class LatexText(Element):
         
     @staticmethod
     def position(string: str) -> int:
-        """
-        Find position of '\\text' in string.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index.
-        """
         return position_of(string,"\\text")
 
     @staticmethod
-    def split_and_create(string: str, parent: Element) -> tuple:
-        """
-        Split string and create LatexText element.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            tuple: (pre, LatexText, post)
-        """
+    def split_and_create(string: str, parent: Element) -> Tuple[str, 'LatexText', str]:
         pre,post = split_on_next(string,"\\text")
         content,post = split_on_first_brace(post)
         out = LatexText(content,parent)
@@ -351,12 +270,6 @@ class LatexText(Element):
         return pre,out,post
 
     def to_string(self) -> str:
-        """
-        Convert to LaTeX text string.
-
-        Returns:
-            str: LaTeX text string.
-        """
         out = "\\text{"
         for child in self.children:
             out += child.to_string()
@@ -365,14 +278,12 @@ class LatexText(Element):
         return out
 
 class Cases(Element):
-    """
-    Represents LaTeX cases environment.
+    """Represents LaTeX cases environment.
 
     Example:
-        ```python
-        cases = Cases("x & y \\\\ z & w", parent)
-        print(cases.to_string())
-        ```
+        >>> cases = Cases("x & y \\\\ z & w", None)
+        >>> isinstance(cases.to_string(), str)
+        True
     """
     def __init__(self, modifiable_content: str, parent: Element):
         """
@@ -384,32 +295,13 @@ class Cases(Element):
         
     @staticmethod
     def position(string: str) -> int:
-        """
-        Find position of '\\begin{cases}'.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index or -1.
-        """
         if "\\begin{cases}" in string:
             return position_of(string,"\\begin{cases}")
         else:
             return -1
         
     @staticmethod
-    def split_and_create(string: str, parent: Element) -> tuple:
-        """
-        Split string and create Cases element.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            tuple: (pre, Cases, post)
-        """
+    def split_and_create(string: str, parent: Element) -> Tuple[str, 'Cases', str]:
         pre,content,post = begin_end_split(string,"\\begin{cases}","\\end{cases}")
         out = Cases(content,parent)
         out.expand([LatexText])
@@ -418,8 +310,7 @@ class Cases(Element):
         return pre,out,post
 
     def to_string(self) -> str:
-        """
-        Convert to LaTeX cases string.
+        """Convert to LaTeX cases string.
 
         Returns:
             str: LaTeX cases string.
@@ -432,13 +323,12 @@ class Cases(Element):
         return out
     
 class DoubleDolarLatex(Element):
-    """
-    Represents display math ($$...$$).
+    """Represents display math ($$...$$).
 
     Example:
-        ```python
-        dbl = DoubleDolarLatex("x^2", parent)
-        ```
+        >>> dbl = DoubleDolarLatex("x^2", None)
+        >>> isinstance(dbl, DoubleDolarLatex)
+        True
     """
     prio_elem = True
     def __init__(self, modifiable_content: str, parent: Element):
@@ -451,29 +341,10 @@ class DoubleDolarLatex(Element):
 
     @staticmethod
     def position(string: str) -> int:
-        """
-        Find position of '$$' in string.
-
-        Args:
-            string (str): Input string.
-
-        Returns:
-            int: Position index.
-        """
         return position_of(string,"$$",save_split=False)
         
     @staticmethod
-    def split_and_create(string: str, parent: Element) -> tuple:
-        """
-        Split string and create DoubleDolarLatex element.
-
-        Args:
-            string (str): Input string.
-            parent (Element): Parent element.
-
-        Returns:
-            tuple: (pre, DoubleDolarLatex, post)
-        """
+    def split_and_create(string: str, parent: Element) -> Tuple[str, 'Undefined', str]:
         pre,modifiable_content = split_on_next(string,"$$",save_split=False)
         content,post = split_on_next(modifiable_content,"$$",save_split=False)  
         out = Undefined("\n$$\n" + content.rstrip().lstrip() + "\n$$\n",parent)
@@ -484,14 +355,12 @@ class DoubleDolarLatex(Element):
 
 
 class BeginEquationElement(Element):
-    """
-    Represents a basic equation environment.
+    """Represents a basic equation environment.
 
     Example:
-        ```python
-        eq = BeginEquationElement("E=mc^2", parent)
-        print(eq.to_string())
-        ```
+        >>> eq = BeginEquationElement("E=mc^2", None)
+        >>> isinstance(eq.to_string(), str)
+        True
     """
     def __init__(self, modifiable_content: str, parent: Element):
         """
@@ -502,12 +371,6 @@ class BeginEquationElement(Element):
         super().__init__(modifiable_content,parent)
     
     def to_string(self) -> str:
-        """
-        Output markdown myst string for equation block.
-
-        Returns:
-            str: Markdown string.
-        """
         pre = f"\n$$\n"
         out = ""
         for child in self.children:
@@ -519,13 +382,12 @@ class BeginEquationElement(Element):
 
 
 class BeginAlignStar():
-    """
-    Searches for non-enumerated align-like environments.
+    """Searcher for non-enumerated align-like environments.
 
     Example:
-        ```python
-        searcher = BeginAlignStar("\\begin{align*}", "\\end{align*}")
-        ```
+        >>> searcher = BeginAlignStar("\\begin{align*}", "\\end{align*}")
+        >>> isinstance(searcher, BeginAlignStar)
+        True
     """
     def __init__(self, begin: str, end: str):
         """
@@ -536,8 +398,7 @@ class BeginAlignStar():
         super().__init__()
         self.begin,self.end = begin,end
     def position(self, string: str) -> int:
-        """
-        Find position of begin delimiter.
+        """Find position of begin delimiter.
 
         Args:
             string (str): Input string.
@@ -547,16 +408,15 @@ class BeginAlignStar():
         """
         return position_of(string,self.begin)
     
-    def split_and_create(self, string: str, parent: Element) -> tuple:
-        """
-        Split string and create element for align* environment.
+    def split_and_create(self, string: str, parent: Element) -> Tuple[str, 'Undefined', str]:
+        """Split string and create element for align* environment.
 
         Args:
             string (str): Input string.
             parent (Element): Parent element.
 
         Returns:
-            tuple: (pre, element, post)
+            Tuple[str, Undefined, str]: Pre-content, Undefined, post-content.
         """
         pre,content,post = begin_end_split(string,self.begin,self.end)
         
@@ -573,13 +433,12 @@ class BeginAlignStar():
 
 
 class BeginAlignSearcher():
-    """
-    Searches for enumerated align-like environments.
+    """Searcher for enumerated align-like environments.
 
     Example:
-        ```python
-        searcher = BeginAlignSearcher("\\begin{align}", "\\end{align}")
-        ```
+        >>> searcher = BeginAlignSearcher("\\begin{align}", "\\end{align}")
+        >>> isinstance(searcher, BeginAlignSearcher)
+        True
     """
     def __init__(self, begin: str, end: str):
         """
@@ -591,8 +450,7 @@ class BeginAlignSearcher():
         self.begin,self.end = begin,end
 
     def position(self, string: str) -> int:
-        """
-        Find position of begin delimiter.
+        """Find position of begin delimiter.
 
         Args:
             string (str): Input string.
@@ -602,16 +460,15 @@ class BeginAlignSearcher():
         """
         return position_of(string,self.begin)
         
-    def split_and_create(self, string: str, parent: Element) -> tuple:
-        """
-        Split string and create element for align environment.
+    def split_and_create(self, string: str, parent: Element) -> Tuple[str, BeginEquationEnumElement, str]:
+        """Split string and create element for align environment.
 
         Args:
             string (str): Input string.
             parent (Element): Parent element.
 
         Returns:
-            tuple: (pre, element, post)
+            Tuple[str, BeginEquationEnumElement, str]: Pre-content, element, post-content.
         """
         pre,content,post = begin_end_split(string,self.begin,self.end)
         
@@ -628,20 +485,26 @@ class BeginAlignSearcher():
         return pre,out,post
        
 def get_all_filters() -> list:
-    """
-    Returns all equation-related filter classes/searchers.
+    """Returns all equation-related filter classes/searchers.
 
     Returns:
         list: List of filter classes/searchers.
 
     Example:
-        ```python
-        filters = get_all_filters()
-        ```
+        >>> filters = get_all_filters()
+        >>> isinstance(filters, list)
+        True
     """
     #The derivatives are 
     multiline = ["split", "multline","align","breqn","equation"]
     multiline_enum = [BeginAlignSearcher("\\begin{"+ elem+"}","\\end{"+ elem+"}") for elem in multiline]
+    multiline_no_enum = [BeginAlignStar("\\begin{"+ elem+"*}","\\end{"+ elem+"*}") for elem in multiline]
+    out = [DoubleDolarLatex]#DoubleDolarLatex
+    out += [BeginAlignStar("\\[","\\]"),BeginAlignStar("\\begin{displaymath}","\\end{displaymath}") ,InlineLatex]
+    #ReplaceSearch("\\\\","\n")
+    out.extend(multiline_enum)
+    out.extend(multiline_no_enum)
+    return out
     multiline_no_enum = [BeginAlignStar("\\begin{"+ elem+"*}","\\end{"+ elem+"*}") for elem in multiline]
     out = [DoubleDolarLatex]#DoubleDolarLatex
     out += [BeginAlignStar("\\[","\\]"),BeginAlignStar("\\begin{displaymath}","\\end{displaymath}") ,InlineLatex]

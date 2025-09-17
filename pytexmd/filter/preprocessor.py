@@ -16,11 +16,9 @@ def execute_on_pattern(string: str, arg_num: int, command_name: str, command_pat
         str: The string with expanded command patterns.
 
     Example:
-        ```python
-        s = r"\\foo{a}{b}"
-        execute_on_pattern(s, 2, "\\foo", "#1+#2")
-        # returns "a+b"
-        ```
+        >>> s = r"\\foo{a}{b}"
+        >>> execute_on_pattern(s, 2, "\\foo", "#1+#2")
+        'a+b'
     """
     out = ""
     while(True):
@@ -54,11 +52,9 @@ def do_commands(string: str) -> str:
         str: The string with commands expanded.
 
     Example:
-        ```python
-        s = r"\\newcommand{\\foo}[2]{#1+#2} \\foo{a}{b}"
-        do_commands(s)
-        # returns "a+b"
-        ```
+        >>> s = r"\\newcommand{\\foo}[2]{#1+#2} \\foo{a}{b}"
+        >>> do_commands(s)
+        'a+b'
     """
     toprocess = string
     out = ""
@@ -104,11 +100,9 @@ def execute_enviroment_on_pattern(string: str, environment_name: str, arg_num: i
         str: The string with expanded environment patterns.
 
     Example:
-        ```python
-        s = r"\\begin{foo}{a}{b}content\\end{foo}"
-        execute_enviroment_on_pattern(s, "foo", 2, "<b>#1 #2>", "</b>")
-        # returns "<b>a b>content</b>"
-        ```
+        >>> s = r"\\begin{foo}{a}{b}content\\end{foo}"
+        >>> execute_enviroment_on_pattern(s, "foo", 2, "<b>#1 #2>", "</b>")
+        '<b>a b>content</b>'
     """
     out = ""
     while(True):
@@ -144,11 +138,9 @@ def do_newenvironment(string: str) -> str:
         str: The string with environments expanded.
 
     Example:
-        ```python
-        s = r"\\newenvironment{foo}[2]{<b>#1 #2>}{</b>} \\begin{foo}{a}{b}content\\end{foo}"
-        do_newenvironment(s)
-        # returns "<b>a b>content</b>"
-        ```
+        >>> s = r"\\newenvironment{foo}[2]{<b>#1 #2>}{</b>} \\begin{foo}{a}{b}content\\end{foo}"
+        >>> do_newenvironment(s)
+        '<b>a b>content</b>'
     """
     toprocess = string
     out = ""
@@ -193,10 +185,8 @@ def clean_junk_safe(latex_content:str)->str:
         str: The cleaned LaTeX content.
 
     Example:
-        ```python
-        clean_junk_safe("foo    bar\\n\\n\\n")
-        # returns "foo bar\\n\\n"
-        ```
+        >>> clean_junk_safe("foo    bar\\n\\n\\n")
+        'foo bar\\n\\n'
     """
     while "\\"*4 in latex_content:
         latex_content = latex_content.replace("\\"*4, "")
@@ -224,11 +214,9 @@ def run_preprocessor(string: str) -> str:
         str: The processed string.
 
     Example:
-        ```python
-        s = r"\\newcommand{\\foo}[1]{#1!} \\foo{bar}"
-        run_preprocessor(s)
-        # returns "bar!"
-        ```
+        >>> s = r"\\newcommand{\\foo}[1]{#1!} \\foo{bar}"
+        >>> run_preprocessor(s)
+        'bar!'
     """
     string = clean_junk_safe(string)
     string = do_commands(string)

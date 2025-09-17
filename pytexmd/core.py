@@ -1,9 +1,37 @@
+"""Core utilities for processing LaTeX files and generating documentation.
+
+This module provides the main entry point for converting LaTeX files to Markdown and generating Sphinx documentation.
+"""
+
+__all__ = ["process_file"]
+
 from .filter import process_string
 from .file_loader import load_tex_file
 from .sphinx_doc import create_sphinx_documentation
 
 
-def process_file(input_file:str,output_folder:str,depth=3,output_suffix:str=".md"):
+def process_file(
+    input_file: str,
+    output_folder: str,
+    depth: int = 3,
+    output_suffix: str = ".md"
+) -> None:
+    """Process a LaTeX file and generate documentation.
+
+    Loads the LaTeX file, expands its content, generates Sphinx documentation, and converts the content to Markdown.
+
+    Args:
+        input_file (str): Path to the input LaTeX file.
+        output_folder (str): Path to the output folder for documentation.
+        depth (int, optional): Depth for processing sections. Defaults to 3.
+        output_suffix (str, optional): Suffix for output files. Defaults to ".md".
+
+    Returns:
+        None
+
+    Example:
+        process_file("main.tex", "docs")
+    """
     latex_content = load_tex_file(input_file)
     file_string = latex_content.content
     create_sphinx_documentation(output_folder)

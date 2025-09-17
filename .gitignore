@@ -4,3 +4,8 @@ examples/my_docs
 # Ignore Python cache files
 **/__pycache__/
 #**/*.py[cod]
+docs/build/
+**.pyc
+*.pyc
+pytexmd\filter\__pycache__\
+pytexmd/filter/__pycache__/

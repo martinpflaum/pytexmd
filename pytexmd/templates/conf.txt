@@ -1,0 +1,34 @@
+project = 'XXPROJECTXX'
+copyright = '2025, XXAUTHORSXX'
+author = 'XXAUTHORSXX'
+release = 'XXRELEASEXX'
+
+extensions = ['myst_parser',
+              "sphinx_proof"]
+
+templates_path = ['_templates']
+exclude_patterns = []
+
+
+myst_enable_extensions = [
+    "amsmath",
+    "attrs_inline",
+    "attrs_block",
+    "colon_fence",
+    "deflist",
+    "dollarmath",
+    "fieldlist",
+    "html_admonition",
+    "html_image",
+    "linkify",
+    "replacements",
+    "smartquotes",
+    "strikethrough",
+    "substitution",
+    "tasklist",
+    "ref",
+]
+
+
+html_theme = 'furo'
+html_static_path = ['_static']

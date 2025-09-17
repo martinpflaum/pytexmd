@@ -10,9 +10,9 @@ def get_all_allchars_no_abc()->str:
         str: String containing non-alphabetic ASCII characters.
 
     Example:
-        ```python
-        chars = get_all_allchars_no_abc()
-        ```
+        >>> chars = get_all_allchars_no_abc()
+        >>> isinstance(chars, str)
+        True
     """
     return '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~\n ' # is removed
 
@@ -31,9 +31,9 @@ def save_command_split(string:str, split_on:str)->List[str]:
         ValueError: If input types are incorrect.
 
     Example:
-        ```python
-        parts = save_command_split("foo$bar$baz", "$")
-        ```
+        >>> parts = save_command_split("foo$bar$baz", "$")
+        >>> parts
+        ['foo', 'bar', 'baz']
     """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
@@ -61,9 +61,9 @@ def first_char_brace(string:str, begin_brace:str = "{")->bool:
         ValueError: If input types are incorrect.
 
     Example:
-        ```python
-        is_brace = first_char_brace(" {foo}")
-        ```
+        >>> is_brace = first_char_brace(" {foo}")
+        >>> is_brace
+        True
     """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
@@ -91,9 +91,11 @@ def split_on_first_brace(string:str, begin_brace = "{",end_brace = "}", error_re
         ValueError: If input types are incorrect.
 
     Example:
-        ```python
-        inside, rest = split_on_first_brace("{foo}bar")
-        ```
+        >>> inside, rest = split_on_first_brace("{foo}bar")
+        >>> inside
+        'foo'
+        >>> rest
+        'bar'
     """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
@@ -133,9 +135,11 @@ def split_rename(string: str) -> Optional[Tuple[str, str]]:
         ValueError: If input is not a string.
 
     Example:
-        ```python
-        name, rest = split_rename("[foo]bar")
-        ```
+        >>> name, rest = split_rename("[foo]bar")
+        >>> name
+        'foo'
+        >>> rest
+        'bar'
     """
     if not isinstance(string, str):
         raise ValueError("Input must be a string")
@@ -164,9 +168,11 @@ def split_on_next(string:str, split_on:str, save_split:bool = True)->Tuple[str,s
         ValueError: If input types are incorrect.
 
     Example:
-        ```python
-        before, after = split_on_next("foo$bar$baz", "$")
-        ```
+        >>> before, after = split_on_next("foo$bar$baz", "$")
+        >>> before
+        'foo'
+        >>> after
+        'bar$baz'
     """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
@@ -198,9 +204,13 @@ def begin_end_split(string:str, begin_name:str, end_name:str, save_split:bool = 
         ValueError: If input types are incorrect.
 
     Example:
-        ```python
-        pre, mid, post = begin_end_split("a\\begin{env}b\\end{env}c", "\\begin{env}", "\\end{env}")
-        ```
+        >>> pre, mid, post = begin_end_split("a\\begin{env}b\\end{env}c", "\\begin{env}", "\\end{env}")
+        >>> pre
+        'a'
+        >>> mid
+        'b'
+        >>> post
+        'c'
     """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")
@@ -247,9 +257,9 @@ def position_of(string:str, begin_name:str, save_split:bool = True)->int:
         ValueError: If input types are incorrect.
 
     Example:
-        ```python
-        pos = position_of("foo$bar", "$")
-        ```
+        >>> pos = position_of("foo$bar", "$")
+        >>> pos
+        3
     """
     if not isinstance(string,str):
         raise ValueError("Input must be a string")

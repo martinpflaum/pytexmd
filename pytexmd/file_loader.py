@@ -1,20 +1,65 @@
-#%%
+r"""File loader utilities for LaTeX projects.
+
+This module provides functions and classes to load LaTeX files and their associated resources
+(recursively), such as .tex, .bib, and image files. It also expands \input{} commands in the main
+LaTeX file.
+
+Typical usage example:
+    latex_file = load_tex_file("main.tex")
+"""
+
 __all__ = ["load_tex_file", "LatexFile"]
 
 import os
 import regex
-from typing import List, Dict, Tuple,Optional,Any,NamedTuple
+from typing import List, Dict, Tuple, Optional, Any, NamedTuple
 
 class LatexFile(NamedTuple):
-    content:str
-    tex_files:Dict[str,str]
-    bib_files:Dict[str,str]
-    image_files:Dict[str,str]
-    all_files:Dict[str,str]
+    r"""Container for loaded LaTeX project files.
+
+    Attributes:
+        content (str): The expanded content of the main LaTeX file, with \input{} resolved.
+        tex_files (Dict[str, str]): Mapping from base filename (without extension) to absolute path for .tex/.sty/.cls files.
+        bib_files (Dict[str, str]): Mapping from base filename (without extension) to absolute path for .bib/.bbl/.bibtex/.biblatex files.
+        image_files (Dict[str, str]): Mapping from base filename (without extension) to absolute path for image files.
+        all_files (Dict[str, str]): Combined mapping of all supported files.
+    """
+    content: str
+    tex_files: Dict[str, str]
+    bib_files: Dict[str, str]
+    image_files: Dict[str, str]
+    all_files: Dict[str, str]
 
 
-def load_tex_file(file_name:str)->LatexFile:
-    def load_file(file_name:str)->str:
+def load_tex_file(file_name: str) -> LatexFile:
+    r"""Load a LaTeX file and its associated resources recursively.
+
+    Expands all \input{} commands in the main file, and collects all .tex, .bib, and image files
+    in the same directory tree.
+
+    Args:
+        file_name (str): Path to the main LaTeX file.
+
+    Returns:
+        LatexFile: A named tuple containing the expanded content and dictionaries of found files.
+
+    Raises:
+        FileNotFoundError: If the main file does not exist.
+        OSError: If there is an error reading files from disk.
+
+    Example:
+        latex_file = load_tex_file("main.tex")
+        print(latex_file.content)
+    """
+    def load_file(file_name: str) -> str:
+        r"""Read the contents of a file.
+
+        Args:
+            file_name (str): Path to the file.
+
+        Returns:
+            str: Contents of the file.
+        """
         data = None
         with open(file_name, 'r') as f:
             data = f.read()
@@ -57,7 +102,15 @@ def load_tex_file(file_name:str)->LatexFile:
 
     content = load_file(file_name)
 
-    def remove_extensions(file_name):
+    def remove_extensions(file_name: str) -> str:
+        """Remove known extensions from a filename.
+
+        Args:
+            file_name (str): Filename to process.
+
+        Returns:
+            str: Filename without known extensions.
+        """
         for ext in target_extensions:
             file_name = file_name.replace(ext, "")
         return file_name
@@ -67,13 +120,29 @@ def load_tex_file(file_name:str)->LatexFile:
     _image_files = {remove_extensions(file.split("\\")[-1].split("/")[-1]): file for file in image_files}
     all_files = {**_tex_files, **_bib_files, **_image_files}
 
-    def input_to_filename(input_name):
+    def input_to_filename(input_name: str) -> str:
+        r"""Convert LaTeX input name to absolute filename.
+
+        Args:
+            input_name (str): Name from \input{} command.
+
+        Returns:
+            str: Absolute path to the file.
+        """
         input_name = remove_extensions(input_name)
         input_name = input_name.split("\\")[-1]
         input_name = input_name.split("/")[-1]
         return all_files[input_name]
 
-    def get_input_file(input_name):
+    def get_input_file(input_name: str) -> str:
+        r"""Get the contents of an input file referenced in LaTeX.
+
+        Args:
+            input_name (str): Name from \input{} command.
+
+        Returns:
+            str: Contents of the input file, or empty string if not found.
+        """
         try:
             filename = input_to_filename(input_name)
         #    print(filename)
