@@ -149,9 +149,7 @@ class Proof(Element):
     """
     def __init__(self, modifiable_content: str, parent: Element):
         modifiable_content = modifiable_content.lstrip()
-        if modifiable_content.startswith("Proof."):
-            modifiable_content = modifiable_content[len("Proof."):]
-
+        
         self.name = "Proof"
         if not split_rename(modifiable_content) is None:
             self.name,modifiable_content = split_rename(modifiable_content) 
@@ -168,8 +166,23 @@ class Proof(Element):
     @staticmethod
     def split_and_create(input: str, parent: Element) -> Tuple[str, 'Proof', str]:
         pre,content,post = begin_end_split(input,"\\begin{proof}","\\end{proof}")
-        out = Proof(content,parent)
-        out.expand([MystLabel])
+        content = content.lstrip()
+        if content.startswith("Proof."):
+            content = content[len("Proof."):]
+        
+        out = Proof("",parent)
+        out.children = []
+        if content.startswith("\\label"):
+            label_ref,content = split_on_first_brace(content)
+            content = content.lstrip()
+            label = MystLabel("",out,label_ref)
+            element = Undefined(content,out)
+            out.children.append(label)
+            out.children.append(element)
+            
+        else:
+            out.children.append(Undefined(content,out))
+        
         
         return pre,out,post
 
@@ -363,7 +376,18 @@ class TheoremSearcher(Searcher):
         pre,content,post = begin_end_split(input,"\\begin{"+self.theorem_env_name+"}","\\end{"+self.theorem_env_name+"}")
         
         out = TheoremElement(content,parent,self.display_name,self.theorem_env_name,self.enum_parent_class)
-        out.expand([MystLabel])
+        out.children = []
+        if content.startswith("\\label"):
+            label_ref,content = split_on_first_brace(content)
+            content = content.lstrip()
+            label = MystLabel("",out,label_ref)
+            element = Undefined(content,out)
+            out.children.append(label)
+            out.children.append(element)
+            
+        else:
+            out.children.append(Undefined(content,out))
+        
         
         return pre,out,post
 

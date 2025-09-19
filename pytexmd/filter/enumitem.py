@@ -165,7 +165,7 @@ class ItemizeItem(Element):
             >>> isinstance(item.to_string(), str)
             True
         """
-        out = self.children[0].to_string()+"  "
+        out = self.children[0].to_string()+" "
         string_len = len(self.children[0].to_string()) + 2 
 
         self.children = self.children[1:]
@@ -261,7 +261,7 @@ class Itemize(Element):
         out = "\n" 
         for child in self.children:
             out += child.to_string().rstrip().lstrip() + "\n"
-        out = out.replace("\n","\n"+TAB)
+        out = out.replace("\n","\n"+"  ")
         return out
     
     @staticmethod
@@ -355,7 +355,7 @@ class EnumerationItem(Element):
 
     def to_string(self) -> str:
         
-        out = self.children[0].to_string()+"  "
+        out = self.children[0].to_string()+" "
         string_len = len(self.children[0].to_string()) + 2 
 
         self.children = self.children[1:]
@@ -455,7 +455,7 @@ class Enumeration(Element):
         out = "\n" 
         for child in self.children:
             out += child.to_string().rstrip().lstrip() + "\n"
-        out = out.replace("\n","\n"+TAB)
+        out = out.replace("\n","\n"+"  ")
         return out
     
     @staticmethod

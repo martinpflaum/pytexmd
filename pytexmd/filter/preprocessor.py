@@ -190,16 +190,35 @@ def clean_junk_safe(latex_content:str)->str:
     """
     while "\\"*4 in latex_content:
         latex_content = latex_content.replace("\\"*4, "")
-    while "\n\n\n" in latex_content:
-        latex_content = latex_content.replace("\n\n\n","\n\n")
-    while "  " in latex_content:
-        latex_content = latex_content.replace("  "," ")
     while "\t" in latex_content:
         latex_content = latex_content.replace("\t"," ")
+    while "  " in latex_content:
+        latex_content = latex_content.replace("  "," ")
     while " \n" in latex_content:
         latex_content = latex_content.replace(" \n","\n")
     while "\n " in latex_content:
         latex_content = latex_content.replace("\n ","\n")
+    while "\n\n\n" in latex_content:
+        latex_content = latex_content.replace("\n\n\n","\n\n")
+    
+    XXDOUBLENEWLINEXX = "XXDOUBLENEWLINEXX"
+    latex_content = latex_content.replace("\n\n",XXDOUBLENEWLINEXX)
+    XXNEWLINECOMMANDXX = "XXNEWLINECOMMANDXX"
+    latex_content = latex_content.replace("\n\\",XXNEWLINECOMMANDXX)
+    XXBRACENEWLINEXX = "XXBRACENEWLINEXX"
+    latex_content = latex_content.replace("}\n",XXBRACENEWLINEXX)
+    XXBRACKETNEWLINEXX = "XXBRACKETNEWLINEXX"
+    latex_content = latex_content.replace("]\n",XXBRACKETNEWLINEXX)
+    XXKLAMMERNEWLINEXX = "XXKLAMMERNEWLINEXX"
+    latex_content = latex_content.replace(")\n",XXKLAMMERNEWLINEXX)
+    
+    latex_content = latex_content.replace("\n"," ")
+
+    latex_content = latex_content.replace(XXDOUBLENEWLINEXX,"\n\n")
+    latex_content = latex_content.replace(XXNEWLINECOMMANDXX,"\n\\")
+    latex_content = latex_content.replace(XXBRACENEWLINEXX,"}\n")
+    latex_content = latex_content.replace(XXBRACKETNEWLINEXX,"]\n")
+    latex_content = latex_content.replace(XXKLAMMERNEWLINEXX,")\n")
     return latex_content
 
 

@@ -16,7 +16,6 @@ __all__ = [
     "OneArgumentCommandSearcher",
     "find_nearest_classes",
     "has_value_equal",
-    "TAB",
     "get_number_within_equation",
     "Searcher",
     "BeginEndSearcher",
@@ -27,7 +26,6 @@ __all__ = [
 from typing import List, Optional, Tuple, Union, Callable,NamedTuple
 from . import splitting
 
-TAB = "    "
 call_num = 0
 
 class FileStructure():

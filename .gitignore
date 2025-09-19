@@ -1,7 +1,7 @@
 example_tex
 examples/my_docs
 examples/my_docs2
-
+examples/my_docs3
 # Ignore Python cache files
 **/__pycache__/
 #**/*.py[cod]

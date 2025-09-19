@@ -5,12 +5,8 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 import pytexmd as ptm
 
-
-
 file_name = "../example_tex/FANCyProject/FaNCyProject.tex"
-ptm.process_file(file_name,"./my_docs2",depth=3)
-
-
+ptm.process_file(file_name,"./my_docs3",depth=3)
 
 # %%
 """from sphinx.cmd.quickstart import main as sphinx_quickstart
