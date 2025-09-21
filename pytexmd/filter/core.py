@@ -350,7 +350,7 @@ class Element():
         """
         raise NotImplementedError("no function to_string found")
     
-    def to_file_structure(self)->FileStructure|str:
+    def to_file_structure(self,current_depth)->FileStructure|str:
         """Convert element to FileStructure representation.
 
         Returns:
@@ -557,6 +557,24 @@ class SectionLike(Element):
             out += child.to_string()
         out = pre + out.lstrip()
         return out
+    
+    def to_file_structure(self,current_depth)->FileStructure:
+        if current_depth <= 0:
+            return self.to_string()
+        
+        out = ""
+        childs = []
+        for child in self.children:
+            struct = child.to_file_structure(current_depth-1)
+            if isinstance(struct,str):
+                out += struct
+            else:
+                if struct.file_name is None:
+                    out += struct.content
+                    childs.extend(struct.children)
+                else:
+                    childs.append(struct)
+        return FileStructure(self.name,out,childs)
         
 class SectionLikeSearcher(Searcher):
     """Searcher for LaTeX commands.
@@ -579,6 +597,8 @@ class SectionLikeSearcher(Searcher):
         return splitting.position_of(string,self.command_name+"{",False)
     
     def split_and_create(self,input: str, parent: Element) -> Tuple[str, Element, str]:
+        #TODO HANDLE NESTED SECTIONS AKA LEVEL DEPENDENCIES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
         pre,content = splitting.split_on_next(input,self.command_name)
         name,content = splitting.split_on_first_brace(content)
         if self.command_name + "{" in content:
@@ -621,17 +641,19 @@ class Document(Element):
             out += child.to_string()
         return out
 
-    def to_file_structure(self)->FileStructure:
+    def to_file_structure(self,current_depth)->FileStructure:
+        if current_depth <= 0:
+            return self.to_string()
+        
         out = ""
         childs = []
-        current_struct = None
         for child in self.children:
-            struct = child.to_file_structure()
+            struct = child.to_file_structure(current_depth-1)
             if isinstance(struct,str):
                 out += struct
             else:
                 childs.append(struct)
-        return FileStructure("index",out,childs)
+        return FileStructure(self.name,out,childs)
             
 class Undefined(Element):
     """Element for undefined LaTeX content."""
@@ -644,17 +666,19 @@ class Undefined(Element):
             out += child.to_string()
         return out
 
-    def to_file_structure(self)->FileStructure:
+    def to_file_structure(self,current_depth)->FileStructure:
+        if current_depth <= 0:
+            return self.to_string()
+        
         out = ""
         childs = []
         for child in self.children:
-            struct = child.to_file_structure()
+            struct = child.to_file_structure(current_depth)
             if isinstance(struct,str):
                 out += struct
             else:
                 childs.append(struct)
-        return FileStructure("index",out,childs)
-
+        return FileStructure(None,out,childs)
 
 class RawText(Element):
     """Element for raw text content."""
@@ -664,17 +688,6 @@ class RawText(Element):
 
     def to_string(self) -> str:
         return self.text
-
-    def to_file_structure(self)->FileStructure:
-        out = ""
-        childs = []
-        for child in self.children:
-            struct = child.to_file_structure()
-            if isinstance(struct,str):
-                out += struct
-            else:
-                childs.append(struct)
-        return FileStructure("index",out,childs)
 
 
 class JunkSearcher(Searcher):
