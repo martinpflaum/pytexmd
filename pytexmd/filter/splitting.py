@@ -46,6 +46,37 @@ def save_command_split(string:str, split_on:str)->List[str]:
     string = string.split("XXXsplit_meXXX")
     return string
 
+def save_replace(string:str, old:str, new:str)->str:
+    """
+    Replaces occurrences of a substring in a string, preserving certain patterns.
+
+    Args:
+        string (str): The input string.
+        old (str): The substring to be replaced.
+        new (str): The substring to replace with.
+
+    Returns:
+        str: The modified string with replacements.
+
+    Raises:
+        ValueError: If input types are incorrect.
+
+    Example:
+        >>> result = save_replace("foo$bar$baz", "$", "#")
+        >>> result
+        'foo#bar#baz'
+    """
+    if not isinstance(string,str):
+        raise ValueError("Input must be a string")
+    if not isinstance(old,str):
+        raise ValueError("old must be a string")
+    if not isinstance(new,str):
+        raise ValueError("new must be a string")
+    for appendix in get_all_allchars_no_abc():
+        string = string.replace(old + appendix,"XXXsplit_meXXX"+appendix)
+    string = string.replace("XXXsplit_meXXX",new)
+    return string
+
 def first_char_brace(string:str, begin_brace:str = "{")->bool:
     """
     Checks if the first non-whitespace character of a string is a given brace.

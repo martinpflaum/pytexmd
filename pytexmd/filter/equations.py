@@ -142,6 +142,7 @@ class DoubleDolarLatex(Element):
         return pre,out,post
 
 
+EQUATIONS_MAPPER = {r"\[":r"\begin{equation*}",r"\]":r"\end{equation*}"}
 
 class DefaultEquation(Element):
     """Searcher for non-enumerated align-like environments.
@@ -158,6 +159,10 @@ class DefaultEquation(Element):
             end (str): End delimiter.
         """
         super().__init__(modifiable_content,parent)
+        if begin in EQUATIONS_MAPPER:
+            begin = EQUATIONS_MAPPER[begin]
+        if end in EQUATIONS_MAPPER:
+            end = EQUATIONS_MAPPER[end]
         self.begin = begin
         self.end = end
 

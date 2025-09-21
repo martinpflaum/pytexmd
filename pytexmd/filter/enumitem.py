@@ -3,114 +3,9 @@ __all__ = ["Itemize","ItemizeItem","Enumeration","EnumerationItem"]
 from .core import *
 from .splitting import * 
 
-def enum_style_roman(index: int) -> str:
-    """
-    Converts an index to an uppercase Roman numeral.
 
-    Args:
-        index (int): The index to convert.
 
-    Returns:
-        str: Uppercase Roman numeral.
-
-    Example:
-        >>> enum_style_roman(2)
-        'III'
-    """
-    roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x",
-         "xi","xii","xiii","xiv","xv","xvi","xvii","xviii","xix","xx",
-         "xxi","xxii","xxiii","xxiv","xxv","xxvi","xxvii","xxviii","xxix","xxx"]
-    
-    return roman[index].upper()
-
-def enum_style_Roman(index: int) -> str:
-    """
-    Converts an index to an uppercase Roman numeral.
-
-    Args:
-        index (int): The index to convert.
-
-    Returns:
-        str: Uppercase Roman numeral.
-
-    Example:
-        >>> enum_style_Roman(0)
-        'I'
-    """
-    #roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x"]
-    roman = ["I","II","III","IV","V","VI","VII","VIII","IX","X",
-         "XI","XII","XIII","XIV","XV","XVI","XVII","XVIII","XIX","XX",
-         "XXI","XXII","XXIII","XXIV","XXV","XXVI","XXVII","XXVIII","XXIX","XXX"]
-    return roman[index]
-
-def enum_style_arabic(index: int) -> str:
-    """
-    Converts an index to an Arabic numeral (1-based).
-
-    Args:
-        index (int): The index to convert.
-
-    Returns:
-        str: Arabic numeral as string.
-
-    Example:
-        >>> enum_style_arabic(0)
-        '1'
-    """
-    return str(index + 1)
-
-def enum_style_alph(index: int) -> str:
-    """
-    Converts an index to a lowercase alphabet letter.
-
-    Args:
-        index (int): The index to convert.
-
-    Returns:
-        str: Lowercase letter.
-
-    Example:
-        >>> enum_style_alph(0)
-        'a'
-    """
-    lowercase = 'abcdefghijklmnopqrstuvwxyz'
-    return lowercase[index]
-
-def enum_style_Alph(index: int) -> str:
-    """
-    Converts an index to an uppercase alphabet letter.
-
-    Args:
-        index (int): The index to convert.
-
-    Returns:
-        str: Uppercase letter.
-
-    Example:
-        >>> enum_style_Alph(0)
-        'A'
-    """
-    uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    return uppercase[index]
-
-def enum_style_empty(index: int) -> str:
-    """
-    Returns an empty string for the label.
-
-    Args:
-        index (int): The index (unused).
-
-    Returns:
-        str: Empty string.
-
-    Example:
-        >>> enum_style_empty(0)
-        ''
-    """
-
-    return ""
-
-enum_styles = {"\\roman":enum_style_roman,"\\Roman":enum_style_Roman,"\\arabic":enum_style_arabic,"\\alph":enum_style_alph,"\\Alph":enum_style_Alph}
+#enum_styles = {"\\roman":enum_style_roman,"\\Roman":enum_style_Roman,"\\arabic":enum_style_arabic,"\\alph":enum_style_alph,"\\Alph":enum_style_Alph}
 
 
 class ItemizeItem(Element):
@@ -122,7 +17,7 @@ class ItemizeItem(Element):
         >>> print(item.to_string())
         •  First item
     """
-    def __init__(self, modifiable_content: str, parent: Element, label: str = "•"):
+    def __init__(self, modifiable_content: str, parent: Element, label: str = "*"):
         """
         Args:
             modifiable_content (str): The content of the item.
@@ -165,13 +60,12 @@ class ItemizeItem(Element):
             >>> isinstance(item.to_string(), str)
             True
         """
-        out = self.children[0].to_string()+" "
-        string_len = len(self.children[0].to_string()) + 2 
+        #string_len = len(self.children[0].to_string()) + 2 
 
-        self.children = self.children[1:]
-        for child in self.children:
-            out += child.to_string().lstrip().rstrip()+"\n"
-        out = out.replace("\n","\n"+ " " * string_len)
+        
+        out = self.children[0].to_string()+" "
+        out += self.children[1].to_string().lstrip().rstrip()
+        out = out.replace("\n","\n"+ "  ")
         return out
 
     @staticmethod
@@ -353,15 +247,10 @@ class EnumerationItem(Element):
         """
         return self.label
 
-    def to_string(self) -> str:
-        
+    def to_string(self) -> str:        
         out = self.children[0].to_string()+" "
-        string_len = len(self.children[0].to_string()) + 2 
-
-        self.children = self.children[1:]
-        for child in self.children:
-            out += child.to_string().lstrip().rstrip()+"\n"
-        out = out.replace("\n","\n"+ " " * string_len)
+        out += self.children[1].to_string().lstrip().rstrip()
+        out = out.replace("\n","\n"+ "  ")
         return out
 
     @staticmethod
@@ -553,4 +442,4 @@ def get_all_filters():
         >>> isinstance(filters, list)
         True
     """
-    return [Itemize,Enumeration]
+    return [Itemize]#Enumeration
