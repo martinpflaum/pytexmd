@@ -155,7 +155,6 @@ class Itemize(Element):
         out = "\n" 
         for child in self.children:
             out += child.to_string().rstrip().lstrip() + "\n"
-        out = out.replace("\n","\n"+"  ")
         return out
     
     @staticmethod
@@ -223,16 +222,19 @@ class EnumerationItem(Element):
             ''
         """
         super().__init__("",parent)
-
+        modifiable_content = modifiable_content.lstrip().rstrip()
+        self.label_str = None
+        if modifiable_content.startswith("\\label"):
+            label_str,modifiable_content = split_on_first_brace(modifiable_content[len("\\label"):],"{" ,"}")
+            self.label_str = label_str
         self.label = ""
-        """if label is None:
-            enumeration = self.search_class(Enumeration)
+        if label is None:
+            enumeration: Enumeration = self.search_class(Enumeration)
             self.label = enumeration.generate_item_label()
         else:
             self.label = label
-        """    
-        self.children = [Undefined(self.label,self),Undefined(modifiable_content,self)]
-    
+        self.children = [Undefined(self.label, self), Undefined(modifiable_content, self)]
+
     def label_name(self) -> str:
         """
         Returns the label of the enumeration item.
@@ -247,10 +249,14 @@ class EnumerationItem(Element):
         """
         return self.label
 
-    def to_string(self) -> str:        
-        out = self.children[0].to_string()+" "
-        out += self.children[1].to_string().lstrip().rstrip()
-        out = out.replace("\n","\n"+ "  ")
+    def to_string(self) -> str: 
+        out = ""
+        if self.label_str is None:
+            out = self.children[0].to_string().strip()+" "
+        else:
+            out = self.children[0].to_string().strip()+" "+"(" + self.label_str + ")=\n   " 
+        out += self.children[1].to_string().lstrip().rstrip().replace("\n","\n"+"  ")
+        
         return out
 
     @staticmethod
@@ -295,6 +301,7 @@ class EnumerationItem(Element):
         else:
             post = ""
 
+
         label = None
         if first_char_brace(content,"["):
             label,content = split_on_first_brace(content,"[","]")
@@ -311,8 +318,7 @@ class Enumeration(Element):
         >>> isinstance(enum.to_string(), str)
         True
     """
-    current_index = 0
-    def __init__(self, modifiable_content: str, parent: Element, style_func: callable, left: str, right: str):
+    def __init__(self, modifiable_content: str, parent: Element,start):
         """
         Args:
             modifiable_content (str): The content of the enumerate.
@@ -327,7 +333,19 @@ class Enumeration(Element):
             True
         """
         super().__init__(modifiable_content,parent)
-        self.style_func,self.left,self.right = style_func,left,right
+        self.current_index = start
+    
+    def generate_item_label(self) -> str:
+        """
+        Generates the label for the next enumeration item.
+
+        Returns:
+            str: The generated label.
+        
+        """
+        out = str(self.current_index) + "."
+        self.current_index += 1
+        return out
 
     def to_string(self) -> str:
         """
@@ -344,7 +362,6 @@ class Enumeration(Element):
         out = "\n" 
         for child in self.children:
             out += child.to_string().rstrip().lstrip() + "\n"
-        out = out.replace("\n","\n"+"  ")
         return out
     
     @staticmethod
@@ -383,48 +400,21 @@ class Enumeration(Element):
         """
         
         pre,content,post = begin_end_split(string,"\\begin{enumerate}","\\end{enumerate}")
-        
-        style_func = None
-        left = ""
-        right = ""
-        
-        if first_char_brace(content,"["):
-            options,content = split_on_first_brace(content,"[","]")
-            options_pre,options_post = split_on_next(options,"label")
-            options_post = options_post.lstrip()
-            options_post = options_post[1:]#remove = 
-            options_label = ""
-            if first_char_brace(options_post,"{"):
-                options_label,options_post = split_on_first_brace(options_post)
-            
-            tmp = options_post.split(",")[0]
-            options_label = options_label + tmp
-            
-            for style in enum_styles.keys():
-                if style in options_label:
-                    style_func = enum_styles[style]
-                    tmp = options_label.split(style)
-                    left = tmp[0]
-                    _,right = split_on_next(tmp[1],"*")
-                    break 
-
-            if style_func is None:
-                style_func = enum_style_empty
-                left = options_label
-        else:
-            style_func = enum_style_arabic
-            right = "."
-
-        left = left.replace("\\sffamily","")
-        left = left.replace("{","")
-        left = left.replace("}","")
-        
-        right = right.replace("\\sffamily","")
-        right = right.replace("{","")
-        right = right.replace("}","")
-        
-
-        elem_out = Enumeration(content,parent,style_func,left,right)
+        content = content.lstrip().rstrip()
+        start = 1
+        if content.startswith("["):
+            _pre,_content,_post =begin_end_split(content,"[","]")
+            content = _post.lstrip().rstrip()
+            if "label" in _content:
+                label_str = _content.split("label")[1].split("=")[1].strip().split(",")[0].strip()
+                # Here you could implement parsing of label_str to set style_func, left, right
+            if "start" in _content:
+                start_str = _content.split("start")[1].split("=")[1].strip().split(",")[0].strip()
+                try:
+                    start = int(start_str)
+                except:
+                    start = 1
+        elem_out = Enumeration(content,parent,start)
         elem_out.expand([EnumerationItem])
 
         return pre,elem_out,post
@@ -442,4 +432,4 @@ def get_all_filters():
         >>> isinstance(filters, list)
         True
     """
-    return [Itemize]#Enumeration
+    return [Itemize, Enumeration]

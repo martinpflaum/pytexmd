@@ -10,3 +10,4 @@ docs/build/
 *.pyc
 pytexmd\filter\__pycache__\
 pytexmd/filter/__pycache__/
+examples_tex

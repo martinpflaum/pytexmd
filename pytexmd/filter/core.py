@@ -546,12 +546,20 @@ class SectionLike(Element):
 
     """
     def __init__(self, modifiable_content:str, parent,command_name:str, name:str):
+        modifiable_content = modifiable_content.lstrip().rstrip()
+        if modifiable_content.startswith("\\label"):
+            pre,content,post = splitting.begin_end_split(modifiable_content,"\\label{","}")
+            modifiable_content = post.lstrip().rstrip()
+            self.label = content
         super().__init__(modifiable_content,parent)
         self.name = name
         self.command_name = command_name
 
     def to_string(self) -> str:
-        pre = "\n" + SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+        if self.label is not None:
+            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+        else:
+            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
         out = ""
         for child in self.children:
             out += child.to_string()

@@ -6,7 +6,6 @@ environments, and math for Markdown/MyST conversion.
 """
 
 __all__ = [
-    "EquationLabel",
     "apply_latex_protection",
     "TexArray",
     "BeginEquationEnumElement",
@@ -239,7 +238,7 @@ def get_all_filters() -> list:
     multiline = ["split", "multline","align","breqn","equation","displaymath","gather","flalign","alignat","eqnarray","math"]
     multiline_enum = [DefaultEquationSearcher("\\begin{"+ elem+"}","\\end{"+ elem+"}") for elem in multiline]
     multiline_no_enum = [DefaultEquationSearcher("\\begin{"+ elem+"*}","\\end{"+ elem+"*}") for elem in multiline]
-    out = [DoubleDolarLatex,DefaultEquationSearcher("\\[","\\]"),InlineLatex]
+    out = [DoubleDolarLatex,InlineLatex,DefaultEquationSearcher("\\[","\\]")]
     out.extend(multiline_enum)
     out.extend(multiline_no_enum)
     return out

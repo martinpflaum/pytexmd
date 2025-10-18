@@ -166,14 +166,15 @@ class Proof(Element):
     @staticmethod
     def split_and_create(input: str, parent: Element) -> Tuple[str, 'Proof', str]:
         pre,content,post = begin_end_split(input,"\\begin{proof}","\\end{proof}")
-        content = content.lstrip()
+        content = content.lstrip().rstrip()
         if content.startswith("Proof."):
             content = content[len("Proof."):]
-        
+        content = content.lstrip().rstrip()
+
         out = Proof("",parent)
         out.children = []
         if content.startswith("\\label"):
-            label_ref,content = split_on_first_brace(content)
+            label_ref,content = split_on_first_brace(content[len("\\label"):])
             content = content.lstrip()
             label = MystLabel("",out,label_ref)
             element = Undefined(content,out)
@@ -374,11 +375,12 @@ class TheoremSearcher(Searcher):
             
     def split_and_create(self, input: str, parent: Element) -> Tuple[str, TheoremElement, str]:
         pre,content,post = begin_end_split(input,"\\begin{"+self.theorem_env_name+"}","\\end{"+self.theorem_env_name+"}")
-        
+        content = content.lstrip().rstrip()
+
         out = TheoremElement(content,parent,self.display_name,self.theorem_env_name,self.enum_parent_class)
         out.children = []
         if content.startswith("\\label"):
-            label_ref,content = split_on_first_brace(content)
+            label_ref,content = split_on_first_brace(content[len("\\label"):])
             content = content.lstrip()
             label = MystLabel("",out,label_ref)
             element = Undefined(content,out)
