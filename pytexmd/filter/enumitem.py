@@ -226,7 +226,7 @@ class EnumerationItem(Element):
         self.label_str = None
         if modifiable_content.startswith("\\label"):
             label_str,modifiable_content = split_on_first_brace(modifiable_content[len("\\label"):],"{" ,"}")
-            self.label_str = label_str
+            self.label_str = label_call(label_str)
         self.label = ""
         if label is None:
             enumeration: Enumeration = self.search_class(Enumeration)

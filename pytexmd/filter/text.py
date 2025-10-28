@@ -65,9 +65,9 @@ class MystLabel(Element):
     """
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
-        
-        self.label_ref = label_ref
-    
+
+        self.label_ref =  label_call(label_ref)
+
     @staticmethod
     def position(string: str) -> int:
         return position_of(string,"\\label")
@@ -92,11 +92,14 @@ class Ref(Element):
     """
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
-        try:
-            self.label_name = self.search_class(Document).globals.labels[label_ref]
-        except Exception:
-            self.label_name = "ref_error"
-        self.label_ref = label_ref
+        
+        #try:
+        #    self.label_name = self.search_class(Document).globals.labels[label_ref]
+        #except Exception:
+        #
+        #    self.label_name = "ref_error"
+        self.label_ref = ref_call(label_ref)
+
     @staticmethod
     def position(input: str) -> int:
         return position_of(input,"\\ref")
@@ -121,11 +124,11 @@ class EqRef(Element):
     """
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
-        try:
-            self.label_name = self.search_class(Document).globals.labels[label_ref]
-        except Exception:
-            self.label_name = "ref_error"
-        self.label_ref = label_ref
+        #try:
+        #    self.label_name = self.search_class(Document).globals.labels[label_ref]
+        #except Exception:
+        #    self.label_name = "ref_error"
+        self.label_ref = ref_call(label_ref)
     @staticmethod
     def position(input: str) -> int:
         return position_of(input,"\\eqref")
@@ -167,8 +170,15 @@ class Proof(Element):
     def split_and_create(input: str, parent: Element) -> Tuple[str, 'Proof', str]:
         pre,content,post = begin_end_split(input,"\\begin{proof}","\\end{proof}")
         content = content.lstrip().rstrip()
-        if content.startswith("Proof."):
-            content = content[len("Proof."):]
+
+        # or content.startswith("\\textbf{Proof}.") or content.startswith("\\textbf{Proof}.") or content.startswith("\\emph{Proof.}") or content.startswith("\\textit{Proof.}") or content.startswith("\\emph{Proof}.") or content.startswith("\\textit{Proof}.")
+        junk_proof_starts = ["Proof.","\\textbf{Proof}.","\\emph{Proof}.","\\textit{Proof}.","\\emph{Proof.}","\\textit{Proof.}"]
+        for start in junk_proof_starts:
+            if content.startswith(start):
+                content = content[len(start):]
+                break
+        #if content.startswith("Proof."):
+        #    content = content[len("Proof."):]
         content = content.lstrip().rstrip()
 
         out = Proof("",parent)
@@ -375,6 +385,7 @@ class TheoremSearcher(Searcher):
             
     def split_and_create(self, input: str, parent: Element) -> Tuple[str, TheoremElement, str]:
         pre,content,post = begin_end_split(input,"\\begin{"+self.theorem_env_name+"}","\\end{"+self.theorem_env_name+"}")
+        org_content = content
         content = content.lstrip().rstrip()
 
         out = TheoremElement(content,parent,self.display_name,self.theorem_env_name,self.enum_parent_class)

@@ -27,6 +27,27 @@ from .core import *
 from typing import List,Tuple,Union
 
 
+class EquationLabel(Element):
+    def __init__(self,modifiable_content: str, parent: Element):
+        super().__init__("",parent)
+        self.label = label_call(modifiable_content)
+        if self.label == "":
+            self.label = "equation_label_error"
+
+    def to_string(self) -> str:
+        return "\\label{" + self.label + "}"
+    
+    @staticmethod
+    def position(string: str) -> int:
+        return position_of(string,"\\label")
+    
+    @staticmethod
+    def split_and_create(string: str, parent: Element) -> Tuple[str, 'EquationLabel', str]:
+        pre,modifiable_content = split_on_next(string,"\\label",save_split=False)
+        content,post = split_on_first_brace(modifiable_content,"{","}")
+        out = EquationLabel(content,parent)
+        return pre,out,post
+
 def apply_latex_protection(string: Element) -> Element:
     """Expands and protects LaTeX environments and commands in the given element.
 
@@ -96,6 +117,7 @@ class InlineLatex(Element):
             in_outer_dollar += content_unknown + "\\text{" + brace_content + "}"
             
         out = InlineLatex(content,parent)
+        out.expand([EquationLabel])
         out = apply_latex_protection(out)
         
 
@@ -135,6 +157,7 @@ class DoubleDolarLatex(Element):
         pre,modifiable_content = split_on_next(string,"$$",save_split=False)
         content,post = split_on_next(modifiable_content,"$$",save_split=False)  
         out = Undefined("\n$$\n" + content.rstrip().lstrip() + "\n$$\n",parent)
+        out.expand([EquationLabel])
         out = apply_latex_protection(out)
         out.expand([GuardianSearcher("\\\\")])
         #out.expand([ReplaceSearch("\\\\","</span><br><br><span class='display'>"),JunkSearch("&")])
@@ -220,6 +243,7 @@ class DefaultEquationSearcher():
         """
         
         out = DefaultEquation(content,parent,self.begin,self.end)
+        out.expand([EquationLabel])
         out = apply_latex_protection(out)
         return pre,out,post
        

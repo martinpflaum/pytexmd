@@ -21,8 +21,42 @@ __all__ = [
     "BeginEndSearcher",
     "SectionLikeSearcher",
     "SectionLike",
+    "label_call",
+    "ref_call",
 ]
 
+USED_LABELS = []
+
+def label_call(org: str) -> str:
+    global USED_LABELS
+    if org not in USED_LABELS:
+        org = org + "_0"
+        USED_LABELS.append(org)
+        return org
+    else:
+        k = 1
+        while True:
+            new_label = org + "_" + str(k)
+            if new_label not in USED_LABELS:
+                USED_LABELS.append(new_label)
+                return new_label
+            k = k + 1
+
+def ref_call(org: str) -> str:
+    def label_func(label:str,idx:int)->str:
+        if idx == 0:
+            return label + "_0"
+        else:
+            return label + "_" + str(idx)
+    
+    k = 0
+    while True:
+        new_label = label_func(org,k)
+        
+        if new_label not in USED_LABELS:
+            return label_func(org,k-1)#max(k-1,0))
+        k = k + 1
+        
 from typing import List, Optional, Tuple, Union, Callable,NamedTuple
 from . import splitting
 
@@ -550,7 +584,8 @@ class SectionLike(Element):
         if modifiable_content.startswith("\\label"):
             pre,content,post = splitting.begin_end_split(modifiable_content,"\\label{","}")
             modifiable_content = post.lstrip().rstrip()
-            self.label = content
+            self.label = label_call(content)
+            
         super().__init__(modifiable_content,parent)
         self.name = name
         self.command_name = command_name
