@@ -32,5 +32,3 @@ sphinx_build([
     "my_docs/build"
 ])
 """
-
-#%%

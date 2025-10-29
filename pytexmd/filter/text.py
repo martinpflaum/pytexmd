@@ -79,8 +79,7 @@ class MystLabel(Element):
         return pre,MystLabel("",parent,label_ref),post
 
     def to_string(self) -> str:
-        return "\n:label: "+self.label_ref.strip()+"\n"
-
+        return "\n:label: "+self.label_ref.strip()
 
 class Ref(Element):
     """Element for LaTeX \\ref reference.
@@ -93,11 +92,6 @@ class Ref(Element):
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
         
-        #try:
-        #    self.label_name = self.search_class(Document).globals.labels[label_ref]
-        #except Exception:
-        #
-        #    self.label_name = "ref_error"
         self.label_ref = ref_call(label_ref)
 
     @staticmethod
@@ -124,10 +118,7 @@ class EqRef(Element):
     """
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
-        #try:
-        #    self.label_name = self.search_class(Document).globals.labels[label_ref]
-        #except Exception:
-        #    self.label_name = "ref_error"
+        
         self.label_ref = ref_call(label_ref)
     @staticmethod
     def position(input: str) -> int:
@@ -170,28 +161,28 @@ class Proof(Element):
     @staticmethod
     def split_and_create(input: str, parent: Element) -> Tuple[str, 'Proof', str]:
         pre,content,post = begin_end_split(input,"\\begin{proof}","\\end{proof}")
-        content = content.lstrip(" ").rstrip()
+        content = content.strip()
+        if content == "":
+            return pre,Undefined("",parent),post
+        
         out = Proof("",parent)
         out.children = []
         if content.startswith("["):
             # Extract title from the content
             title, content = split_on_first_brace(content,"[", "]")
-            out.children.append(Undefined(title.lstrip().rstrip()+"\n",out))
+            out.children.append(Undefined(title.strip(),out))
         else:
             out.children.append(Undefined("",out))
 
-        content = content.lstrip().rstrip()
+        content = content.strip()
 
         if content.startswith("\\label"):
             label_ref,content = split_on_first_brace(content[len("\\label"):])
-            content = content.lstrip()
-            label = MystLabel("",out,label_ref)
-            element = Undefined(content,out)
+            content = content.strip()
+            label = MystLabel("",out,label_ref.strip())
             out.children.append(label)
-            out.children.append(element)
-            
-        else:
-            out.children.append(Undefined("\n"+content,out))
+        
+        out.children.append(Undefined("\n"+content,out))
         
         
         return pre,out,post
@@ -242,9 +233,10 @@ class Cite(Element):
         >>> isinstance(cite, Cite)
         True
     """
-    def __init__(self, modifiable_content: str, parent: Element, citations: list[str]):
+    def __init__(self, modifiable_content: str, parent: Element, citations: list[str], rename:str):
         super().__init__(modifiable_content,parent)
         self.citations = citations
+        self.rename = rename
     
     @staticmethod
     def position(input: str) -> int:
@@ -253,18 +245,29 @@ class Cite(Element):
     @staticmethod
     def split_and_create(input: str, parent: Element) -> Tuple[str, 'Cite', str]:
         pre,post = split_on_next(input,"\\cite")
+        post = post.strip()
+        if post.startswith("["):
+            # Extract title from the content
+            rename, post = split_on_first_brace(post,"[", "]")
+            rename = rename.strip()
+        else:
+            rename = ""
         name,post = split_on_first_brace(post)
         tmp = ""
         for elem in name.split(" "):
             tmp += elem
         citations = tmp.split(",")
-        return pre,Cite("",parent,citations),post
+        return pre,Cite("",parent,citations,rename),post
 
     def to_string(self) -> str:
         out = "["
         for elem in self.citations:
-            out += f"@{elem.lstrip().rstrip()}; "
-        out = out[:-2]+"]"
+            out += f"@{elem.strip()}; "
+        out = out[:-2]
+        if self.rename != "":
+            out += f", {self.rename.strip()}"
+        out += "]"
+        
         return out
 
 
@@ -387,28 +390,28 @@ class TheoremSearcher(Searcher):
     def split_and_create(self, input: str, parent: Element) -> Tuple[str, TheoremElement, str]:
         pre,content,post = begin_end_split(input,"\\begin{"+self.theorem_env_name+"}","\\end{"+self.theorem_env_name+"}")
         #strip only " "
-        content = content.lstrip(" ").rstrip()
+        content = content.strip()
+        if content == "":
+            return pre,Undefined("",parent),post
+        
         out = TheoremElement(parent,self.display_name,self.theorem_env_name,self.enum_parent_class)
         out.children = []
         if content.startswith("["):
             # Extract title from the content
             title, content = split_on_first_brace(content,"[", "]")
-            out.children.append(Undefined(title.lstrip().rstrip()+"\n",out))
+            out.children.append(Undefined(title.strip(),out))
         else:
             out.children.append(Undefined("",out))
 
-        content = content.lstrip().rstrip()
+        content = content.strip()
 
         if content.startswith("\\label"):
             label_ref,content = split_on_first_brace(content[len("\\label"):])
-            content = content.lstrip()
-            label = MystLabel("",out,label_ref)
-            element = Undefined(content,out)
+            content = content.strip()
+            label = MystLabel("",out,label_ref.strip())
             out.children.append(label)
-            out.children.append(element)
-            
-        else:
-            out.children.append(Undefined("\n"+content,out))
+        
+        out.children.append(Undefined("\n"+content,out))
         
         
         return pre,out,post

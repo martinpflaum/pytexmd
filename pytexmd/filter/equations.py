@@ -35,7 +35,7 @@ class EquationLabel(Element):
             self.label = "equation_label_error"
 
     def to_string(self) -> str:
-        return "\\label{" + self.label + "}"
+        return ""#"\\label{" + self.label + "}"
     
     @staticmethod
     def position(string: str) -> int:
@@ -117,7 +117,6 @@ class InlineLatex(Element):
             in_outer_dollar += content_unknown + "\\text{" + brace_content + "}"
             
         out = InlineLatex(content,parent)
-        out.expand([EquationLabel])
         out = apply_latex_protection(out)
         
 
@@ -189,10 +188,12 @@ class DefaultEquation(Element):
         self.end = end
 
     def to_string(self) -> str:
-        out = self.begin
+        out = "```{math}\n"
+        out += self.begin
         for child in self.children:
             out += child.to_string()
         out += self.end
+        out += "\n```"
         return out
  
 class DefaultEquationSearcher():
