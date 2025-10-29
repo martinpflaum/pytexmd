@@ -153,10 +153,11 @@ class Proof(Element):
     def __init__(self, modifiable_content: str, parent: Element):
         modifiable_content = modifiable_content.lstrip()
         
-        self.name = "Proof"
+        """self.name = "Proof"
         if not split_rename(modifiable_content) is None:
             self.name,modifiable_content = split_rename(modifiable_content) 
         self.name += "."
+        """
         super().__init__(modifiable_content,parent)
         
     @staticmethod
@@ -169,20 +170,18 @@ class Proof(Element):
     @staticmethod
     def split_and_create(input: str, parent: Element) -> Tuple[str, 'Proof', str]:
         pre,content,post = begin_end_split(input,"\\begin{proof}","\\end{proof}")
-        content = content.lstrip().rstrip()
-
-        # or content.startswith("\\textbf{Proof}.") or content.startswith("\\textbf{Proof}.") or content.startswith("\\emph{Proof.}") or content.startswith("\\textit{Proof.}") or content.startswith("\\emph{Proof}.") or content.startswith("\\textit{Proof}.")
-        junk_proof_starts = ["Proof.","\\textbf{Proof}.","\\emph{Proof}.","\\textit{Proof}.","\\emph{Proof.}","\\textit{Proof.}"]
-        for start in junk_proof_starts:
-            if content.startswith(start):
-                content = content[len(start):]
-                break
-        #if content.startswith("Proof."):
-        #    content = content[len("Proof."):]
-        content = content.lstrip().rstrip()
-
+        content = content.lstrip(" ").rstrip()
         out = Proof("",parent)
         out.children = []
+        if content.startswith("["):
+            # Extract title from the content
+            title, content = split_on_first_brace(content,"[", "]")
+            out.children.append(Undefined(title.lstrip().rstrip()+"\n",out))
+        else:
+            out.children.append(Undefined("",out))
+
+        content = content.lstrip().rstrip()
+
         if content.startswith("\\label"):
             label_ref,content = split_on_first_brace(content[len("\\label"):])
             content = content.lstrip()
@@ -192,17 +191,17 @@ class Proof(Element):
             out.children.append(element)
             
         else:
-            out.children.append(Undefined(content,out))
+            out.children.append(Undefined("\n"+content,out))
         
         
         return pre,out,post
 
     def to_string(self) -> str:
-        pre = f"\n:::{{prf:proof}} {self.name}\n"
+        pre = f"\n:::{{prf:proof}}\n"
         out = ""
         for child in self.children:
             out += child.to_string()
-        out = out.lstrip().rstrip()
+        out = out.rstrip()
         out = pre +out+ "\n:::\n"
         return out
 
@@ -335,14 +334,14 @@ class TheoremElement(Element):
         >>> isinstance(thm, TheoremElement)
         True
     """
-    def __init__(self, modifiable_content: str, parent: Element, display_name: str, theorem_env_name: str, enum_parent_class):
-        super().__init__(modifiable_content,parent)
+    def __init__(self, parent: Element, display_name: str, theorem_env_name: str, enum_parent_class):
+        super().__init__("",parent)
         self.display_name = display_name
-        theorem_type = "admonition"
+        theorem_type = "prf:theorem"#"admonition"
         if display_name.lower() in PRF_TYPES.keys():
             theorem_type = PRF_TYPES[display_name.lower()]
         self.theorem_type = theorem_type
-
+        
     def to_string(self) -> str:
         """Convert to Markdown theorem block.
 
@@ -351,18 +350,20 @@ class TheoremElement(Element):
         """
         
 
-        pre = "\n:::{"+self.theorem_type+"} "+f""
+        pre = "\n:::{"+self.theorem_type+"} "
         out = ""
         for child in self.children:
             out += child.to_string()
-        out = out.lstrip().rstrip()
+        out = out.rstrip()
+        
+        """
         if out.startswith("["):
             _,middle,out = begin_end_split(out,"[","]")
             out = middle.strip()+"\n" + out.lstrip()
         else:
             out = "\n"+out.lstrip()
+        """
         out = pre + out
-        
         out += "\n:::\n"
         return out
 
@@ -385,11 +386,19 @@ class TheoremSearcher(Searcher):
             
     def split_and_create(self, input: str, parent: Element) -> Tuple[str, TheoremElement, str]:
         pre,content,post = begin_end_split(input,"\\begin{"+self.theorem_env_name+"}","\\end{"+self.theorem_env_name+"}")
-        org_content = content
+        #strip only " "
+        content = content.lstrip(" ").rstrip()
+        out = TheoremElement(parent,self.display_name,self.theorem_env_name,self.enum_parent_class)
+        out.children = []
+        if content.startswith("["):
+            # Extract title from the content
+            title, content = split_on_first_brace(content,"[", "]")
+            out.children.append(Undefined(title.lstrip().rstrip()+"\n",out))
+        else:
+            out.children.append(Undefined("",out))
+
         content = content.lstrip().rstrip()
 
-        out = TheoremElement(content,parent,self.display_name,self.theorem_env_name,self.enum_parent_class)
-        out.children = []
         if content.startswith("\\label"):
             label_ref,content = split_on_first_brace(content[len("\\label"):])
             content = content.lstrip()
@@ -399,7 +408,7 @@ class TheoremSearcher(Searcher):
             out.children.append(element)
             
         else:
-            out.children.append(Undefined(content,out))
+            out.children.append(Undefined("\n"+content,out))
         
         
         return pre,out,post
