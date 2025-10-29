@@ -16,7 +16,7 @@ __all__ = [
     "get_number_within_equation",
     "get_theoremSearchers",
     "Textit",
-    "MystLabel",
+    "ProofLabel",
 ]
 from typing import List, Tuple
 from .core import *
@@ -50,7 +50,7 @@ proof_theorem_types = [
 for key in list(PRF_TYPES.keys()):
     PRF_TYPES[key+"s"] = PRF_TYPES[key]
     
-class MystLabel(Element):
+class ProofLabel(Element):
     """Element for MyST label.
 
     Args:
@@ -59,24 +59,24 @@ class MystLabel(Element):
         label_ref (str): Label reference.
 
     Example:
-        >>> label = MystLabel("content", None, "mylabel")
-        >>> isinstance(label, MystLabel)
+        >>> label = ProofLabel("content", None, "mylabel")
+        >>> isinstance(label, ProofLabel)
         True
     """
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
 
-        self.label_ref =  label_call(label_ref)
+        self.label_ref =  label_call(label_ref,LabelType.PRF_REF)
 
     @staticmethod
     def position(string: str) -> int:
         return position_of(string,"\\label")
 
     @staticmethod
-    def split_and_create(string: str, parent: Element) -> Tuple[str, 'MystLabel', str]:
+    def split_and_create(string: str, parent: Element) -> Tuple[str, 'ProofLabel', str]:
         pre,post = split_on_next(string,"\\label")
         label_ref,post = split_on_first_brace(post)
-        return pre,MystLabel("",parent,label_ref),post
+        return pre,ProofLabel("",parent,label_ref),post
 
     def to_string(self) -> str:
         return "\n:label: "+self.label_ref.strip()
@@ -92,7 +92,7 @@ class Ref(Element):
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
         
-        self.label_ref = ref_call(label_ref)
+        self.label_ref = label_ref
 
     @staticmethod
     def position(input: str) -> int:
@@ -105,8 +105,7 @@ class Ref(Element):
         return pre,Ref("",parent,label_ref),post
 
     def to_string(self) -> str:
-        return "[](#"+self.label_ref+")"
-
+        return ref_call(self.label_ref)
 
 class EqRef(Element):
     """Element for LaTeX \\eqref reference.
@@ -179,7 +178,7 @@ class Proof(Element):
         if content.startswith("\\label"):
             label_ref,content = split_on_first_brace(content[len("\\label"):])
             content = content.strip()
-            label = MystLabel("",out,label_ref.strip())
+            label = ProofLabel("",out,label_ref.strip())
             out.children.append(label)
         
         out.children.append(Undefined("\n"+content,out))
@@ -408,7 +407,7 @@ class TheoremSearcher(Searcher):
         if content.startswith("\\label"):
             label_ref,content = split_on_first_brace(content[len("\\label"):])
             content = content.strip()
-            label = MystLabel("",out,label_ref.strip())
+            label = ProofLabel("",out,label_ref.strip())
             out.children.append(label)
         
         out.children.append(Undefined("\n"+content,out))

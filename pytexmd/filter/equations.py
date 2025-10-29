@@ -30,9 +30,10 @@ from typing import List,Tuple,Union
 class EquationLabel(Element):
     def __init__(self,modifiable_content: str, parent: Element):
         super().__init__("",parent)
-        self.label = label_call(modifiable_content)
+        self.label = label_call(modifiable_content,LabelType.EQ)
         if self.label == "":
             self.label = "equation_label_error"
+        parent.add_label(self.label)
 
     def to_string(self) -> str:
         return ""#"\\label{" + self.label + "}"
@@ -146,7 +147,28 @@ class DoubleDolarLatex(Element):
             parent (Element): Parent element.
         """
         super().__init__(modifiable_content,parent)
+        self.label = ""
+        self.enumerated = True
 
+    def add_label(self,label: str):
+        if self.label != "":
+            print("this label is going to be overwritten:", self.label, "new:", label)
+        self.label = label.strip()
+
+    def to_string(self) -> str:
+        pre = "\n:::{math}\n"
+        if self.label != "":
+            pre += ":label: " + self.label + "\n"
+        if not self.enumerated:
+            pre += ":enumerated: false\n"
+
+        out = ""
+        for child in self.children:
+            out += child.to_string()
+        pre += out.strip()
+        pre += "\n:::\n"
+        return pre
+    
     @staticmethod
     def position(string: str) -> int:
         return position_of(string,"$$",save_split=False)
@@ -155,7 +177,8 @@ class DoubleDolarLatex(Element):
     def split_and_create(string: str, parent: Element) -> Tuple[str, 'Undefined', str]:
         pre,modifiable_content = split_on_next(string,"$$",save_split=False)
         content,post = split_on_next(modifiable_content,"$$",save_split=False)  
-        out = Undefined("\n$$\n" + content.rstrip().lstrip() + "\n$$\n",parent)
+        out = DoubleDolarLatex(content,parent)
+        #out = Undefined("\n$$\n" + content.rstrip().lstrip() + "\n$$\n",parent)
         out.expand([EquationLabel])
         out = apply_latex_protection(out)
         out.expand([GuardianSearcher("\\\\")])
@@ -187,14 +210,28 @@ class DefaultEquation(Element):
         self.begin = begin
         self.end = end
 
+        self.label = ""
+        self.enumerated = True
+
+    def add_label(self,label: str):
+        if self.label != "":
+            print("this label is going to be overwritten:", self.label, "new:", label)
+        self.label = label.strip()
+
     def to_string(self) -> str:
-        out = "```{math}\n"
-        out += self.begin
+        pre = "\n:::{math}\n"
+        if self.label != "":
+            pre += ":label: " + self.label + "\n"
+        if not self.enumerated:
+            pre += ":enumerated: false\n"
+            
+        out = ""
         for child in self.children:
             out += child.to_string()
-        out += self.end
-        out += "\n```"
-        return out
+        pre += out.strip()
+        pre += "\n:::\n"
+        return pre
+
  
 class DefaultEquationSearcher():
     """Searcher for enumerated align-like environments.

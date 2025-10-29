@@ -23,38 +23,73 @@ __all__ = [
     "SectionLike",
     "label_call",
     "ref_call",
+    "LabelType",
 ]
+
+from enum import Enum
+class LabelType(Enum):
+    REF = "ref"
+    NUMREF = "numref"
+    SECTION_LIKE = "section_like"
+    DOC = "doc"
+    EQ = "eq"
+    PRF_REF = "prf:ref"
+    ENUMERATION_ITEM = "enumeration_item"
+
+LABEL_TYPE_TO_STR_FUNCS = {
+    LabelType.REF: lambda label_name,rename: "{ref}"+f"`{label_name}`",
+    LabelType.NUMREF: lambda label_name,rename: "{numref}"+f"`{label_name}`",
+    LabelType.SECTION_LIKE: lambda label_name,rename: "{ref}"+f"`Custom Text <{label_name}>`",
+    LabelType.DOC: lambda label_name,rename: "{doc}"+f"`{label_name}`",
+    LabelType.EQ: lambda label_name,rename: "{eq}"+f"`{label_name}`",
+    LabelType.PRF_REF: lambda label_name,rename: "{prf:ref}"+f"`{label_name}`",
+    LabelType.NUMREF: lambda label_name,rename: "{numref}"+f"`{label_name}`",
+    LabelType.ENUMERATION_ITEM: lambda label_name,rename: f"[{rename}](#{label_name})",
+}
+LABEL_TO_LABEL_TYPE = {}
+
+LABEL_TO_RENAME = {}
 
 USED_LABELS = []
 
-def label_call(org: str) -> str:
+def raw_label_func(label:str,idx:int)->str:
+    if idx == 0:
+        return label + "_0"
+    else:
+        return label + "_" + str(idx)
+    
+def label_call(org: str,label_type:LabelType,rename:str="") -> str:
     global USED_LABELS
-    if org not in USED_LABELS:
-        org = org + "_0"
-        USED_LABELS.append(org)
-        return org
+    label = raw_label_func(org,0)
+    if label not in USED_LABELS:
+        USED_LABELS.append(label)
+        LABEL_TO_LABEL_TYPE[label] = label_type
+        LABEL_TO_RENAME[label] = rename
+        return label
     else:
         k = 1
         while True:
-            new_label = org + "_" + str(k)
+            new_label = raw_label_func(org,k)
             if new_label not in USED_LABELS:
                 USED_LABELS.append(new_label)
+                LABEL_TO_LABEL_TYPE[new_label] = label_type
+                LABEL_TO_RENAME[new_label] = rename
                 return new_label
             k = k + 1
 
 def ref_call(org: str) -> str:
-    def label_func(label:str,idx:int)->str:
-        if idx == 0:
-            return label + "_0"
-        else:
-            return label + "_" + str(idx)
-    
+    global USED_LABELS
     k = 0
     while True:
-        new_label = label_func(org,k)
-        
+        new_label = raw_label_func(org,k)
+
         if new_label not in USED_LABELS:
-            return label_func(org,k-1)#max(k-1,0))
+            out = raw_label_func(org,k-1)
+            if out not in LABEL_TO_LABEL_TYPE:
+                print("WARNING: ref_call called on label that was not defined before: " + out)
+                return "ERROR_UNDEFINED_LABEL_" + out
+            else:
+                return LABEL_TYPE_TO_STR_FUNCS[LABEL_TO_LABEL_TYPE[out]](out,LABEL_TO_RENAME[out])
         k = k + 1
         
 from typing import List, Optional, Tuple, Union, Callable,NamedTuple
@@ -584,7 +619,7 @@ class SectionLike(Element):
         if modifiable_content.startswith("\\label"):
             pre,content,post = splitting.begin_end_split(modifiable_content,"\\label{","}")
             modifiable_content = post.lstrip().rstrip()
-            self.label = label_call(content)
+            self.label = label_call(content,LabelType.SECTION_LIKE)
             
         super().__init__(modifiable_content,parent)
         self.name = name

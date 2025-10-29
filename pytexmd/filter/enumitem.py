@@ -17,23 +17,12 @@ class ItemizeItem(Element):
         >>> print(item.to_string())
         •  First item
     """
-    def __init__(self, modifiable_content: str, parent: Element, label: str = "*"):
-        """
-        Args:
-            modifiable_content (str): The content of the item.
-            parent (Element): The parent element.
-            label (str, optional): The label for the item. Defaults to "•".
-
-        Example:
-            >>> item = ItemizeItem("abc", None)
-            >>> item.label
-            '•'
-        """
+    def __init__(self, modifiable_content: str, parent: Element, rename_item: str = "*"):
         super().__init__("",parent)
-        self.label = label
+        self.rename_item = rename_item
 
-        self.children = [Undefined(label,self),Undefined(modifiable_content,self)]
-    
+        self.children = [Undefined(self.rename_item,self),Undefined(modifiable_content,self)]
+
     def label_name(self) -> str:
         """
         Returns the label of the item.
@@ -46,7 +35,7 @@ class ItemizeItem(Element):
             >>> item.label_name()
             '•'
         """
-        return self.label#self.children[0].to_string()
+        return self.rename_item#self.children[0].to_string()
 
     def to_string(self) -> str:
         """
@@ -64,8 +53,13 @@ class ItemizeItem(Element):
 
         
         out = self.children[0].to_string()+" "
-        out += self.children[1].to_string().lstrip().rstrip()
-        out = out.replace("\n","\n"+ "  ")
+        tmp = self.children[1].to_string().lstrip().rstrip()
+        for i, line in enumerate(tmp.split("\n")):
+            if i==0:
+                out += line.strip() + "\n"
+            else:
+                out += "   " + line.strip() + "\n"
+        out = out.rstrip()
         return out
 
     @staticmethod
@@ -110,11 +104,11 @@ class ItemizeItem(Element):
         else:
             post = ""
 
-        label = ""
+        rename_item = ""
         if first_char_brace(content,"["):
-            label,content = split_on_first_brace(content,"[","]")
-        elem_out = ItemizeItem(content,parent,label)
-        
+            rename_item,content = split_on_first_brace(content,"[","]")
+        elem_out = ItemizeItem(content,parent,rename_item)
+
         return pre,elem_out,post
 
 class Itemize(Element):
@@ -209,12 +203,12 @@ class EnumerationItem(Element):
         >>> isinstance(enum_item.to_string(), str)
         True
     """
-    def __init__(self, modifiable_content: str, parent: Element, label: str = None):
+    def __init__(self, modifiable_content: str, parent: Element, rename_item: str = None):
         """
         Args:
             modifiable_content (str): The content of the item.
             parent (Element): The parent element.
-            label (str, optional): The label for the item.
+            rename_item (str, optional): The label for the item.
 
         Example:
             >>> enum_item = EnumerationItem("abc", None)
@@ -223,17 +217,18 @@ class EnumerationItem(Element):
         """
         super().__init__("",parent)
         modifiable_content = modifiable_content.lstrip().rstrip()
-        self.label_str = None
-        if modifiable_content.startswith("\\label"):
-            label_str,modifiable_content = split_on_first_brace(modifiable_content[len("\\label"):],"{" ,"}")
-            self.label_str = label_call(label_str)
-        self.label = ""
-        if label is None:
+        self.rename_item = ""
+        if rename_item is None:
             enumeration: Enumeration = self.search_class(Enumeration)
-            self.label = enumeration.generate_item_label()
+            self.rename_item = enumeration.generate_item_label()
         else:
-            self.label = label
-        self.children = [Undefined(self.label, self), Undefined(modifiable_content, self)]
+            self.rename_item = rename_item
+
+        self.rename_item_str = None
+        if modifiable_content.startswith("\\label"):
+            label,modifiable_content = split_on_first_brace(modifiable_content[len("\\label"):],"{" ,"}")
+            self.rename_item_str = label_call(label,LabelType.ENUMERATION_ITEM,self.rename_item)
+        self.children = [Undefined(self.rename_item, self), Undefined(modifiable_content, self)]
 
     def label_name(self) -> str:
         """
@@ -247,16 +242,21 @@ class EnumerationItem(Element):
             >>> enum_item.label_name()
             ''
         """
-        return self.label
+        return self.rename_item
 
     def to_string(self) -> str: 
         out = ""
-        if self.label_str is None:
+        if self.rename_item_str is None:
             out = self.children[0].to_string().strip()+" "
         else:
-            out = self.children[0].to_string().strip()+" "+"(" + self.label_str + ")=\n   " 
-        out += self.children[1].to_string().lstrip().rstrip().replace("\n","\n"+"  ")
-        
+            out = self.children[0].to_string().strip()+" "+"(" + self.rename_item_str + ")=\n   " 
+        tmp = self.children[1].to_string().lstrip().rstrip()
+        for i, line in enumerate(tmp.split("\n")):
+            if i==0:
+                out += line.strip() + "\n"
+            else:
+                out += "   " + line.strip() + "\n"
+        out = out.rstrip()
         return out
 
     @staticmethod
@@ -302,11 +302,11 @@ class EnumerationItem(Element):
             post = ""
 
 
-        label = None
+        rename_item = None
         if first_char_brace(content,"["):
-            label,content = split_on_first_brace(content,"[","]")
-        elem_out = EnumerationItem(content,parent,label)
-        
+            rename_item,content = split_on_first_brace(content,"[","]")
+        elem_out = EnumerationItem(content,parent,rename_item)
+
         return pre,elem_out,post
        
 class Enumeration(Element):
@@ -320,13 +320,7 @@ class Enumeration(Element):
     """
     def __init__(self, modifiable_content: str, parent: Element,start):
         """
-        Args:
-            modifiable_content (str): The content of the enumerate.
-            parent (Element): The parent element.
-            style_func (callable): Function to generate item labels.
-            left (str): Left delimiter for label.
-            right (str): Right delimiter for label.
-
+        
         Example:
             >>> enum = Enumeration("abc", None, enum_style_arabic, "(", ")")
             >>> isinstance(enum, Enumeration)
@@ -336,13 +330,6 @@ class Enumeration(Element):
         self.current_index = start
     
     def generate_item_label(self) -> str:
-        """
-        Generates the label for the next enumeration item.
-
-        Returns:
-            str: The generated label.
-        
-        """
         out = str(self.current_index) + "."
         self.current_index += 1
         return out
