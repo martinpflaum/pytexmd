@@ -17,7 +17,7 @@ __all__ = [
     "BeginEquationElement",
     "BeginAlignStar",
     "BeginAlignSearcher",
-    "get_all_filters"
+    "get_all_filters",
 ]
 
 #%%
@@ -25,6 +25,7 @@ __all__ = [
 from .splitting import *
 from .core import *
 from typing import List,Tuple,Union
+from ..config import LATEX_REPLACEMENTS
 
 
 class EquationLabel(Element):
@@ -63,6 +64,8 @@ def apply_latex_protection(string: Element) -> Element:
     #expandon = [JunkSearch("\\begin{" + elem + "}",save_split=False) for elem in multiline]
     #expandon += [JunkSearch("\\end{" + elem + "}",save_split=False) for elem in multiline]
     expandon = []
+    for old_val,new_val in LATEX_REPLACEMENTS:
+        expandon.append(ReplaceSearcher(old_val,new_val))
     #expandon += [Cases,LatexText]#,ReplaceSearcher(r"\mathbbm",r"\mathbb"),ReplaceSearcher(r"\widebar",r"\overline")]
     expandon += [GuardianSearcher("\\",save_split=False),GuardianSearcher("$",save_split=False),GuardianSearcher("{",save_split=False),GuardianSearcher("}",save_split=False)]
     string.expand(expandon) #lol -- was das für ein fehler

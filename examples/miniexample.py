@@ -5,6 +5,12 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 import pytexmd as ptm
 
+ptm.config.set_latex_replacements([(r"\widebar", r"\overline"),
+                                 (r"\C", r"\mathbb{C}"),
+                                 (r"\H", r"\mathbb{H}"),
+                                 (r"\ltsbrak",r"\langle\langle"),
+                                 (r"\rtsbrak",r"\rangle\rangle"),
+                                 (r"\mathbbm",r"\mathfrak"),])
 file_name = "../examples_tex/FANCyProject/FaNCyProject.tex"
 ptm.process_file(file_name,"./my_docs3",depth=3)
 

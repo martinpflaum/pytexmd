@@ -39,12 +39,12 @@ class LabelType(Enum):
 LABEL_TYPE_TO_STR_FUNCS = {
     LabelType.REF: lambda label_name,rename: "{ref}"+f"`{label_name}`",
     LabelType.NUMREF: lambda label_name,rename: "{numref}"+f"`{label_name}`",
-    LabelType.SECTION_LIKE: lambda label_name,rename: "{ref}"+f"`Custom Text <{label_name}>`",
+    LabelType.SECTION_LIKE: lambda label_name,rename: "{ref}"+f"`{label_name}`",
     LabelType.DOC: lambda label_name,rename: "{doc}"+f"`{label_name}`",
     LabelType.EQ: lambda label_name,rename: "{eq}"+f"`{label_name}`",
     LabelType.PRF_REF: lambda label_name,rename: "{prf:ref}"+f"`{label_name}`",
     LabelType.NUMREF: lambda label_name,rename: "{numref}"+f"`{label_name}`",
-    LabelType.ENUMERATION_ITEM: lambda label_name,rename: f"[{rename}](#{label_name})",
+    LabelType.ENUMERATION_ITEM:  lambda label_name,rename: "{ref}"+f"`{label_name}`",#lambda label_name,rename: f"[{rename}](#{label_name})",
 }
 LABEL_TO_LABEL_TYPE = {}
 

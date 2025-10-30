@@ -8,7 +8,7 @@ __all__ = ["process_file"]
 from .filter import process_string
 from .file_loader import load_tex_file
 from .sphinx_doc import create_sphinx_documentation
-
+from .filter.splitting import split_rename
 
 def process_file(
     input_file: str,
@@ -17,7 +17,7 @@ def process_file(
     output_suffix: str = ".md",
     project_name: str = "My Project",
     author: str = "Author",
-    version: str = "1.0"
+    version: str = "1.0",
 ) -> None:
     """Process a LaTeX file and generate documentation.
 
