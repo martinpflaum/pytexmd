@@ -193,6 +193,71 @@ class Itemize(Element):
 
         return pre,elem_out,post
 
+def parse_label_pattern(pattern: str, counter_value: int) -> str:
+    """
+    Parses LaTeX label patterns and converts them to formatted strings.
+    
+    Args:
+        pattern (str): LaTeX label pattern like '\textup{({\sffamily SF\arabic*})}'
+        counter_value (int): Current counter value
+        
+    Returns:
+        str: Formatted label string
+        
+    Example:
+        >>> parse_label_pattern('\\textup{({\\sffamily SF\\arabic*})}', 1)
+        'SF1'
+    """
+    result = pattern
+    
+    # Remove common LaTeX formatting commands
+    formatting_commands = [
+        '\\sffamily', '\\bfseries', '\\itshape', '\\rmfamily',
+        '\\small', '\\large', '\\Large', '\\LARGE', '\\huge', '\\Huge',
+        '\\textup', '\\textbf', '\\textit', '\\textrm', '\\textsf', '\\texttt'
+    ]
+    
+    for cmd in formatting_commands:
+        result = result.replace(cmd, '')
+    
+    result = result.replace('{', '').replace('}', '')
+    counter_patterns = {
+        '\\arabic*': str(counter_value),
+        '\\roman*': to_roman_lower(counter_value),
+        '\\Roman*': to_roman_upper(counter_value),
+        '\\alph*': to_alpha_lower(counter_value),
+        '\\Alph*': to_alpha_upper(counter_value)
+    }
+    
+    for pattern_key, replacement in counter_patterns.items():
+        result = result.replace(pattern_key, replacement)
+    
+    return result.strip()
+
+def to_roman_lower(num: int) -> str:
+    """Convert integer to lowercase Roman numeral."""
+    values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+    symbols = ['m', 'cm', 'd', 'cd', 'c', 'xc', 'l', 'xl', 'x', 'ix', 'v', 'iv', 'i']
+    result = ''
+    for i in range(len(values)):
+        count = num // values[i]
+        result += symbols[i] * count
+        num -= values[i] * count
+    return result
+
+def to_roman_upper(num: int) -> str:
+    """Convert integer to uppercase Roman numeral."""
+    return to_roman_lower(num).upper()
+
+def to_alpha_lower(num: int) -> str:
+    """Convert integer to lowercase letter (1=a, 2=b, etc.)."""
+    if num <= 0 or num > 26:
+        return str(num)
+    return chr(ord('a') + num - 1)
+
+def to_alpha_upper(num: int) -> str:
+    """Convert integer to uppercase letter (1=A, 2=B, etc.)."""
+    return to_alpha_lower(num).upper()
 
 class EnumerationItem(Element):
     """
@@ -301,7 +366,7 @@ class EnumerationItem(Element):
         else:
             post = ""
 
-
+        content = content.lstrip()
         rename_item = None
         if first_char_brace(content,"["):
             rename_item,content = split_on_first_brace(content,"[","]")
@@ -318,7 +383,7 @@ class Enumeration(Element):
         >>> isinstance(enum.to_string(), str)
         True
     """
-    def __init__(self, modifiable_content: str, parent: Element,start):
+    def __init__(self, modifiable_content: str, parent: Element,start,label_part):
         """
         
         Example:
@@ -328,8 +393,13 @@ class Enumeration(Element):
         """
         super().__init__(modifiable_content,parent)
         self.current_index = start
+        self.label_part = label_part
     
     def generate_item_label(self) -> str:
+        if self.label_part is not None:
+            out = parse_label_pattern(self.label_part,self.current_index)
+            self.current_index += 1
+            return ":"+out+":"
         out = str(self.current_index) + "."
         self.current_index += 1
         return out
@@ -347,6 +417,7 @@ class Enumeration(Element):
             True
         """
         out = "\n" 
+
         for child in self.children:
             out += child.to_string().rstrip().lstrip() + "\n"
         return out
@@ -389,19 +460,23 @@ class Enumeration(Element):
         pre,content,post = begin_end_split(string,"\\begin{enumerate}","\\end{enumerate}")
         content = content.lstrip().rstrip()
         start = 1
+        label_part = None
         if content.startswith("["):
-            _pre,_content,_post =begin_end_split(content,"[","]")
+            _pre,_content,_post = begin_end_split(content,"[","]")
             content = _post.lstrip().rstrip()
             if "label" in _content:
-                label_str = _content.split("label")[1].split("=")[1].strip().split(",")[0].strip()
+                label_part = _content.split("label")[1].split("=")[1].strip().split(",")[0].strip()
                 # Here you could implement parsing of label_str to set style_func, left, right
+                
+                
             if "start" in _content:
                 start_str = _content.split("start")[1].split("=")[1].strip().split(",")[0].strip()
                 try:
                     start = int(start_str)
                 except:
                     start = 1
-        elem_out = Enumeration(content,parent,start)
+
+        elem_out = Enumeration(content,parent,start,label_part)
         elem_out.expand([EnumerationItem])
 
         return pre,elem_out,post
