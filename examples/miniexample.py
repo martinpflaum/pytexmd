@@ -10,7 +10,7 @@ ptm.config.set_latex_replacements([(r"\widebar", r"\overline"),
                                  (r"\H", r"\mathbb{H}"),
                                  (r"\ltsbrak",r"\langle\langle"),
                                  (r"\rtsbrak",r"\rangle\rangle"),
-                                 (r"\mathbbm",r"\mathfrak"),])
+                                 (r"\mathbbm",r"\mathbb"),])#works in mathjax
 file_name = "../examples_tex/FANCyProject/FaNCyProject.tex"
 ptm.process_file(file_name,"./my_docs3",depth=3)
 

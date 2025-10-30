@@ -65,7 +65,7 @@ def apply_latex_protection(string: Element) -> Element:
     #expandon += [JunkSearch("\\end{" + elem + "}",save_split=False) for elem in multiline]
     expandon = []
     for old_val,new_val in LATEX_REPLACEMENTS:
-        expandon.append(ReplaceSearcher(old_val,new_val))
+        expandon.append(ReplaceSearcher(old_val,new_val,save_split=False))
     #expandon += [Cases,LatexText]#,ReplaceSearcher(r"\mathbbm",r"\mathbb"),ReplaceSearcher(r"\widebar",r"\overline")]
     expandon += [GuardianSearcher("\\",save_split=False),GuardianSearcher("$",save_split=False),GuardianSearcher("{",save_split=False),GuardianSearcher("}",save_split=False)]
     string.expand(expandon) #lol -- was das für ein fehler
