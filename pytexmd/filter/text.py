@@ -127,7 +127,7 @@ class EqRef(Element):
     def split_and_create(input: str, parent: Element) -> Tuple[str, 'Ref', str]:
         pre,post = split_on_next(input,"\\eqref")
         label_ref,post = split_on_first_brace(post)
-        return pre,Ref("",parent,label_ref),post
+        return pre,Ref("",parent,label_ref),post#TODO maybewrong
 
     def to_string(self) -> str:
         return "[](#"+self.label_ref+")"
