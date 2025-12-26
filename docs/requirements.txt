@@ -3,3 +3,5 @@ myst-parser
 sphinx-proof
 furo
 regex
+sphinx-copybutton
+nbsphinx
