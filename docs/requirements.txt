@@ -1,0 +1,5 @@
+sphinx>=7.0
+myst-parser
+sphinx-proof
+furo
+regex
