@@ -1,4 +1,4 @@
-# Pytexmd
+# PyTeXmd
 
 Pytexmd is a Python package designed to translate LaTeX documents to Markdown MyST and HTML. It provides utilities for filtering content, loading files, and integrating with Sphinx documentation. 
 
