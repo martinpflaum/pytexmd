@@ -11,3 +11,7 @@ docs/build/
 pytexmd\filter\__pycache__\
 pytexmd/filter/__pycache__/
 examples_tex
+
+
+build
+dist

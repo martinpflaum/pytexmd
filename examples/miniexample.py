@@ -12,7 +12,7 @@ import pytexmd as ptm
                                  (r"\rtsbrak",r"\rangle\rangle"),
                                  (r"\mathbbm",r"\mathbb"),])#works in mathjax
 """
-file_name = "../examples_tex/FANCyProject/FaNCyProject.tex"
+file_name = "../examples_tex/FANCyProject-master/FaNCyProject.tex"
 ptm.process_file(file_name,"./my_docs3",depth=3)
 
 # %%
