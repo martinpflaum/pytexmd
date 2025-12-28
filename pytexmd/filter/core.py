@@ -97,9 +97,9 @@ from . import splitting
 
 call_num = 0
 
-class FileStructure():
-    def __init__(self,file_name:str,content: str="",children:List["FileStructure"]=[]):
-        self.file_name = file_name
+class SectionStructure():
+    def __init__(self,name:str,content: str="",children:List["SectionStructure"]=[]):
+        self.name = name
         self.content = content
         self.children = children
 
@@ -419,20 +419,6 @@ class Element():
         """
         raise NotImplementedError("no function to_string found")
     
-    def to_file_structure(self,current_depth)->FileStructure|str:
-        """Convert element to FileStructure representation.
-
-        Returns:
-            FileStructure | str: FileStructure or string representation.
-
-        Example:
-            >>> class Dummy(Element):
-            ...     def to_structure(self): return "dummy"
-            >>> Dummy("abc", None).to_structure()
-            'dummy'
-        """
-        return self.to_string()
-
 
 def get_number_within_equation(string: str) -> str:
     """Extract equation numbering context from LaTeX string.
@@ -610,6 +596,14 @@ SECTION_LIKE_COMMANDS_TO_HASHTAGS = {
     "\\paragraph*": "#### ",
     "\\subparagraph*": "#### ",
 }
+
+SEC_DEF_SPLITTER = "XXSEC_DEF_SPLITTERXX"
+SEC_PREFIX_BEGIN = "XXSEC_PREFIX_BEGINXX"
+SEC_PREFIX_END = "XXSEC_PREFIX_ENDXX"
+
+def make_myst_comment(string: str) -> str:
+    return "\n<!-- " + string + " -->"
+
 class SectionLike(Element):
     """Element for section-like LaTeX commands.
 
@@ -626,6 +620,10 @@ class SectionLike(Element):
         self.command_name = command_name
 
     def to_string(self) -> str:
+        comment = make_myst_comment(f"{SEC_DEF_SPLITTER}{self.command_name}{SEC_DEF_SPLITTER}{self.name}{SEC_DEF_SPLITTER}")
+        begin_comment = make_myst_comment(f"{SEC_PREFIX_BEGIN}{self.command_name}{self.name}")
+        end_comment = make_myst_comment(f"{SEC_PREFIX_END}{self.command_name}{self.name}")
+
         if self.label is not None:
             pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
         else:
@@ -633,26 +631,11 @@ class SectionLike(Element):
         out = ""
         for child in self.children:
             out += child.to_string()
-        out = pre + out.lstrip()
+        
+        out = comment +begin_comment+ pre + out.lstrip() + end_comment +"\n"
+        
         return out
     
-    def to_file_structure(self,current_depth)->FileStructure:
-        if current_depth <= 0:
-            return self.to_string()
-        
-        out = ""
-        childs = []
-        for child in self.children:
-            struct = child.to_file_structure(current_depth-1)
-            if isinstance(struct,str):
-                out += struct
-            else:
-                if struct.file_name is None:
-                    out += struct.content
-                    childs.extend(struct.children)
-                else:
-                    childs.append(struct)
-        return FileStructure(self.name,out,childs)
         
 class SectionLikeSearcher(Searcher):
     """Searcher for LaTeX commands.
@@ -719,44 +702,18 @@ class Document(Element):
             out += child.to_string()
         return out
 
-    def to_file_structure(self,current_depth)->FileStructure:
-        if current_depth <= 0:
-            return self.to_string()
-        
-        out = ""
-        childs = []
-        for child in self.children:
-            struct = child.to_file_structure(current_depth-1)
-            if isinstance(struct,str):
-                out += struct
-            else:
-                childs.append(struct)
-        return FileStructure(self.name,out,childs)
             
 class Undefined(Element):
     """Element for undefined LaTeX content."""
     def __init__(self,modifiable_content: str, parent: Element):
         super().__init__(modifiable_content,parent)
 
+    
     def to_string(self) -> str:
         out = ""
         for child in self.children:
             out += child.to_string()
         return out
-
-    def to_file_structure(self,current_depth)->FileStructure:
-        if current_depth <= 0:
-            return self.to_string()
-        
-        out = ""
-        childs = []
-        for child in self.children:
-            struct = child.to_file_structure(current_depth)
-            if isinstance(struct,str):
-                out += struct
-            else:
-                childs.append(struct)
-        return FileStructure(None,out,childs)
 
 class RawText(Element):
     """Element for raw text content."""
