@@ -96,6 +96,15 @@ def create_sphinx_documentation(
     print("waiting 0.5 seconds to let the file system catch up")
     time.sleep(0.5)
 
+    # Delete the auto-generated index.rst file
+    try:
+        index_rst_path = Path(output_dir) / "source" / "index.rst"
+        if index_rst_path.exists():
+            index_rst_path.unlink()
+            print(f"Deleted auto-generated index.rst file at {index_rst_path}")
+    except Exception as e:
+        print(f"Warning: Could not delete index.rst: {e}")
+
     try:
         output_dir = os.path.abspath(output_dir)
         Path(output_dir).mkdir(parents=True)
@@ -104,5 +113,5 @@ def create_sphinx_documentation(
     
     output_dir = os.path.abspath(output_dir)
     create_config_file(output_dir, project_name, author, version)
-    
+
 

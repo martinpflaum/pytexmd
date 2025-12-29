@@ -27,6 +27,7 @@ __all__ = [
 ]
 
 from enum import Enum
+
 class LabelType(Enum):
     REF = "ref"
     NUMREF = "numref"
@@ -420,6 +421,23 @@ class Element():
         raise NotImplementedError("no function to_string found")
     
 
+class StructureMaker(Element):
+    def __init__(self, modifiable_content, parent):
+        super().__init__(modifiable_content, parent)
+
+    def get_content(self)->str:
+        out = ""
+        for child in self.children:
+            if not isinstance(child, StructureMaker):
+                out += child.to_string()
+            elif len(child.get_structures()) == 0:
+                out += child.to_string()
+                
+        return out
+    
+    def get_structures(self) -> List[SectionStructure]:
+        raise NotImplementedError("no function get_structures found")
+    
 def get_number_within_equation(string: str) -> str:
     """Extract equation numbering context from LaTeX string.
 
@@ -604,7 +622,7 @@ SEC_PREFIX_END = "XXSEC_PREFIX_ENDXX"
 def make_myst_comment(string: str) -> str:
     return "\n<!-- " + string + " -->"
 
-class SectionLike(Element):
+class SectionLike(StructureMaker):
     """Element for section-like LaTeX commands.
 
     """
@@ -634,6 +652,33 @@ class SectionLike(Element):
         
         out = comment +begin_comment+ pre + out.lstrip() + end_comment +"\n"
         
+        return out
+    
+    def get_content(self)->str:
+        
+        if self.label is not None:
+            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+        else:
+            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+    
+        out = ""
+        for child in self.children:
+            if not isinstance(child, StructureMaker):
+                out += child.to_string()
+            elif len(child.get_structures()) == 0:
+                out += child.to_string()
+                
+        out = pre + out.lstrip() +"\n"
+        return out
+
+    def get_structures(self)->List[SectionStructure]:
+        out = []
+        child_structures = []
+        for child in self.children:
+            if isinstance(child,StructureMaker):
+                child_structures.extend(child.get_structures())
+        
+        out.append(SectionStructure(self.name,self.get_content(),child_structures))
         return out
     
         
@@ -670,15 +715,14 @@ class SectionLikeSearcher(Searcher):
         
         return pre,SectionLike(content,parent,self.command_name,name),post
 
-def get_section_like_filters() -> List[Searcher]:
+def get_section_like_filters_top_lvl() -> List[Searcher]:
     out = []
     for command in SECTION_LIKE_COMMANDS:
-        out.append(SectionLikeSearcher(command))
-        out.append(SectionLikeSearcher(command+"*"))
+        out.append([SectionLikeSearcher(command),SectionLikeSearcher(command+"*")])
         
     return out
 
-class Document(Element):
+class Document(StructureMaker):
     """Element representing a LaTeX document."""
     def __init__(self,modifiable_content: str, parent: Element):
         super().__init__(modifiable_content,parent)
@@ -702,19 +746,40 @@ class Document(Element):
             out += child.to_string()
         return out
 
+    def get_structures(self)->List[SectionStructure]:
+        out = []
+        child_structures = []
+        for child in self.children:
+            if isinstance(child,StructureMaker):
+                child_structures.extend(child.get_structures())
+        
+        out.append(SectionStructure("index",self.get_content(),child_structures))
+        return out
+    
+
             
-class Undefined(Element):
+class Undefined(StructureMaker):
     """Element for undefined LaTeX content."""
     def __init__(self,modifiable_content: str, parent: Element):
         super().__init__(modifiable_content,parent)
 
     
+    def tree_to_files(element:core.SectionLike,file_name:str,depth:int,output_suffix:str=".md"):
+        pass
+
     def to_string(self) -> str:
         out = ""
         for child in self.children:
             out += child.to_string()
         return out
-
+    
+    def get_structures(self)->List[SectionStructure]:
+        child_structures = []
+        for child in self.children:
+            if isinstance(child,StructureMaker):
+                child_structures.extend(child.get_structures())
+        return child_structures
+        
 class RawText(Element):
     """Element for raw text content."""
     def __init__(self,string: str, parent: Element):

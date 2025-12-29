@@ -18,7 +18,7 @@ from . import preprocessor,enumitem,equations,antibugs,core,splitting, text
 from typing import List
 NUM_FILES = 0
 
-def string_to_tree(string:str):
+def string_to_tree(string:str)->core.Document:
     """
     Converts a string to a document tree structure.
 
@@ -41,7 +41,7 @@ def string_to_tree(string:str):
     all_expands = []
     
     #basic_expands += junkSearcher+replaceSearcher
-    all_expands += [core.get_section_like_filters()]
+    all_expands += core.get_section_like_filters_top_lvl()
     all_expands += [text.get_theoremSearchers(string)]+[[text.Proof]]+ [enumitem.get_all_filters()]
     all_expands += [equations.get_all_filters()]
     all_expands += [text.get_all_filters()] 
@@ -252,6 +252,27 @@ def tree_to_files(output_folder:str,element:core.SectionLike,file_name:str,depth
             
     return element_to_file_only_begin(element,output_folder,file_name,child_file_names,output_suffix)
 
+
+def save_structure(output_folder:str,structure:core.SectionStructure,output_suffix:str=".md"):
+    file_name = string_to_file_name(structure.name)
+    file_name = output_folder+"/"+file_name+output_suffix
+    file_str = structure.content+"\n\n"
+    if len(structure.children) != 0:
+        file_str += ".. toctree::\n"
+    
+        #.. toctree::
+
+    
+    print(f"File {file_name} created.")
+    for child in structure.children:
+    
+        child_file_name = save_structure(output_folder,child,output_suffix)
+        file_str += "   "+f"{child_file_name}\n"
+    
+    with open(file_name,"w",encoding="utf-8") as f:
+        f.write(file_str)
+    
+    return string_to_file_name(structure.name)
 def process_string(output_folder:str,string:str,depth=2,output_suffix:str=".md"):
     """
     Processes a string and writes the document to files.
@@ -279,5 +300,7 @@ def process_string(output_folder:str,string:str,depth=2,output_suffix:str=".md")
     if not isinstance(string,str):
         raise ValueError("string must be a string")
     document = string_to_tree(string)
+    #structures = document.get_structures()[0]
+    #save_structure(output_folder,structures,output_suffix)
     element_to_file_whole(document,output_folder,"index",output_suffix)
     #tree_to_files(output_folder,document,"index",depth,output_suffix)
