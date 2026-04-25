@@ -1,22 +1,46 @@
 __all__ = ["string_to_tree",
-           "tree_to_files",
            "process_string",
-           "string_to_file_name",
            "element_to_file_whole",
-           "element_to_file_only_begin"
+           "element_to_file_only_begin",
+           "split_document_to_files",
+           "split_by_sections",
+           "verify_content_integrity",
+           "string_to_filename",
            "preprocessor",
            "text",
            "enumitem",
            "equations",
            "antibugs",
-           "core"
+           "core",
            "splitting"
            ]
 
 
 from . import preprocessor,enumitem,equations,antibugs,core,splitting, text
 from typing import List
+from pathlib import Path
+import os
+import re
+
 NUM_FILES = 0
+
+# Section hierarchy mapping for splitting
+SECTION_HIERARCHY = {
+    "\\part": 0,
+    "\\chapter": 1,
+    "\\section": 2,
+    "\\subsection": 3,
+    "\\subsubsection": 4,
+    "\\paragraph": 5,
+    "\\subparagraph": 6,
+    "\\part*": 0,
+    "\\chapter*": 1,
+    "\\section*": 2,
+    "\\subsection*": 3,
+    "\\subsubsection*": 4,
+    "\\paragraph*": 5,
+    "\\subparagraph*": 6,
+}
 
 def string_to_tree(string:str)->core.Document:
     """
@@ -41,6 +65,7 @@ def string_to_tree(string:str)->core.Document:
     all_expands = []
     
     #basic_expands += junkSearcher+replaceSearcher
+    all_expands += [[core.JunkSearcher("\\backmatter")]]  #backmatter and appendix splitter
     all_expands += core.get_section_like_filters_top_lvl()
     all_expands += [text.get_theoremSearchers(string)]+[[text.Proof]]+ [enumitem.get_all_filters()]
     all_expands += [equations.get_all_filters()]
@@ -75,38 +100,6 @@ def string_to_tree(string:str)->core.Document:
     
     return document
 
-def string_to_file_name(string: str):
-    """
-    Generates a file name from a string.
-
-    Args:
-        string (str): The input string.
-
-    Returns:
-        str: A sanitized file name.
-
-    Example:
-        ```python
-        # Produces 'section_0' for empty string
-        print(string_to_file_name(""))  
-        # Produces 'my_section_1' for "My Section"
-        print(string_to_file_name("My Section"))
-        ```
-    """
-    if string == "index":
-        return "index"
-    global NUM_FILES
-    
-    file_name = string.strip()
-    file_name = file_name.split("\n")[0]
-    if file_name == "":
-        file_name = "section"
-    # Replace spaces and newlines with underscores
-    file_name = file_name.replace(" ", "_").replace("\n", "")
-    # Remove all non-alphanumeric and non-underscore characters, and make lowercase
-    file_name = ''.join([c.lower() if c.isalpha() else c if c.isdigit() or c == '_' else '_' for c in file_name])
-    file_name += "_" + str(NUM_FILES)
-    return file_name
 
 def element_to_file_whole(element:core.SectionLike,output_folder:str,file_name:str,output_suffix:str=".md"):
     """
@@ -180,128 +173,356 @@ def element_to_file_only_begin(element:core.SectionLike,output_folder:str,file_n
     print(f"File {file_name} created.")
     return [file_name.replace(output_suffix,"")]
 
-def tree_to_files(output_folder:str,element:core.SectionLike,file_name:str,depth:int,output_suffix:str=".md"):
-    """
-    Recursively writes tree elements to files up to a given depth.
 
+def string_to_filename(name):
+    """Convert section name to valid filename.
+    
     Args:
-        output_folder (str): The output folder path.
-        element (SectionEnumerate): The root element.
-        file_name (str): The base file name.
-        depth (int): The recursion depth.
-        output_suffix (str, optional): The file suffix. Defaults to ".md".
-
-    Returns:
-        None
-
-    Example:
-        ```python
-        # Recursively split document into files for each section up to depth 2
-        doc = string_to_tree(r"\\section{Intro}\\section{Background}")
-        tree_to_files("output", doc, "index", 2)
-        ```
-    """
-    global NUM_FILES
-    if depth == 0:
-        return element_to_file_whole(element,output_folder,string_to_file_name(file_name),output_suffix)
-    
-    if not isinstance(element,(core.SectionLike,core.Document)):
-        has_found_childs = False
-        for child in element.children:
-            if isinstance(child,(core.SectionLike,core.Document)):
-                has_found_childs = True
-                break
-        if not has_found_childs:
-            return []
-        else:
-            child_file_names = []
-    
-            for child in element.children:
-                if isinstance(child,(core.SectionLike,core.Document)):
-                    child_file_name = string_to_file_name(child.children[0].to_string())
-                    child_file_names.extend(tree_to_files(output_folder,child,None,depth-1,output_suffix))
-                else:
-                    child_file_names.extend(tree_to_files(output_folder,child,None,depth,output_suffix))
-            
-            return child_file_names
-    else:
-        if file_name is None:
-            file_name = string_to_file_name(element.children[0].to_string())
-    if not isinstance(depth,int) or depth < 0:
-        raise ValueError("depth must be a non-negative integer")
-    if not isinstance(output_folder,str):
-        raise ValueError("output_folder must be a string")
-    
-         
-    
-    has_found_childs = False
-    for child in element.children:
-        if isinstance(child,(core.SectionLike,core.Document)):
-            has_found_childs = True
-            break
-
-    if not has_found_childs:
-        return element_to_file_whole(element,output_folder,file_name,output_suffix)
+        name (str): Section name to convert
         
-    child_file_names = []
-    for child in element.children:
-        if isinstance(child,(core.SectionLike,core.Document)):
-            child_file_names.extend(tree_to_files(output_folder,child,None,depth-1,output_suffix))
-        else:
-            child_file_names.extend(tree_to_files(output_folder,child,None,depth,output_suffix))
-            
-    return element_to_file_only_begin(element,output_folder,file_name,child_file_names,output_suffix)
-
-
-def save_structure(output_folder:str,structure:core.SectionStructure,output_suffix:str=".md"):
-    file_name = string_to_file_name(structure.name)
-    file_name = output_folder+"/"+file_name+output_suffix
-    file_str = structure.content+"\n\n"
-    if len(structure.children) != 0:
-        file_str += ".. toctree::\n"
-    
-        #.. toctree::
-
-    
-    print(f"File {file_name} created.")
-    for child in structure.children:
-    
-        child_file_name = save_structure(output_folder,child,output_suffix)
-        file_str += "   "+f"{child_file_name}\n"
-    
-    with open(file_name,"w",encoding="utf-8") as f:
-        f.write(file_str)
-    
-    return string_to_file_name(structure.name)
-
-def process_string(output_folder:str,string:str,depth=2,output_suffix:str=".md"):
+    Returns:
+        str: Sanitized filename
     """
-    Processes a string and writes the document to files.
+    # Remove special characters and replace spaces with underscores
+    filename = re.sub(r'[^\w\s-]', '', name.lower())
+    filename = re.sub(r'[-\s]+', '_', filename)
+    return filename.strip('_') or 'section'
+
+def split_by_sections(content_string, max_depth=2):
+    """
+    Split document string into hierarchical sections based on MyST comment markers.
+    
+    Args:
+        content_string (str): The full document string with MyST markers
+        max_depth (int): Maximum depth for splitting (0=part, 1=chapter, 2=section, etc.)
+        
+    Returns:
+        dict: Hierarchical structure of sections with content and children tracking
+    """
+    # Pattern to find section definitions
+    def_pattern = f"<!-- {core.SEC_DEF_SPLITTER}(.*?){core.SEC_DEF_SPLITTER}(.*?){core.SEC_DEF_SPLITTER} -->"
+    
+    sections = []
+    
+    for match in re.finditer(def_pattern, content_string):
+        command = match.group(1).strip()
+        name = match.group(2).strip()
+        level = SECTION_HIERARCHY.get(command, 999)
+        
+        # Debug: warn if command not found in hierarchy
+        if level == 999:
+            print(f"Warning: Unknown section command '{command}' (repr: {repr(command)}) - treating as level 999")
+            print(f"  Available commands: {list(SECTION_HIERARCHY.keys())}")
+        
+        # Find corresponding PREFIX_BEGIN and PREFIX_END
+        begin_marker = f"<!-- {core.SEC_PREFIX_BEGIN}{command}{name} -->"
+        end_marker = f"<!-- {core.SEC_PREFIX_END}{command}{name} -->"
+        
+        # Start searching from the DEF_SPLITTER position
+        begin_pos = content_string.find(begin_marker, match.start())
+        end_pos = content_string.find(end_marker, begin_pos)
+        
+        if begin_pos != -1 and end_pos != -1:
+            # Extract full content from DEF_SPLITTER to END marker (includes all markers)
+            full_content = content_string[match.start():end_pos + len(end_marker)]
+            
+            sections.append({
+                'command': command,
+                'name': name,
+                'level': level,
+                'content': full_content,
+                'start_pos': match.start(),
+                'begin_pos': begin_pos,
+                'end_pos': end_pos + len(end_marker),
+                'children': [],
+                'child_files': []  # Track children file names
+            })
+    
+    # Build hierarchy first
+    root = {'command': 'document', 'name': 'index', 'level': -1, 'content': '', 'children': [], 'child_files': []}
+    
+    if not sections:
+        root['content'] = content_string
+        return root
+    
+    stack = [root]
+    
+    for section in sections:
+        # Pop stack until we find the parent
+        while len(stack) > 1:
+            parent = stack[-1]
+            if 'end_pos' in parent and section['end_pos'] <= parent['end_pos']:
+                break
+            stack.pop()
+        
+        # Add to parent's children
+        stack[-1]['children'].append(section)
+        stack.append(section)
+    
+    # Collect content chunks - only include TOP-LEVEL sections
+    content_chunks = []
+    top_level_sections = root['children']
+    
+    if not top_level_sections:
+        root['content'] = content_string
+        return root
+    
+    # Preamble
+    if top_level_sections[0]['start_pos'] > 0:
+        preamble = content_string[:top_level_sections[0]['start_pos']]
+        content_chunks.append(('preamble', preamble))
+    
+    # Add top-level sections and inter-section content
+    for i, section in enumerate(top_level_sections):
+        content_chunks.append(('section', section))
+        
+        if i < len(top_level_sections) - 1:
+            inter_content = content_string[section['end_pos']:top_level_sections[i + 1]['start_pos']]
+            if inter_content:
+                content_chunks.append(('inter', inter_content))
+    
+    # Epilogue
+    if top_level_sections[-1]['end_pos'] < len(content_string):
+        epilogue = content_string[top_level_sections[-1]['end_pos']:]
+        if epilogue:
+            content_chunks.append(('epilogue', epilogue))
+    
+    root['content_chunks'] = content_chunks
+    return root
+
+def extract_section_content(section):
+    """Extract section's own content (before children).
+    
+    Args:
+        section (dict): Section structure
+        
+    Returns:
+        tuple: (own_content, remaining_content)
+    """
+    content = section['content']
+    
+    if not section['children']:
+        return content, ''
+    
+    begin_marker = f"<!-- {core.SEC_PREFIX_BEGIN}"
+    begin_pos = content.find(begin_marker)
+    
+    if begin_pos == -1:
+        return content, ''
+    
+    search_from = begin_pos + len(begin_marker)
+    child_begin_pos = content.find(begin_marker, search_from)
+    
+    if child_begin_pos != -1:
+        own_content = content[:child_begin_pos]
+        remaining = content[child_begin_pos:]
+        return own_content, remaining
+    
+    return content, ''
+
+def write_section_files(section, output_folder, max_depth, current_depth=0, output_suffix=".md"):
+    """
+    Recursively write section and its children to files.
+    
+    Args:
+        section (dict): Section structure
+        output_folder (str): Output directory
+        max_depth (int): Maximum splitting depth
+        current_depth (int): Current recursion depth
+        output_suffix (str): File extension
+        
+    Returns:
+        str: Filename of created file (without extension)
+    """
+    os.makedirs(output_folder, exist_ok=True)
+    
+    filename = string_to_filename(section['name'])
+    filepath = os.path.join(output_folder, filename + output_suffix)
+    
+    should_split = current_depth < max_depth and section['children']
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        if should_split:
+            # Extract only this section's own content
+            own_content, remaining = extract_section_content(section)
+            f.write(own_content.strip() + "\n\n")
+            
+            # Create toctree for children
+            f.write("```{toctree}\n")
+            f.write(":maxdepth: 2\n\n")
+            
+            child_files = []
+            for child in section['children']:
+                child_filename = write_section_files(
+                    child, 
+                    output_folder, 
+                    max_depth, 
+                    current_depth + 1,
+                    output_suffix
+                )
+                child_files.append(child_filename)
+            
+            # Store child filenames in section structure
+            section['child_files'] = child_files
+            
+            for child_file in child_files:
+                f.write(f"{child_file}\n")
+            
+            f.write("```\n")
+        else:
+            # Include all content
+            f.write(section['content'].strip() + "\n")
+    
+    print(f"Created: {filepath}")
+    return filename
+
+def reconstruct_content_from_structure(section):
+    """
+    Recursively reconstruct the full content from a section structure.
+    
+    Args:
+        section (dict): Section structure with content and children
+        
+    Returns:
+        str: Reconstructed content
+    """
+    if section.get('command') == 'document' and 'content_chunks' in section:
+        reconstructed = ''
+        for chunk_type, chunk_data in section['content_chunks']:
+            if chunk_type == 'section':
+                reconstructed += chunk_data['content']
+            else:
+                reconstructed += chunk_data
+        return reconstructed
+    
+    return section.get('content', '')
+
+def verify_content_integrity(original_content, structure):
+    """
+    Verify that the split structure contains all original content.
+    
+    Args:
+        original_content (str): Original document string
+        structure (dict): Parsed section structure
+        
+    Returns:
+        tuple: (is_valid, message, stats)
+    """
+    reconstructed = reconstruct_content_from_structure(structure)
+    
+    stats = {
+        'original_length': len(original_content),
+        'reconstructed_length': len(reconstructed),
+        'difference': len(original_content) - len(reconstructed),
+        'match': original_content == reconstructed
+    }
+    
+    if stats['match']:
+        message = "✓ Content integrity verified: All content preserved!"
+        is_valid = True
+    else:
+        message = f"✗ Content mismatch: {stats['difference']} character difference"
+        is_valid = False
+        
+        # Find where they differ
+        for i, (c1, c2) in enumerate(zip(original_content, reconstructed)):
+            if c1 != c2:
+                start = max(0, i - 50)
+                end = min(len(original_content), i + 50)
+                message += f"\n  First difference at position {i}:"
+                message += f"\n  Original: ...{original_content[start:end]}..."
+                message += f"\n  Reconstructed: ...{reconstructed[start:end]}..."
+                break
+    
+    return is_valid, message, stats
+
+def split_document_to_files(document_md, output_folder, depth=2, output_suffix=".md", verify=True):
+    """
+    Main function to split document tree into hierarchical MyST files.
+    
+    Each section file will know its child files through the structure.
+    
+    Args:
+        document_md: Document tree object (from string_to_tree)
+        output_folder (str): Output directory path
+        depth (int): Splitting depth (0=no split, 1=chapter, 2=section, etc.)
+        output_suffix (str): File extension
+        verify (bool): Verify content integrity after parsing
+        
+    Returns:
+        dict: Root structure with child_files tracking for all sections
+        
+    Example:
+        ```python
+        # Convert and split a document
+        doc = string_to_tree(latex_string)
+        structure = split_document_to_files(doc, "./output", depth=2, verify=True)
+        # Each section in structure has 'child_files' list
+        ```
+    """
+    # Convert document to string
+    content_string = document_md.to_string()
+    
+    # Parse hierarchical structure
+    root = split_by_sections(content_string, depth)
+    
+    # Verify content integrity if requested
+    if verify:
+        is_valid, message, stats = verify_content_integrity(content_string, root)
+        print(f"\n{message}")
+        print(f"  Original: {stats['original_length']:,} chars")
+        print(f"  Reconstructed: {stats['reconstructed_length']:,} chars")
+        if not is_valid:
+            print("\n⚠ Warning: Proceeding with file creation despite content mismatch")
+    
+    # Write files
+    write_section_files(root, output_folder, depth, 0, output_suffix)
+    
+    print(f"\n✓ Document split into files in: {output_folder}")
+    return root
+
+def process_string(output_folder:str, string:str, depth=2, output_suffix:str=".md", verify=True):
+    """
+    Processes a LaTeX string and writes the document to hierarchical MyST files.
+    
+    This function converts LaTeX to a document tree, then splits it into multiple
+    files based on section hierarchy with automatic content verification.
 
     Args:
         output_folder (str): The output folder path.
-        string (str): The input string.
-        depth (int, optional): The recursion depth. Defaults to 3.
+        string (str): The input LaTeX string.
+        depth (int, optional): Splitting depth (0=no split, 1=chapter, 2=section, etc.). Defaults to 2.
         output_suffix (str, optional): The file suffix. Defaults to ".md".
+        verify (bool, optional): Verify content integrity after parsing. Defaults to True.
 
     Returns:
-        None
+        dict: Root structure with child_files tracking for all sections
 
     Example:
         ```python
-        # Process a LaTeX string and write the main file to 'output/index.md'
-        latex = r\"""\\section{Intro}\\begin{equation}E=mc^2\\end{equation}\"""
-        process_string("output", latex)
+        # Process a LaTeX string and split into hierarchical files
+        latex = r\"""\\chapter{Intro}\\section{Background}\\subsection{Details}\"""
+        structure = process_string("output", latex, depth=2)
+        # Creates: output/intro.md with toctree to output/background.md
         ```
     """
-    if not isinstance(depth,int) or depth < 0:
+    if not isinstance(depth, int) or depth < 0:
         raise ValueError("depth must be a non-negative integer")
-    if not isinstance(output_folder,str):
+    if not isinstance(output_folder, str):
         raise ValueError("output_folder must be a string")
-    if not isinstance(string,str):
+    if not isinstance(string, str):
         raise ValueError("string must be a string")
+    
+    # Convert LaTeX to document tree
     document = string_to_tree(string)
-    #structures = document.get_structures()[0]
-    #save_structure(output_folder,structures,output_suffix)
-    element_to_file_whole(document,output_folder,"index",output_suffix)
-    #tree_to_files(output_folder,document,"index",depth,output_suffix)
+    
+    # Split document into hierarchical files with verification
+    structure = split_document_to_files(
+        document, 
+        output_folder, 
+        depth=depth, 
+        output_suffix=output_suffix,
+        verify=verify
+    )
+    
+    return structure

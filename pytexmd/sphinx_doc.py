@@ -6,7 +6,8 @@ This module provides functions to create Sphinx documentation structure and conf
 __all__ = [
     "load_config_template",
     "create_config_file",
-    "create_sphinx_documentation"
+    "create_sphinx_documentation",
+    "make_html",
 ]
 
 import os
@@ -74,7 +75,11 @@ def create_sphinx_documentation(
     Returns:
         None
     """
-    
+    if os.path.exists(output_dir):
+        # if "{output_dir}/Makefile"
+        if os.path.exists(os.path.join(output_dir, "Makefile")):
+            print(f"Sphinx documentation already exists at {output_dir}. Skipping creation.")
+            return
     # Run sphinx-quickstart with automated answers
     output_dir = os.path.abspath(output_dir)
     
@@ -115,3 +120,24 @@ def create_sphinx_documentation(
     create_config_file(output_dir, project_name, author, version)
 
 
+def make_html(output_dir: str) -> None:
+    """Build the Sphinx documentation to HTML format.
+
+    Args:
+        output_dir (str): Directory where the Sphinx documentation is located.
+
+    Returns:
+        None
+    """
+    try:
+        source_dir = os.path.join(output_dir, "source")
+        build_dir = os.path.join(output_dir, "build")
+        sphinx_build([
+            "-M",
+            "html",
+            source_dir,
+            build_dir
+        ])
+        print(f"Sphinx documentation built successfully at {build_dir}")
+    except Exception as e:
+        print(f"An error occurred while building the documentation: {e}")

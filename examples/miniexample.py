@@ -39,3 +39,13 @@ sphinx_build([
     "my_docs/build"
 ])
 """
+#%%
+file_name = "../examples_tex/FANCyProject-master/FaNCyProject.tex"
+
+latex_content = ptm.file_loader.load_tex_file(file_name)
+file_string = latex_content.content
+document_md = ptm.filter.string_to_tree(file_string)
+document_md
+# %%
+document_md.children
+# %%
