@@ -70,42 +70,33 @@ def split_by_sections(content_string, max_depth=2):
         begin_marker = f"<!-- {SEC_PREFIX_BEGIN}{command}{name} -->"
         end_marker = f"<!-- {SEC_PREFIX_END}{command}{name} -->"
         
+        # Start searching from the DEF_SPLITTER position
         begin_pos = content_string.find(begin_marker, match.start())
         end_pos = content_string.find(end_marker, begin_pos)
         
         if begin_pos != -1 and end_pos != -1:
-            # Extract full content from BEGIN to END (includes nested sections)
-            full_content = content_string[begin_pos:end_pos + len(end_marker)]
+            # Extract full content from DEF_SPLITTER to END marker (includes all markers)
+            # This ensures we don't lose the DEF_SPLITTER and comments
+            full_content = content_string[match.start():end_pos + len(end_marker)]
             
             sections.append({
                 'command': command,
                 'name': name,
                 'level': level,
                 'content': full_content,
+                'start_pos': match.start(),  # Position of DEF_SPLITTER
                 'begin_pos': begin_pos,
                 'end_pos': end_pos + len(end_marker),
                 'children': []
             })
     
-    # Handle preamble (content before first section)
-    if sections:
-        preamble = content_string[:sections[0]['begin_pos']]
-        if preamble.strip():
-            root = {
-                'command': 'document',
-                'name': 'index',
-                'level': -1,
-                'content': preamble,
-                'children': [],
-                'begin_pos': 0,
-                'end_pos': sections[0]['begin_pos']
-            }
-        else:
-            root = {'command': 'document', 'name': 'index', 'level': -1, 'content': '', 'children': []}
-    else:
-        root = {'command': 'document', 'name': 'index', 'level': -1, 'content': content_string, 'children': []}
+    # Build hierarchy first
+    root = {'command': 'document', 'name': 'index', 'level': -1, 'content': '', 'children': []}
     
-    # Build hierarchy based on nesting (sections are already nested in the string)
+    if not sections:
+        root['content'] = content_string
+        return root
+    
     stack = [root]
     
     for section in sections:
@@ -120,6 +111,38 @@ def split_by_sections(content_string, max_depth=2):
         # Add to parent's children
         stack[-1]['children'].append(section)
         stack.append(section)
+    
+    # Now collect content chunks - only include TOP-LEVEL sections (direct children of root)
+    content_chunks = []
+    top_level_sections = root['children']
+    
+    if not top_level_sections:
+        root['content'] = content_string
+        return root
+    
+    # Preamble (content before first top-level section)
+    if top_level_sections[0]['start_pos'] > 0:
+        preamble = content_string[:top_level_sections[0]['start_pos']]
+        content_chunks.append(('preamble', preamble))
+    
+    # Add top-level sections and inter-section content
+    for i, section in enumerate(top_level_sections):
+        content_chunks.append(('section', section))
+        
+        # Content between this section's end and next section's start
+        if i < len(top_level_sections) - 1:
+            inter_content = content_string[section['end_pos']:top_level_sections[i + 1]['start_pos']]
+            if inter_content:
+                content_chunks.append(('inter', inter_content))
+    
+    # Content after last top-level section
+    if top_level_sections[-1]['end_pos'] < len(content_string):
+        epilogue = content_string[top_level_sections[-1]['end_pos']:]
+        if epilogue:
+            content_chunks.append(('epilogue', epilogue))
+    
+    # Store content chunks for reconstruction
+    root['content_chunks'] = content_chunks
     
     return root
 
@@ -216,26 +239,18 @@ def reconstruct_content_from_structure(section):
     Returns:
         str: Reconstructed content
     """
-    # For leaf sections (no children), return content as-is
-    if not section['children']:
-        return section['content']
+    # Root document uses content_chunks to reconstruct everything
+    if section.get('command') == 'document' and 'content_chunks' in section:
+        reconstructed = ''
+        for chunk_type, chunk_data in section['content_chunks']:
+            if chunk_type == 'section':
+                reconstructed += chunk_data['content']
+            else:  # preamble, inter, or epilogue
+                reconstructed += chunk_data
+        return reconstructed
     
-    # For sections with children, combine parent content + all child content
-    # Extract parent's own content (before first child)
-    own_content, _ = extract_section_content(section)
-    
-    # Add all children's content
-    full_content = own_content
-    for child in section['children']:
-        full_content += reconstruct_content_from_structure(child)
-    
-    # Add the PREFIX_END if this section has one
-    if section.get('command') != 'document':
-        end_marker = f"<!-- {SEC_PREFIX_END}{section['command']}{section['name']} -->"
-        if end_marker not in full_content:
-            full_content += "\n" + end_marker
-    
-    return full_content
+    # For regular sections, return content as-is (already includes everything from DEF to END)
+    return section.get('content', '')
 
 def verify_content_integrity(original_content, structure):
     """
