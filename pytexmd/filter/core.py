@@ -53,6 +53,38 @@ LABEL_TO_RENAME = {}
 
 USED_LABELS = []
 
+SECTION_LIKE_COMMANDS = [
+    "\\part",
+    "\\chapter",
+    "\\section",
+    "\\subsection",
+    "\\subsubsection",
+    "\\paragraph",
+    "\\subparagraph"
+]
+
+SECTION_LIKE_COMMANDS_TO_HASHTAGS = {
+    "\\part": "# ",
+    "\\chapter": "# ",
+    "\\section": "# ",
+    "\\subsection": "## ",
+    "\\subsubsection": "### ",
+    "\\paragraph": "#### ",
+    "\\subparagraph": "#### ",
+    "\\part*": "# ",
+    "\\chapter*": "# ",
+    "\\section*": "# ",
+    "\\subsection*": "## ",
+    "\\subsubsection*": "### ",
+    "\\paragraph*": "#### ",
+    "\\subparagraph*": "#### ",
+}
+
+SEC_DEF_SPLITTER = "XXSEC_DEF_SPLITTERXX"
+SEC_PREFIX_BEGIN = "XXSEC_PREFIX_BEGINXX"
+SEC_PREFIX_END = "XXSEC_PREFIX_ENDXX"
+
+
 def raw_label_func(label:str,idx:int)->str:
     if idx == 0:
         return label + "_0"
@@ -588,36 +620,6 @@ class BeginEndSearcher(Searcher):
         out = self.element_type(content,parent)
         return pre,out,post
 
-SECTION_LIKE_COMMANDS = [
-    "\\part",
-    "\\chapter",
-    "\\section",
-    "\\subsection",
-    "\\subsubsection",
-    "\\paragraph",
-    "\\subparagraph"
-]
-
-SECTION_LIKE_COMMANDS_TO_HASHTAGS = {
-    "\\part": "# ",
-    "\\chapter": "# ",
-    "\\section": "# ",
-    "\\subsection": "## ",
-    "\\subsubsection": "### ",
-    "\\paragraph": "#### ",
-    "\\subparagraph": "#### ",
-    "\\part*": "# ",
-    "\\chapter*": "# ",
-    "\\section*": "# ",
-    "\\subsection*": "## ",
-    "\\subsubsection*": "### ",
-    "\\paragraph*": "#### ",
-    "\\subparagraph*": "#### ",
-}
-
-SEC_DEF_SPLITTER = "XXSEC_DEF_SPLITTERXX"
-SEC_PREFIX_BEGIN = "XXSEC_PREFIX_BEGINXX"
-SEC_PREFIX_END = "XXSEC_PREFIX_ENDXX"
 
 def make_myst_comment(string: str) -> str:
     return "\n<!-- " + string + " -->"
@@ -636,6 +638,9 @@ class SectionLike(StructureMaker):
         super().__init__(modifiable_content,parent)
         self.name = name
         self.command_name = command_name
+        self.current_number = 0
+
+    
 
     def to_string(self) -> str:
         comment = make_myst_comment(f"{SEC_DEF_SPLITTER}{self.command_name}{SEC_DEF_SPLITTER}{self.name}{SEC_DEF_SPLITTER}")
@@ -764,8 +769,6 @@ class Undefined(StructureMaker):
         super().__init__(modifiable_content,parent)
 
     
-    def tree_to_files(element:core.SectionLike,file_name:str,depth:int,output_suffix:str=".md"):
-        pass
 
     def to_string(self) -> str:
         out = ""

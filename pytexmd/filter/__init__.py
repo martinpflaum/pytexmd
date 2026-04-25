@@ -273,6 +273,7 @@ def save_structure(output_folder:str,structure:core.SectionStructure,output_suff
         f.write(file_str)
     
     return string_to_file_name(structure.name)
+
 def process_string(output_folder:str,string:str,depth=2,output_suffix:str=".md"):
     """
     Processes a string and writes the document to files.
