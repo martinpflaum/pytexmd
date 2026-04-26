@@ -24,6 +24,7 @@ __all__ = [
     "label_call",
     "ref_call",
     "LabelType",
+    "BackMatter",
 ]
 
 from enum import Enum
@@ -713,17 +714,32 @@ class SectionLikeSearcher(Searcher):
         pre,content = splitting.split_on_next(input,self.command_name)
         name,content = splitting.split_on_first_brace(content)
         if self.command_name + "{" in content:
-            content,post = splitting.split_on_next(content,self.command_name + "{",False)
-            post = self.command_name + "{" + post
+            content_default,post_default = splitting.split_on_next(content,self.command_name + "{",False)
+            post_default = self.command_name + "{" + post_default
         else:
-            post = ""
+            content_default = content
+            post_default = ""
         
+        if r"\backmatter" in content_default:
+            content_backmatter,post_backmatter = splitting.split_on_next(content,r"\backmatter",False)
+            post_backmatter = r"\backmatter" + post_backmatter
+        
+            content = content_backmatter
+            post = post_backmatter
+        else:
+            content = content_default
+            post = post_default
+        if name == "":
+            return pre,Undefined(content,parent),post
         return pre,SectionLike(content,parent,self.command_name,name),post
 
 def get_section_like_filters_top_lvl() -> List[Searcher]:
     out = []
     for command in SECTION_LIKE_COMMANDS:
-        out.append([SectionLikeSearcher(command),SectionLikeSearcher(command+"*")])
+        if command == "\\part":
+            out.append([SectionLikeSearcher(command),SectionLikeSearcher(command+"*"),BackMatter()])
+        else:
+            out.append([SectionLikeSearcher(command),SectionLikeSearcher(command+"*")])
         
     return out
 
@@ -805,6 +821,21 @@ class JunkSearcher(Searcher):
     def split_and_create(self, string: str, parent: Element) -> Tuple[str, Undefined, str]:
         pre,post = splitting.split_on_next(string,self.junk_name,self.save_split)
         return pre,Undefined("",parent),post
+
+
+class BackMatter(Searcher):
+    """Searcher for back matter LaTeX commands."""
+    def __init__(self, save_split: bool = True):
+        self.save_split = save_split
+
+    def position(self, string: str) -> int:
+        print("checking for backmatter")
+        return splitting.position_of(string,r"\backmatter",self.save_split)
+
+    def split_and_create(self, string: str, parent: Element) -> Tuple[str, Undefined, str]:
+        print("splitting on backmatter")
+        pre,post = splitting.split_on_next(string,r"\backmatter",self.save_split)
+        return pre,Undefined(post,parent),""
 
 
 class ReplaceSearcher(Searcher):

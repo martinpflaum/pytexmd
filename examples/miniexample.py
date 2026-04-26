@@ -12,7 +12,7 @@ import pytexmd as ptm
                                  (r"\rtsbrak",r"\rangle\rangle"),
                                  (r"\mathbbm",r"\mathbb"),])#works in mathjax
 """
-file_name = "../examples_tex/FANCyProject-master/FaNCyProject.tex"
+file_name = "../examples_tex/FANCyProject/FaNCyProject.tex"
 ptm.process_file(file_name,"./my_docs3",depth=3)
 
 # %%
@@ -40,12 +40,18 @@ sphinx_build([
 ])
 """
 #%%
-file_name = "../examples_tex/FANCyProject-master/FaNCyProject.tex"
+file_name = "../examples_tex/FANCyProject/FaNCyProject.tex"
 
 latex_content = ptm.file_loader.load_tex_file(file_name)
 file_string = latex_content.content
 document_md = ptm.filter.string_to_tree(file_string)
 document_md
-# %%
-document_md.children
+# Write the full document string to a single file
+output_file = "./output_full_document.md"
+
+with open(output_file, 'w', encoding='utf-8') as f:
+    f.write(document_md.to_string())
+
+print(f"✓ Full document written to: {output_file}")
+
 # %%

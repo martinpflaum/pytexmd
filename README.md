@@ -39,3 +39,17 @@ make html
 ```
 
 in the `my_docs` folder to generate the HTML files.
+
+
+
+mathjax3_config = {
+    "tex": {
+        "macros": {
+            "ltortoise": "\\unicode{x3014}",
+            "rtortoise": "\\unicode{x3015}",
+            "ltsbrak": ["\\mathopen{\\ltortoise\\mspace{1mu}}", 0],
+            "rtsbrak": ["\\mathopen{\\mspace{1mu}\\rtortoise}", 0],
+            "mathbbm": ["\\mathbb{#1}", 1],
+        }
+    }
+}

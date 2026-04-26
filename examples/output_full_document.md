@@ -269,48 +269,1315 @@ Minkowski's inequality follows.
 <!-- XXSEC_PREFIX_BEGINXX\chapterGeneral Topology -->
 (chpt:general-topology_1)=
 # General Topology
-\IfFileExists../CRingProject/sections/category-topological-spaces  
-<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXXXSEC_DEF_SPLITTERXX -->
-<!-- XXSEC_PREFIX_BEGINXX\section -->
-# 
-\IfFileExists../CRingProject/sections/fundamental-examples-topologies 
-<!-- XXSEC_PREFIX_ENDXX\section -->
+\IfFileExists../CRingProject/sections/category-topological-spaces 
+<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXThe category of topological spacesXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\sectionThe category of topological spaces -->
+(sec:category-topological-spaces_1)=
+# The category of topological spaces
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXTopologies and continuous mapsXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Topologies and continuous maps -->
+## Topologies and continuous maps
+:::{prf:definition} 
+Let $X$ be a set. By a topology on $X$ on understands a set $\mathscr{T}$ of subsets of $X$ such that:
 
-<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXXXSEC_DEF_SPLITTERXX -->
-<!-- XXSEC_PREFIX_BEGINXX\section -->
-# 
+\setcounterenumi-1
+(axiom:openness-full-empty-set-open_1)=
+(Top1)
+: The sets $X$ and $\emptyset$ are both elements of $\mathscr{T}$.
+
+(axiom:openness-union-open-sets_1)=
+(Top2)
+: The union of any collection of elements of $\mathscr{T}$ is again in $\mathscr{T}$ that means if $(U_i)_{i\in I}$ is a family of elements $U_i\in \mathscr{T}$, then $\bigcup_{i\in I} U_i \in \mathscr{T}$.
+
+(axiom:openness-finite-intersection-open-sets_1)=
+(Top3)
+: The intersection of finitely many elements of $\mathscr{T}$ is again in $\mathscr{T}$ that means for every natural $n$ and $U_1, \ldots , U_n \in \mathscr{T}$ one has $ \bigcap_{i = 1}^n U_i \in \mathscr{T}$.
+
+
+A pair $(X,\mathscr{T})$ is a called a *topological space* when $X$ is a set and $\mathscr{T}$ a topology on $X$. Moreover, a subset $U$ of $X$ is called *open* if $U\in \mathscr{T}$ and *closed* if $\complement_X U \in \mathscr{T}$.
+:::
+
+
+
+:::{prf:remark} 
+
+
+\itemindent
+: Strictly speaking, Axiom {ref}`axiom:openness-full-empty-set-open_1` can be derived from Axioms {ref}`axiom:openness-union-open-sets_1` and {ref}`axiom:openness-finite-intersection-open-sets_1`, since the union of an empty family of subsets of $X$ coincides with $\emptyset$, and the intersection of an empty family of subsets of $X$ coincides with $X$. Nevertheless, it is useful to require it, since in proofs one often shows Axiom {ref}`axiom:openness-union-open-sets_1`
+   only for non-empty families of open sets, and Axiom {ref}`axiom:openness-finite-intersection-open-sets_1` only for the case of the intersection of two open subsets. Then it is necessary to verify Axiom {ref}`axiom:openness-full-empty-set-open_1`, too, when one wants to prove that a given set of subsets of $X$ is a topology.
+
+\itemindent
+: When using the notation $\mathscr{T}_X$ for a topology we always mean that $\mathscr{T}_X$ is a topology on the space $X$.
+:::
+
+
+
+:::{prf:example} 
+:label: ex:examples-topological-spaces_1
+
+
+\itemindent
+: For every set $X$ the power set $\mathscr{P}(X)$ is a topology on $X$. It is called the *discrete* or *strongest* topology on $X$.
+
+\itemindent
+: The set $\big\{ \emptyset , X \big\}$ is another topology on a set $X$ called the *indiscrete* or *trivial* or
+   *weakest* topology on $X$. Unless $X$ is empty or has only one element, the discrete and indiscrete topologies differ.
+
+\itemindent
+: Let $S$ be a set $\{ 0, 1\}$. Then the set $\big\{ \emptyset , \{ 1 \}, \{ 0, 1 \} \big\} $ is a topology on $S$ which does neither coincide with the discrete nor the indiscrete topology. The set $S$ with this topology is called
+   *Sierpi\'nski space*. The closed sets of the Sierpi\'nski space are $\emptyset$, $\{ 0 \}$ and $S$.
+
+(ex:standard-topology-reals_1)=
+\itemindent
+: The *standard topology* on the set of real numbers $\mathbb{R}$ consists of all subsets $U\subset \mathbb{R}$ such that for each $x\in U$ there are real numbers $a,b$ satisfying $a < x < b$ and $  {\ltsbrak a,b \rtsbrak}  \subset U$. The standard topology on $\mathbb{R}$ will be denoted by $\mathscr{T}_{\mathbb{R}}$.
+   
+   Let us show that $\mathscr{T}_{\mathbb{R}}$ is a topology on $\mathbb{R}$ indeed. Obviously $\emptyset$ and $\mathbb{R}$ are elements of $\mathscr{T}_{\mathbb{R}}$. Let $U,V \in \mathscr{T}_{\mathbb{R}}$ and $x \in U\cap V$. Then there are $a,b,c,d \in \mathbb{R}$ such that $x \in  {\ltsbrak a,b \rtsbrak}  \subset U$ and $ x\in  {\ltsbrak c,d \rtsbrak}  \subset V$. Put $e := \max \{ a,c\}$ and $f := \min \{ b,d\}$. Then $x \in  {\ltsbrak e,f \rtsbrak}  \subset U \cap V$, which proves $U \cap V \in \mathscr{T}_{\mathbb{R}}$. If $(U_i)_{i\in I}$ is a family of elements $U_i \in \mathscr{T}_{\mathbb{R}}$ and $x \in \bigcup_{i\in I} U_i$, then there exists an $j \in I$ with $x \in U_j$. Choose $a,b \in \mathbb{R}$ such that $x \in  {\ltsbrak a,b \rtsbrak}  \subset U_j$. Then $x \in  {\ltsbrak a,b \rtsbrak}  \subset \bigcup_{i\in I} U_i$, which proves $\bigcup_{i\in I} U_i \in \mathscr{T}_{\mathbb{R}}$. If not mentioned differently, we always assume the set of real numbers to be equipped with the standard topology. The standard topology coincides with the metric topology induced by the euclidean metric on $\mathbb{R}$, see ERROR_UNDEFINED_LABEL__-1. One therefore often calls $\mathscr{T}_{\mathbb{R}}$ the *euclidean topology*
+   on $\mathbb{R}$. We will use these terms interchangeably.
+
+\itemindent
+: The *standard topology* $\mathscr{T}_{\mathbb{Q}}$ on the set of rational numbers $\mathbb{Q}$ is defined analogously. It consists of all subset $U\subset \mathbb{Q}$ such that for each $x\in U$ there exist rational numbers $a,b$ with $a < x < b$ and $  {\ltsbrak a,b \rtsbrak}  \subset U$. Like for the reals one proves that $\mathscr{T}_{\mathbb{Q}}$ is a topology on $\mathbb{Q}$. Unless mentioned differently it is always assumed that $\mathbb{Q}$ comes equipped with the standard topology. Like for $\mathbb{R}$, the standard topology on $\mathbb{Q}$ coincides with the *euclidean topology* on $\mathbb{Q}$ which is the one induced by the euclidean metric.
+
+\itemindent
+: Let $X$ be a set, and let $\mathscr{T}_{cof}$ denote the set of all subset of $X$ which are either empty or have finite complement in $X$. Then $\mathscr{T}_{cof}$ is a topology on $X$ called the
+   *cofinite topology*.
+
+\itemindent
+: Let $X$ be a set, and let $\mathscr{T}_{coc}$ denote the set of all subset of $X$ which are either empty or have countable complement in $X$. Then $\mathscr{T}_{coc}$ is a topology on $X$ called the
+   *cocountable topology*.
+
+\itemindent
+: Let $X$ be a (nonempty) set, $(Y,\mathscr{T})$ be a topological space, and $f:X\rightarrow Y$ a function. Define
+   
+   :::{math}
+   f^* \mathscr{T} := f^{-1} \mathscr{T} := \{ f^{-1}(U) \in \mathscr{P}(X) \mid U \in \mathscr{T} \} \ .
+   :::
+   
+   Then $(X,f^*\mathscr{T})$ is a topological space. One calls $f^*\mathscr{T}$ the
+   *initial topology on*$X$ with respect to $f$ or the *topology on*$X$ induced by $f$.
+   
+   Let us verify that $f^*\mathscr{T}$ is a topology on $X$ indeed. By $f^{-1}(Y)=X$ and $f^{-1}(\emptyset)=\emptyset$ the sets $X$ and $\emptyset$ are in $f^*\mathscr{T}$. Now let $(V_i)_{i\in I}$ be a family of elements of $f^*\mathscr{T}$. In other words we have, for each $i\in I$, $V_i = f^{-1} (U_i)$ for some $U_i\in \mathscr{T}$. Then $U := \bigcup_{i\in I} U_i \in \mathscr{T}$ and
+   
+   :::{math}
+   \bigcup_{i\in I}V_i =\bigcup_{i\in I}f^{-1} (U_i) = f^{-1} \Big( \bigcup_{i\in I} U_i \Big) = f^{-1} (U) \in f^*\mathscr{T} \ .
+   :::
+   
+   Finally, let $V_1,\ldots,V_n \in f^{-1}\mathscr{T}$. Then, by definition, there exist $U_1, \ldots , U_n \in\mathscr{T}$ such that $V_i=f^{-1}(U_i)$ for $i=1,\ldots , n$. Thus $U :=\bigcap_{i=1}^n U_i \in \mathscr{T}$ and
+   
+   :::{math}
+   \bigcap_{i=1}^n V_i = \bigcap_{i=1}^n f^{-1}(U_i) = f^{-1} \Big( \bigcap_{i=1}^n U_i \Big) = f^{-1} (U) \in f^*\mathscr{T} \ .
+   :::
+
+\itemindent
+: Let $(X,\mathscr{T})$ be a topological space, $Y$ a (nonempty) set, and $g:X\rightarrow Y$ a function. Define $g_* \mathscr{T} \subset \mathscr{P}(Y)$ as the set of all $U \subset Y$ such that $g^{-1} (U)\in \mathscr{T}$. Then $g_* \mathscr{T}$ is a topology on $Y$. It is called the *final topology on*$Y$ with respect to $g$ or the *topology on*$Y$ induced by $g$. If $g :X \to Y$ is a *quotient map*
+   that means that $g$ is surjective, then the final topology on $Y$ induced by $g$ is also called the *quotient topology on*$X$ induced by $g$.
+   
+   Let us show why $g_* \mathscr{T}$ is a topology on $Y$. Obviously, $Y,\emptyset \in g_* \mathscr{T}$. Let $(U_i)_{i\in I}$ be a family of elements of $g_* \mathscr{T}$. Then $g^{-1} (U_i) \in \mathscr{T}$ for all $i\in I$ which entails
+   
+   :::{math}
+   g^{-1} \Big( \bigcup\limits_{i\in I} U_i \Big) = \bigcup\limits_{i\in I} g^{-1} (U_i) \in \mathscr{T} ,
+   :::
+   
+   hence $\bigcup\limits_{i\in I} U_i \in g_* \mathscr{T}$. If $U_1, \ldots U_k \in g_* \mathscr{T}$, then
+   
+   :::{math}
+   g^{-1} (U_1\cap \ldots \cap U_k) = \bigcap_{i=1}^k g^{-1} (U_i) \in \mathscr{T} .
+   :::
+   
+   So $U_1\cap \ldots \cap U_k \in g_* \mathscr{T}$ and the claim is proved.
+:::
+
+
+\para
+\Crefsec:fundamental-examples-topologies on fundamental examples collects several more examples of topologies. For now, we will work out a few basic properties of topologies and their structure preserving morphisms, the continuous maps defined below.
+
+
+:::{prf:definition} 
+Let $(X,\mathscr{T}_X)$ and $(Y,\mathscr{T}_Y)$ be two topological spaces and assume that $f:X\rightarrow Y$ is a function. One says that $f$ is
+*continuous* if for all $U \in \mathscr{T}_Y$ the preimage $f^{-1}(U)$ is open in $X$. The map $f$ is called *open* if $f(V)$ is open in $Y$ for all $V \in\mathscr{T}_X$.
+:::
+
+
+
+:::{prf:example} 
+Any constant function $c : X \to Y$ between two topological spaces is continuous since the preimage of an open set in $Y$ is either the full set $X$ or empty depending on whether the image of $c$ is contained in the open set or not.
+:::
+
+
+
+:::{prf:theorem} 
+:label: thm:category-topological-spaces_1
+
+
+\itemindent
+: The identity map $\mathrm{id}_X$ on a topological space $(X,\mathscr{T}_X)$ is continuous and open.
+
+\itemindent
+: Let $(X,\mathscr{T}_X)$, $(Y,\mathscr{T}_Y)$ and $(Z,\mathscr{T}_Z)$ be three topological spaces. Assume that $f:X\rightarrow Y$ and $g:Y\rightarrow Z$ are maps. If $f$ and $g$ are both continuous, so is $g\circ f$. If $f$ and $g$ are both open, then $g\circ f$ is open as well.
+
+\itemindent
+: Topological spaces as objects together with continuous maps as morphisms form a category. It is called the *category of topological spaces* and will be denoted by $\mathsf{Top}$.
+:::
+
+
+
+:::{prf:proof}
+
+It is obvious by definition that the identity map $\mathrm{id}_X$ is continuous and open. Now assume that $f$ and $g$ are continuous and let $U\in\mathscr{T}_Z$. Then $g^{-1}(U)\in\mathscr{T}_Y$ by continuity of $g$. Hence $f^{-1}(g^{-1}(U))\in \mathscr{T}_X$ by continuity of $f$. So $g\circ f$ is continuous. If $f$ and $g$ are open maps, and $V\in\mathscr{T}_X$, then $f(V) \in \mathscr{T}_Y$ and $g\circ f (V) = g (f(V)) \in \mathscr{T}_Z$. Hence the composition of two open maps is open, too. The rest of the claim follows immediately.
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Topologies and continuous maps -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXComparison of topologiesXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Comparison of topologies -->
+## Comparison of topologies
+\para The initial topology $f^* \mathscr{T}_Y$ induced by a function $f:X\rightarrow Y$ between topological spaces is a subset of the topology on $X$ if and only if $f$ is continuous. This motivates the following definition.
+
+
+:::{prf:definition} 
+Let $X$ be a set. Let $\mathscr{T}_1$ and $\mathscr{T}_2$ be two topologies on $X$. One says that $\mathscr{T}_1$ is
+*finer* or *stronger* than $\mathscr{T}_2$ and $\mathscr{T}_2$ is *coarser* or *weaker* than $\mathscr{T}_1$ when $\mathscr{T}_2\subset \mathscr{T}_1$.
+:::
+
+
+\para Of course, inclusion induces an order relation on topologies on a given set. A remarkable property is that any nonempty subset of the ordered set of topologies on a given set always admits a greatest lower bound.
+
+
+:::{prf:theorem} 
+:label: thm:topology-generated-set-topologies_1
+Let $X$ be a set. Let $\mathfrak{S}$ be a nonempty set of topologies on $E$. Then the set
+
+:::{math}
+\mathscr{T}_\mathfrak{S} := \bigcap_{\mathscr{T} \in \mathfrak{S}} \mathscr{T} =
+\big\{ U \in \mathscr{P}(X) \mid U \in \mathscr{T} \text{ for all }
+\mathscr{T} \in \mathfrak{S} \big\}
+:::
+
+is a topology on $X$ and it is the greatest lower bound of $\mathfrak{S}$, where the order between topologies is given by inclusion. In other words, $\mathscr{T}_\mathfrak{S}$ is the finest topology contained in each topology from $\mathfrak{S}$.
+:::
+
+
+
+:::{prf:proof}
+
+We first show that $\mathscr{T}_\mathfrak{S}$ is a topology. Since each $\mathscr{T} \in \mathfrak{S}$ is a topology on $X$, we have $\emptyset,X \in \mathscr{T}$ for all $\mathscr{T} \in \mathfrak{S}$. Hence $\emptyset,X \in \mathscr{T}_\mathfrak{S}$.
+
+Let $(U_i)_{i\in I}$ be a nonempty family of elements $U_i \in \mathscr{T}_\mathfrak{S}$. Let $\mathscr{T} \in \mathfrak{S}$ be arbitrary. By definition of $\mathscr{T}_\mathfrak{S}$, we have $U_i \in \mathscr{T}$ for all $i\in I$. Since $\mathscr{T}$ is a topology, $\bigcup_{i \in I} U_i \in \mathscr{T}$. Hence, as $\mathscr{T}$ was arbitrary, $\bigcup_{i\in I} U_i \in \mathscr{T}_\mathfrak{S}$.
+
+Now, let $U_1,\ldots , U_n \in \mathscr{T}_\mathfrak{S}$. Let $\mathscr{T} \in \mathfrak{S}$ be arbitrary. By definition of $\mathscr{T}_\mathfrak{S}$, we have $U_1, \ldots , U_n \in \mathscr{T}$. Therefore, $U_1 \cap \ldots \cap U_n \in \mathscr{T}$ since $\mathscr{T}$ is a topology. Since $\mathscr{T}$ was arbitrary in $\mathfrak{S}$, we conclude that $U_1 \cap \ldots \cap U_n \in \mathscr{T}_\mathfrak{S}$ by definition.
+
+So $\mathscr{T}_\mathfrak{S}$ is a topology on $X$. By construction, $\mathscr{T}_\mathfrak{S} \subset \mathscr{T}$ for all $\mathscr{T} \in \mathfrak{S}$, so $\mathscr{T}_\mathfrak{S}$ is a lower bound for $\mathfrak{S}$. Assume given a new topology $\mathcal{Q}$ on $X$ such that $\mathcal{Q} \subset \mathscr{T}$ for all $\mathscr{T} \in\mathfrak{S}$. Let $U \in \mathcal{Q}$. Then we have $U \in \mathscr{T}$ for all $\mathscr{T} \in \mathfrak{S}$. Hence by definition $U\in \mathscr{T}_\mathfrak{S}$. So $\mathcal{Q} \subset \mathscr{T}_\mathfrak{S}$ and thus $\mathscr{T}_\mathfrak{S}$ is the greatest lower bound of $\mathfrak{S}$.
+:::
+
+
+
+:::{prf:corollary} 
+Let $X$ be a set, $(Y,\mathscr{T})$ be a topological space, and $f:X\to Y$ a map. The coarsest topology on $X$ which makes $f$ continuous is the initial topology $f^*\mathscr{T}$.
+:::
+
+
+
+:::{prf:proof}
+
+Let $\mathfrak{S}$ be the set of all topologies on $X$ such that $f$ is continuous. By definition, $f^*\mathscr{T}$ is a lower bound of $\mathfrak{S}$. Moreover, $f^* \mathscr{T} \in \mathfrak{S}$. Hence $f^*\mathscr{T}$ is the coarsest topology making the function $f:X\rightarrow Y$ continuous.
+:::
+
+
+
+:::{prf:proposition} 
+Let $(X,\mathscr{T})$ be a topological space, $Y$ a set, and $g:X\to Y$ a map. The finest topology on $Y$ which makes $g$ continuous is the final topology $g_*\mathscr{T}$.
+:::
+
+
+
+:::{prf:proof}
+
+Let $\mathscr{S}$ be a topology on $Y$ so that $g:(X,\mathscr{T})\to(Y,\mathscr{S})$ is continuous. Let $U\in \mathscr{S}$. Then $g^{-1} (U)\in \mathscr{T}$ by continuity of $g:(X,\mathscr{T})\to(Y,\mathscr{S})$. Hence $U\in g_*\mathscr{T}$ by definition, and $\mathscr{S} \subset \mathscr{T}$. Since $g:(X,\mathscr{T})\to (Y,g_*\mathscr{T})$ is continuous by definition, the claim follows.
+:::
+
+\para We can use \Crefthm:topology-generated-set-topologies to define other interesting topologies. Note that trivially $\mathscr{P}(X)$ is a topology on a given set $X$, so given any $\mathscr{S}\subset \mathscr{P}(X)$ there is at least one topology containing $\mathscr{S}$. From this:
+
+
+:::{prf:theorem} 
+Let $X$ be a set, and $\mathscr{S}$ a subset of $\mathscr{P}(X)$. The greatest lower bound of the set
+
+:::{math}
+\mathfrak{S} = \{ \mathscr{T} \in \mathscr{P}(\mathscr{P}(X))\mid \mathscr{T}
+\textrm{ is a topology on } X \: \& \: \mathscr{S} \subset \mathscr{T} \}
+:::
+
+is the coarsest topology on $X$ containing $\mathscr{S}$. We call it the
+*topology generated by*$\mathscr{S}$ on $X$ and denote it by $\mathscr{T}_\mathscr{S}$. The topology $\mathscr{T}_\mathscr{S}$ consists of unions of finite intersections of elements of $\mathscr{S}$ that means
+
+:::{math}
+\mathscr{T}_\mathscr{S} = \Big\{ U \in \mathscr{P}(X) \mid \exists J \, \forall j\in J \, \exists n_j\in \mathbb{N} \,
+\exists U_{j,1},\ldots ,U_{j,n_j} \in \mathscr{S} : \: U = \bigcup_{j\in J} \bigcap_{k=1}^{n_j} U_{j,k} \Big\} \ .
+:::
+:::
+
+
+
+:::{prf:proof}
+
+By definition of $\mathfrak{S}$ and \Crefthm:topology-generated-set-topologies, $\mathscr{T}_\mathfrak{S} = \bigcap_{\mathscr{T} \in \mathfrak{S}} \mathscr{T} $ is a topology on $X$ which contains $\mathscr{S}$. Hence $\mathscr{T}_\mathfrak{S}$ is an element of $\mathfrak{S}$ and a subset of any element of $\mathfrak{S}$. The first claim follows. To verify the second, observe that it suffices to show that
+
+:::{math}
+\mathscr{R} := \Big\{ U \in \mathscr{P}(X) \mid \exists J \, \forall j\in J \, \exists n_j\in \mathbb{N} \,
+\exists U_{j,1},\ldots ,U_{j,n_j} \in \mathscr{S} : \: U = \bigcup_{j\in J} \bigcap_{k=1}^{n_j} U_{j,k} \Big\}
+:::
+
+is a topology. The set $\mathscr{R}$ being a topology namely entails $ \mathscr{T}_\mathscr{S} \subset \mathscr{R} $ because $ \mathscr{S} \subset \mathscr{R}$. The inclusion $\mathscr{R} \subset \mathscr{T}_\mathscr{S}$ is clear by definition, since $\mathscr{T}_\mathscr{S}$ is a topology containing $\mathscr{S}$. So let us show that $\mathscr{R}$ is a topology. Obviously $\emptyset$ and $X$ are elements of $\mathscr{R}$ because $\bigcup_{i\in \emptyset} U_i = \emptyset$ and $\bigcap_{k=1}^0 U_k = X$. Now assume that $(U_i)_{i\in I}$ is a family of elements of $\mathscr{R}$. Then there exists for each $i\in I$ a set $J_i$ and for every $j\in J_i$ a natural number $n_{i,j}$ together with elements $U_{i,j,1}, \ldots , U_{i,j,n_{i,j}} \in \mathscr{S}$ such that
+
+:::{math}
+U_i = \bigcup_{j\in J_i} \bigcap_{k=1}^{n_{i,j}} U_{i,j,k} \ .
+:::
+
+Put $J := \bigcup_{i\in I} \{ i \} \times J_i$. Then
+
+:::{math}
+U := \bigcup_{i\in I} U_i = \bigcup_{i\in I} \bigcup_{j\in J_i} \bigcap_{k=1}^{n_{i,j}} U_{i,j,k}
+= \bigcup_{(i,j) \in J} \bigcap_{k=1}^{n_{i,j}} U_{i,j,k} \in \mathscr{R} \ .
+:::
+
+Last assume $U_1, \ldots U_n \in \mathscr{T}$ where $n\in \mathbb{N}$. Then one can find for each $i \in \{ 1,\ldots, n \}$ a set $J_i$ and for every $j\in J_i$ a natural number $n_{i,j}$ together with elements $U_{i,j,1}, \ldots , U_{i,j,n_{i,j}} \in \mathscr{S}$ such that
+
+:::{math}
+U_i = \bigcup_{j\in J_i} \bigcap_{k=1}^{n_{i,j}} U_{i,j,k} \ .
+:::
+
+Put $J := J_1 \times \ldots \times J_n$. Then
+
+:::{math}
+U := \bigcap_{i=1}^n U_i = \bigcap_{i=1}^n \bigcup_{j\in J_i} \bigcap_{k=1}^{n_{i,j}} U_{i,j,k} =
+\bigcup_{(j_1,\ldots ,j_n)\in J} \: \bigcap_{k_1=1}^{n_{1,j_1}} U_{1,j_1,k_1} \cap \ldots \cap \bigcap_{k_n=1}^{n_{n,j_n}} U_{n,j_n,k_n}
+\in \mathscr{R} \ .
+:::
+
+Hence $\mathscr{R}$ is a topology, indeed, and the proposition is proved.
+:::
+
+
+
+:::{prf:definition} 
+Let $X$ be a set, and $\mathscr{T}$ a topology on $X$. One calls a subset $\mathscr{S} \subset \mathscr{T}$ a *subbase* (or *subbasis*) of the topology if $\mathscr{T}$ coincides with $\mathscr{T}_\mathscr{S}$. If in addition $X = \bigcup_{S\in \mathscr{S}} S$, the subbase $\mathscr{S}$ is said to be *adequate*.
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Comparison of topologies -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXBases of topologiesXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Bases of topologies -->
+## Bases of topologies
+\para When inducing a topology from a family $\mathscr{B}$ of subsets of some set $X$, the fact that $\mathscr{B}$ enjoys the following property greatly simplifies the description of the topology $\mathscr{T}_\mathscr{B}$ generated by $\mathscr{B}$.
+
+
+:::{prf:definition} 
+Let $X$ be a set. A *base* (or *basis*) on $X$ is a subset $\mathscr{B}$ of the powerset $\mathscr{P}(X)$ such that
+
+
+(Bas1)
+: $X = \bigcup_{B \in \mathscr{B}}B $,
+
+(Bas2)
+: For all $B_1,B_2 \in \mathscr{B}$ and all $ x \in B_1 \cap B_2$ there exists a $B \in \mathscr{B}$ such that $x \in B$ and $B \subset B_1 \cap B_2$.
+:::
+
+
+The main purpose for this definition stems from the following theorem:
+
+
+:::{prf:theorem} 
+Let $X$ be some set. Let $\mathscr{B}$ be a base on $X$. Then the topology generated by $\mathscr{B}$ coincides with the set of unions of elements of $\mathscr{B}$ that means
+
+:::{math}
+\mathscr{T}_\mathscr{B} = \left\{ \bigcup_{B \in \mathscr{U}} B \in \mathscr{P}(\mathscr{P}(X)) \Bigm\vert \mathscr{U} \subset \mathscr{B} \right\} \ .
+:::
+:::
+
+
+
+:::{prf:proof}
+
+Denote, for this proof, the set $\big\{ \bigcup_{B \in \mathscr{U}} B \bigm\vert \mathscr{U} \subset \mathscr{B} \big\}$ by $\mathscr{S}$ and let us abbreviate $\mathscr{T}_\mathscr{B}$ by $\mathscr{T}$. We wish to prove that $\mathscr{T} = \mathscr{S}$. First, note that $\mathscr{B}\subset \mathscr{S}$ by construction. By definition, $\mathscr{B} \subset \mathscr{T}$. Since $\mathscr{T}$ is a topology, it is closed under arbitrary unions. Hence $\mathscr{S} \subset \mathscr{T}$. To prove the converse, it is sufficient to show that $\mathscr{S}$ is a topology. As it contains $\mathscr{B}$, and $\mathscr{T}$ is the smallest such topology, this will provide us with the inverse inclusion. By definition, $\bigcup_{B\in \emptyset}B = \emptyset$ and thus $\emptyset \in \mathscr{S}$. By assumption, since $\mathcal{B}$ is a base, $X = \bigcup_{B\in \mathscr{B}}B$ so $X\in \mathscr{S}$. As the union of unions of elements in $\mathscr{B}$ is a union of elements in $\mathscr{B}$, $\mathscr{S}$ is closed under abritrary unions. Now, let $B_1,B_2$ be elements of $\mathscr{B}$. If $B_1\cap B_2= \emptyset$ then $B_1\cap B_2 \in \mathscr{S}$. Assume that $B_1$ and $B_2$ are not disjoints. Then by definition of a base, for all $x\in B_1\cap B_2$ there exists $B_x \in \mathscr{B}$ such that $x\in B_x$ and $B_x \subset B_1\cap B_2$. So
+
+:::{math}
+B_1\cap B_2 = \bigcup_{x\in B_1\cap B_2} B_x \ ,
+:::
+
+and therefore, by definition, $B_1\cap B_2 \in \mathscr{S}$. We conclude that the intersection of two arbitary elements in $\mathscr{S}$ is again in $\mathscr{S}$ by using the distributivity of the union with respect to the intersection.
+:::
+
+
+
+:::{prf:definition} 
+We shall say that a base $\mathscr{B}$ on a set $X$ is a *base for a topology*$\mathscr{T}$ on $X$ when the smallest topology containing $\mathscr{B}$ coincides with $\mathscr{T}$, in other words when $\mathscr{T} = \mathscr{T}_\mathscr{B}$.
+:::
+
+
+The typical usage of the preceding theorem comes from the following result.
+
+
+:::{prf:corollary} 
+Let $\mathscr{B}$ be a base for a topology $\mathscr{T}$ on $X$. A subset $U$ of $X$ is in $\mathscr{T}$ if and only if for evry $x \in U$ there exists $B \in \mathscr{B}$ such that $x\in B$ and $B \subset U$.
+:::
+
+
+
+:::{prf:proof}
+
+We showed that any open set for the topology $\mathscr{T}$ is a union of elements in $\mathcal{B}$. Hence if $x \in U$ for $U \in \mathscr{T}$ then there exists $B\in\mathcal{B}$ such that $x\in B$ and $B \subset U$. Conversely, if $U$ is some subset of $X$ such that for all $x \in U$ there exists $B_x\in\mathscr{B}$ such that $x\in B_x$ and $B_x \subset U$, then $U = \bigcup_{x \in U} B_x$ and thus $U\in \mathscr{T}$.
+:::
+
+
+The last result in this section is a useful tool for showing continuity of a map.
+
+
+:::{prf:proposition} 
+Let $(X,\mathscr{T}_X)$ and $(Y,\mathscr{T}_Y)$ be two topological spaces, $\mathscr{A}$ a base for the topology $\mathscr{T}_X$ and $\mathscr{B}$ a base for the topology $\mathscr{T}_Y$. Assume further that $f:X\to Y$ is a map. Then the following are equivalent:
+
+
+
+(ite:continuity-function_1)=
+(i)
+: The map $f$ is continuous.
+
+(ite:preimages-open-sets-exhausted-base-elements_1)=
+(ii)
+: For every open $V \subset Y$ and all $x\in f^{-1}(V)$ there exists $A \in \mathscr{A}$ such that $x \in U$ and $f(A) \subset V$.
+
+(ite:preimages-base-elements-open_1)=
+(iii)
+: For every $B\in \mathscr{B}$ the preimage $f^{-1} (B)$ is open in $X$.
+:::
+
+
+
+:::{prf:proof}
+
+Obviously, {ref}`ite:continuity-function_1` implies {ref}`ite:preimages-base-elements-open_1`.
+
+Assume that {ref}`ite:preimages-base-elements-open_1` holds and that $V \subset Y$ is open. Let $x\in f^{-1}(V)$ and put $y=f(x)$. Then $y \in V$. Since $\mathscr{B}$ is a base for the topology $\mathscr{T}_Y$ there exists $B\in \mathscr{B}$ such that $x\in B \subset V$. By assumption $f^{-1}(B)$ is open in $X$ and $x \in f^{-1}(B)$. Since $\mathscr{A}$ is a base for the topology $\mathscr{T}_X$, there exists $A \in \mathscr{A}$ such that $x \in A \subset f^{-1}(B)$. Since $f^{-1}(B) \subset f^{-1}(V)$, {ref}`ite:preimages-open-sets-exhausted-base-elements_1`
+follows.
+
+Now assume that {ref}`ite:preimages-open-sets-exhausted-base-elements_1` holds true. Let $V \subset Y$ be open, and choose for every $x\in f^{-1}(V)$ a base element $A_x\in \mathscr{A}$ such that $x \in A_x \subset f^{-1}(V)$. Then $ f^{-1}(V) = \bigcup_{x\in f^{-1}(V)} A_x $ which is open in $X$. Hence $f$ is continuous.
+:::
+
+
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Bases of topologies -->
+
+<!-- XXSEC_PREFIX_ENDXX\sectionThe category of topological spaces -->
+
+
+\IfFileExists../CRingProject/sections/fundamental-examples-topologies \section[Examples and categorical constructions of topological spaces]Examples and categorical constructions of topological spaces
+\labelsec:fundamental-examples-topologies
+
+This section provides various examples and constructions of topological spaces which will be used all along in this monograph.
+
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXThe order topologyXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*The order topology -->
+## The order topology
+:::{prf:proposition} 
+Let $(X,\leq)$ be a totally ordered set, and assume that $\infty, -\infty$ are two symbols not in $X$. Define $ {[ -\infty, \infty ]} _X = X \cup \{-\infty,\infty \}$ and extend $\leq$ to $ {[ -\infty, \infty ]} _X$ by requiring $x \leq y$ for $x,y \in  {[ -\infty, \infty ]} _X$ to hold when $x,y \in X$ and $x \leq y$, when $x = -\infty$, or when $y = \infty$. Then $ {[ -\infty, \infty ]} _X$ together with the relation $\leq$ becomes a totally ordered set as well, and the embedding $X \hookrightarrow  {[ -\infty,\infty ]} _X$ is order-preserving.
+:::
+
+
+:::{prf:proof}
+
+By definition, the relation $\leq$ on $ {[ -\infty,\infty ]} _X$ is reflexive, and any two elements of $ {[ -\infty,\infty ]} _X$ are comparable. Also by definition, $x\leq -\infty$ is equivalent to $x =-\infty $ and $\infty \leq y$ equivalent to $y =\infty$. Since the restriction of $\leq$ to $X$ is antisymmetric by assumption, $\leq $ therefore is an antisymmetric relation on $ {[ -\infty, \infty ]} _X$. Using the definition of $\leq$ again one finally observes that for $x,y,z \in  {[ -\infty, \infty ]} _X$ the following implications hold true.
+
+:::{math}
+\begin{split}
+-\infty \leq y \: \& \: y \leq z & \implies -\infty \leq z \\ x \leq -\infty \: \& \: - \infty \leq z & \implies x = -\infty \leq z \\ x \leq y\: \& \: y \leq - \infty & \implies x = y = -\infty \\ x \leq y\: \& \: y \leq \infty & \implies x \leq \infty \\ x \leq \infty \: \& \: \infty \leq z & \implies x \leq \infty = z \\
+\infty \leq y \: \& \: y \leq z & \implies \infty = y =z \ .
+\end{split}
+:::
+
+Since its restriction to $X$ is already transitive, transitivity of $\leq$ now follows and the proposition is proved.
+:::
+
+
+
+:::{prf:remark} 
+For the rest of this paragraph we always assume that an ordered set $(X,\leq)$ does not contain the symbols $\infty, -\infty$, and that $ {[ -\infty, \infty ]} _X$ and the extended order relation $\leq$ are defined as in the preceding proposition.
+:::
+
+
+
+:::{prf:definition} 
+For a totally ordered set $(X,\leq)$, define *intervals* with boundaries $x,y \in  {[ -\infty, \infty ]} $ as follows:
+
+:::{math}
+\begin{split}
+ {\ltsbrak x,y \rtsbrak}  :=  {\ltsbrak x,y \rtsbrak} _{\, X} := \big\{ z \in  {[ -\infty, \infty ]}  \mid x < z < y \big\} \ , \\
+ {[ x,y \rtsbrak}  :=  {[ x,y \rtsbrak} _{\, X} := \big\{ z \in  {[ -\infty, \infty ]}  \mid x \leq z < y \big\} \ , \\
+ {\ltsbrak x,y ]}  :=  {\ltsbrak x,y ]} _X := \big\{ z \in  {[ -\infty, \infty ]}  \mid x < z \leq y \big\} \ ,\\
+ {[ x,y ]}  :=  {[ x,y ]} _X := \big\{ z \in  {[ -\infty, \infty ]}  \mid x \leq z \leq y \big\} \ . \\
+\end{split}
+:::
+
+The intervals $ {\ltsbrak x,y \rtsbrak} _{\, X}$ are called *open intervals*, intervals of the form $ {[ x,y ]} _X $ are called
+*closed intervals*, and intervals of the form $ {[ x,y \rtsbrak} _{\, X}$ or $ {\ltsbrak x,y ]} _X$ are the
+*half-open intervals*.
+:::
+
+
+
+:::{prf:remark} 
+
+
+\itemindent
+: Note that in case $x=y$ only the closed interval $ {[ x,x ]} _X $ is non-empty. In case $y < x$ all the intervals $ {\ltsbrak x,y \rtsbrak} _{\, X}$, $ {[ x,y \rtsbrak} _{\, X}$, $ {\ltsbrak x,y ]} _X$, and $ {[ x,y ]} _X$ are empty.
+
+\itemindent
+: We mostly use the notation $ {\ltsbrak x,y \rtsbrak} $, $ {[ x,y ]} $, etc.~for intervals and denote the $X$ in intervals only when otherwise some ambiguity could appear.
+:::
+
+
+
+:::{prf:definition} 
+Let $(X,\leq)$ be a totally ordered set. Then the topology generated by the set
+
+:::{math}
+\mathscr{I}_X = \big\{ \,  {\ltsbrak x,y \rtsbrak}  \in \mathscr{P}(X)\mid x,y \in  {[ -\infty , \infty ]} 
+\: \& \: x \leq y \big\}
+:::
+
+is called the *order topology* on $X$. It is usually denoted $\mathscr{T}_{(X,\leq)}$.
+:::
+
+
+
+:::{prf:proposition} 
+Let $(X,\leq)$ be a totally ordered set. Then the set $\mathscr{I}_X$ is a base for the order topology on $X$. A subbase of the order topology is given by the set $\mathscr{S}_X$ of *rays* $ {\ltsbrak x,\infty \rtsbrak} $ and $ {\ltsbrak -\infty,y \rtsbrak} $, where $x,y$ run through the elements of $X$.
+:::
+
+
+
+:::{prf:proof}
+
+Since $X$ is totally ordered, so is $ {[ -\infty, \infty ]} $. It is immediate that $ {\ltsbrak x,y \rtsbrak}  \, \cap \,  {\ltsbrak x',y' \rtsbrak}  =  {\ltsbrak w,z \rtsbrak} $ if $w$ is the largest of $x$ and $x'$ and $z$ is the smallest of $y$ and $y'$. Hence $\mathscr{I}_X$ is a base of the order topology.
+
+Since $  {\ltsbrak x,\infty \rtsbrak}  \cap  {\ltsbrak -\infty,y \rtsbrak}  =  {\ltsbrak x,y \rtsbrak} $ for $x \leq y$, the set $\mathscr{S}_X$ is a subbase of the order topology.
+:::
+
+
+
+:::{prf:example} 
+The standard topology on $\mathbb{R}$ from Example {prf:ref}`ex:examples-topological-spaces_1`
+{ref}`ex:standard-topology-reals_1` is the order topology. Likewise, the standard topology on $\mathbb{Q}$ coincides with the order topology.
+:::
+
+
+
+:::{prf:remark} 
+If $X$ neither has a minimum nor a maximum, one usually denotes the space $ {[ -\infty, \infty ]} $ by $\overline{X}$. This notation fits with the understanding that $\widebar{\phantom{X}}$ denotes the closure operation, because the closure of $X$ in $ {[ -\infty, \infty ]} $ with respect to the order topology coincides with the full space $ {[ -\infty, \infty ]} $ under the assumptions made.
+
+Extending the ordered set of real numbers $(\mathbb{R},\leq )$ in that way gives the so-called *extended real number system* $\widebar{\mathbb{R}}$.
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*The order topology -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXThe subspace topologyXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*The subspace topology -->
+## The subspace topology
+:::{prf:theorem} 
+Let $(X,\mathscr{T})$ be a topological space. Let $S\subset X$ and $\iota : S \hookrightarrow X$ the canonical embedding. Then initial topology $\iota^*\mathscr{T}$ coincides with
+
+:::{math}
+\mathscr{T}^X_S := \{ U\cap S \in \mathscr{P}(S) \mid U \in \mathscr{T} \} \ .
+:::
+
+One calls $\mathscr{T}^X_Y$ the *subspace* or *trace topology* on $S$. Sometimes one says that $\mathscr{T}^X_Y$ is the *topology induced by* $(X,\mathscr{T})$.
+:::
+
+
+
+:::{prf:proof}
+
+The claim follows immediately from the definition of the initial topology $\iota^*\mathscr{T}$.
+:::
+
+
+Just as easy is the following observation:
+
+
+:::{prf:proposition} 
+Let $(X,\mathscr{T})$ be a topological space, and $S \subset X$ a subset. Let $\mathscr{B}$ be a basis for $\mathscr{T}$. Then the set
+
+:::{math}
+\mathscr{B}^X_S:= \{ B\cap S \in \mathscr{P}(S) \mid B \in \mathscr{B} \}
+:::
+
+is a basis for the subspace topology on $S$ induced by $(X,\mathscr{T})$.
+:::
+
+
+
+:::{prf:proof}
+
+Trivial exercise.
+:::
+
+
+
+:::{prf:example} 
+The default topologies on $\mathbb{N}$ and $Z$ are the subspace topologies induced by the standard topology on $\mathbb{R}$. Since $\{ n \} =  {\ltsbrak n-\frac{1}{2},n+\frac{1}{2} \rtsbrak}  \cap \mathbb{Z}$ for all $n \in \mathbb{Z}$, we see that the natural topologies on $\mathbb{N}$ and $\mathbb{Z}$ are in fact the discrete topologies. The topology on $\mathbb{Q}$ induced by the standard topology on $\mathbb{R}$ coincides with the default topology on $\mathbb{Q}$ (which is, as pointed out above, the same as the order topology).
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*The subspace topology -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXThe quotient topologyXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*The quotient topology -->
+## The quotient topology
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*The quotient topology -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXThe product topologyXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*The product topology -->
+## The product topology
+:::{prf:definition} 
+Let $I$ be some nonempty set. Let us assume given a family $(X_i,\mathscr{T}_i)_{i \in I}$ of topological spaces. Consider the cartesian product $X := \prod_{i\in I}X_i$ and denote for each $j\in I$ by $\pi_j : X \to X_j$, $(x_i)_{i\in I} \mapsto x_j$ the projection on the $i$-th coordinate. The initial topology on $X$ with respect to the
+
+basic open set of the cartesian product $\prod_{i \in I} E_i$ is a set of the form $\prod_{i \in I} U_i$ where $\{i \in I : U_i \not= E_i\}$ is finite and for all $i \in I$, we have $U_i \in \mathscr{T}_i$.
+:::
+
+
+
+:::{prf:definition} 
+Let $I$ be some nonempty set. Let us assume given a family $(E_i,\mathscr{T}_i)_{i \in I}$ of topological spaces. The product topology on $\prod_{i \in I} E_i$ is the smallest topology containing all the basic open sets.
+:::
+
+
+
+:::{prf:proposition} 
+Let $I$ be some nonempty set. Let us assume given a family $(E_i,\mathscr{T}_i)_{i \in I}$ of topological spaces. The collection of all basic open sets is a basis on the set $\prod_{i\in I} E_i$.
+:::
+
+
+
+:::{prf:proof}
+
+Trivial exercise.
+:::
+
+
+
+:::{prf:remark} 
+The product topology is not just the basic open sets on the cartesian products: there are many more open sets!
+:::
+
+
+
+:::{prf:proposition} 
+Let $I$ be some nonempty set. Let us assume given a family $(E_i,\mathscr{T}_i)_{i \in I}$ of topological spaces. The product topology on $\prod_{i\in I} E_i$ is the initial topology for the the set $\{p_i : i \in I\}$ where $p_i : \prod_{j\in I} E_j \rightarrow E_i$ is the canonical surjection for all $i\in I$.
+:::
+
+
+
+:::{prf:proof}
+
+Fix $i\in I$. Let $V\in \mathscr{T}_{E_i}$. By definition, $p_i^{-1}(V)=\prod_{j\in I} U_j$ where $U_j=E_j$ for $j\in I\setminus \{i\}$, and $U_i=V$. Hence $p_i^{-1}(V)$ is open in the product topology. As $V$ was an arbitrary open subset of $E_i$, the map $p_i$ is continuous by definition. Hence, as $i$ was arbitrary in $I$, the initial topology for $\{p_i : i \in I\}$ is coarser than the product topology.
+
+Conversely, note that the product topology is generated by $\{p_i^{-1}(V):i \in I, V\in \mathscr{T}_{E_i}\}$, so it is coarser than the initial topology for $\{p_i : i \in I\}$. This concludes this proof.
+:::
+
+
+
+:::{prf:corollary} 
+Let $I$ be some nonempty set. Let us assume given a family $(E_i,\mathscr{T}_i)_{i \in I}$ of topological spaces. Let $\mathscr{T}$ be the product topology on $F = \prod_{i\in I} E_i$. Let $(D,\mathscr{T}_D)$ be a topological space. Then $f:D\rightarrow F$ is continuous if and only if $p_i\circ f$ is continuous from $(D,\mathscr{T}_D)$ to $(E_i,\mathscr{T}_{E_i})$ for all $i \in I$, where $p_i$ is the canonical surjection on $E_i$ for all $i \in I$.
+:::
+
+
+
+:::{prf:proof}
+
+We simply applied the fundamental property of initial topologies.
+:::
+
+
+
+:::{prf:remark} 
+
+
+\itemindent
+: The *box topology* on the cartesian product $\prod_{i\in I}X_i$ is the smallest topology containing all possible cartesian products of open sets $U_i \subset X_i$, $i\in I$. The box topology is strictly finer than the product topology when the index set is infinite and infintely many of the $X_i$ carry a topology strictly finer than the indiscrete topology. Of course, the box and product topologies coincide otherwise, in particular when the product is finite.
+
+\itemindent
+: Since the product topology is the coarsest topology which makes the canonical projections continuous, it is the preferred and default one on cartesian products.
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*The product topology -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXThe metric topologyXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*The metric topology -->
+## The metric topology
+:::{prf:definition} 
+Let $X$ be a set. A function $d: X \times X \rightarrow \mathbb{R}_{\geq 0}$ is a
+*distance* or *metric* on $X$ when:
+
+
+(ite:metric-positive-definiteness_1)=
+(M1)
+: For all $x,y \in X$ the relation $d(x,y)=0$ holds true if and only if $x=y$.
+
+(ite:metric-symmetry_1)=
+(M2)
+: The map $d$ is *symmetric* that is one has $d(x,y)=d(y,x)$ for all $x,y\in X$.
+
+(ite:metric-triangle-inequality_1)=
+(M3)
+: For all $x,y,z \in X$ the *triangle inequality*
+   $d(x,y)\leq d(x,z)+d(z,y)$ is satisfied.
+
+If instead of {ref}`ite:metric-positive-definiteness_1` the axiom \hyperref[ite:metric-distance-self-zero] (M1)'
+below is fulfilled while {ref}`ite:metric-symmetry_1` and {ref}`ite:metric-triangle-inequality_1` are still valid, then $d$ is called a *pseudometric* on $X$.
+
+
+(ite:metric-distance-self-zero_1)=
+(M1)'
+: For all $x\in X$ the equality $d(x,x)=0$ holds true.
+
+
+A pair $(X,d)$ is a *metric space* when $X$ is a set and $d$ a distance on $X$. If $d$ is only a pseudometric on $X$, one calls the pair $(X,d)$ a *pseudometric space*.
+:::
+
+
+The following is often useful.
+
+
+:::{prf:lemma} 
+Let $(X,d)$ be a pseudometric space. Let $x,y,z \in X$. Then
+
+:::{math}
+|d(x,y)-d(x,z)|\leq d(y,z) \ .
+:::
+:::
+
+
+
+:::{prf:proof}
+
+Since $d(x,y)\leq d(x,z)+d(z,y)$ we have $d(x,y)-d(x,z)\leq d(z,y)=d(y,z)$. Since $d(x,z)\leq d(x,y)+d(y,z)$ we have $d(x,z)-d(x,y) \leq d(y,z)$. Hence the claim holds.
+:::
+
+
+
+:::{prf:definition} 
+Let $(X,d)$ be a pseudometric space. Let $x\in E$ and $r\in \mathbb{R}_{ > 0}$. The *open ball* with *center* $x$ and *radius* $r$ in $(X,d)$ is the set
+
+:::{math}
+\mathbb{B} (x,r) = \mathbb{B}_r (x) = \{ y \in X \mid d(x,y) < r \} \ .
+:::
+
+The *closed ball* with *center* $x$ and *radius* $r$ is defined by
+
+:::{math}
+\overline{\mathbb{B}} (x,r) = \overline{\mathbb{B}}_r (x) = \{ y \in X \mid d(x,y) \leq r \} \ .
+:::
+:::
+
+
+
+:::{prf:definition} 
+Let $(X,d)$ be a pseudometric space. The *metric topology* on $X$ induced by $d$ is the smallest topology containing all the open balls of $X$.
+:::
+
+
+
+:::{prf:theorem} 
+Let $(X,d)$ be a pseudometric space. The set of all open balls on $X$ is a basis for the metric topology on $X$ induced by $d$.
+:::
+
+
+
+:::{prf:proof}
+
+It is enough to show that the set of all open balls is a topological basis. By definition, $X = \bigcup_{x\in X} \mathbb{B} (x,1)$. Now, let us be given $\mathbb{B} (x,r_x)$ and $\mathbb{B} (y,r_y)$ for some $x,y\in X$ and $r_x, r_y > 0$. If the intersection of these two balls is empty, we are done; let us assume that there exists $z\in \mathbb{B} (x,r_x)\cap \mathbb{B} (y,r_y)$. Let $r$ be the smallest of $r_x-d(x,z)$ and $r_y-d(y,z)$. Let $w \in \mathbb{B} (z,r)$. Then
+
+:::{math}
+d(x,w)\leq d(x,z)+d(z,w) < d(x,z)+r_x - d(x,z) = r_x \ ,
+:::
+
+so $w \in \mathbb{B} (x,r_x)$. Similarly, $w \in \mathbb{B} (y,r_y)$. Hence, $\mathbb{B} (z,r)\subset \mathbb{B} (x,r_x)\cap \mathbb{B} (y,r_y)$ as desired.
+:::
+
+
+The following result shows that metric topologies are minimal in the sense of making the distance functions continuous.
+
+
+:::{prf:proposition} 
+Let $(X,d)$ be a pseudometric space. For all $x \in X$, the function
+
+:::{math}
+d_x : X \to \mathbb{R}_{\geq 0}, \quad y \mapsto d(x,y)
+:::
+
+is continuous on $X$ for the metric topology. Moreover, the metric topology is the smallest topology such that all the functions $d_x$, $x \in X$ are continuous.
+:::
+
+
+
+:::{prf:proof}
+
+Fix $x \in X$. To verify continuity of the maps $d_x$ it is sufficient to show that the preimages of $ {[ 0,r \rtsbrak} $ and $ {\ltsbrak r,\infty \rtsbrak} $ by $d_x$ are open in the metric topology of $X$, where $r > 0$ is arbitrary. Indeed, these intervals form a subbasis for the topology of $ {[ 0,\infty \rtsbrak} $ which we assume to carry the subspace topology induced by the order topology on $\mathbb{R}$. Let $r > 0$ be given. Then $d_x^{-1}( {[ 0,r \rtsbrak} ) = \mathbb{B} (x,r)$ by definition, so it is open. Now, let $y \in X$ such that $d(x,y) > r$. Let $\varrho_y = d(x,y)-r > 0$. If $d(w,y) < \varrho_y$ for some $w\in X$, then $ d(x,y)-d(w,y)\leq d(x,w)$, so $d(x,w) > r$. Hence
+
+:::{math}
+\mathbb{B} (y,\rho_y)\subset d_x^{-1}(  {\ltsbrak r,\infty \rtsbrak}  ) \quad \text{for all } y\in d_x^{-1}( {\ltsbrak r,\infty \rtsbrak} ) \ .
+:::
+
+Therefore, $d_x^{-1}( {\ltsbrak r,\infty \rtsbrak} )$ is open.
+
+Finally, since $d_x^{-1}( {[ 0,r \rtsbrak} ) = \mathbb{B} (x,r)$ for all $x\in X$ and $r > 0$ the minimal topology making all the maps $d_x$ continuous must indeed contain the metric topology as desired, and our proposition is proven.
+:::
+
+
+
+:::{prf:remark} 
+The metric topology is the default topology on a pseudometric space.
+:::
+
+
+\para There are more examples of continuous functions between metric spaces. More precisely, a natural category for metric spaces consists of metric spaces and Lipschitz maps as arrows, defined as follows.
+
+
+:::{prf:definition} 
+Let $(X,d_X)$, $(Y,d_Y)$ be pseudometric spaces. A function $f:X\rightarrow Y$ for which there exists an $L > 0$ such that
+
+:::{math}
+d_Y (f(x),f(y))\leq L \, d_X (x,y)\quad \text{for all } x,y \in X
+:::
+
+is called *Lipschitz*.
+:::
+
+
+
+:::{prf:definition} 
+Let $(X,d_X)$, $(Y,d_Y)$ be pseudometric spaces. Let $f: X\rightarrow Y$ be a Lipschitz function. Then the *Lipschitz constant* of $f$ is defined as
+
+:::{math}
+\operatorname{Lip}(f) =
+\sup\left\{ \left. \frac{d_Y(f(x),f(y))}{d_X(x,y)} \, \right| \: x,y \in X, d(x,y)\neq 0 \right\} \ .
+:::
+
+A Lipschitz function with Lipschitz constant $L\leq 1$ is called a *metric map*. If its Lipschitz constant is $ < 1$, then the Lipschitz function is called a *contraction*.
+:::
+
+
+
+:::{prf:example} 
+
+
+\itemindent
+: A constant map $f :X\to Y$ between pseudometric spaces is Lipschitz with Lipschitz constant $0$. If both $X$ and $Y$ are metric spaces and $f:X\to Y$ is Lipschitz, then $\operatorname{Lip}(f)=0$ if and only if $f$ is constant.
+
+\itemindent
+: The identity map $\mathrm{id}_X : X \to X$ on a pseudometric space $(X,d)$ is Lipschitz. If $d$ is not the zero pseudometric on $X$, then $\operatorname{Lip}(id_X)=0$.
+:::
+
+
+
+:::{prf:proposition} 
+Let $(X,d_X)$, $(Y,d_Y)$ be pseudometric spaces. If $f:X\rightarrow Y$ is a Lipschitz function, then it is continuous.
+:::
+
+
+
+:::{prf:proof}
+
+Let $L$ be the Lipschitz constant for $f$. Let $y \in Y$ and $\varepsilon > 0$. Let $x\in f^{-1}(\mathbb{B}(y,\varepsilon))$. Put $\delta_x = \frac{\varepsilon-d(f(x),y)}{L+1}$ and observe that $\delta_x > 0$. Then, for $z \in \mathbb{B} (x,\delta_x)$,
+
+:::{math}
+\begin{split}
+d_Y( f(z),y) &\leq d_Y(f(z),f(x)) + d_Y(f(x),y) \leq L d_X(z,x) + d_Y(f(x),y) < \\ & < \varepsilon - d_Y(f(x),y) + d_Y(f(x),y) = \varepsilon .
+\end{split}
+:::
+
+Hence $f^{-1}(\mathbb{B}(y,\varepsilon))$ is open and $f$ is continuous.
+:::
+
+
+
+:::{prf:theorem} 
+Pseudometric spaces as objects together with metric maps between them form a category $\mathsf{PMet}$ which is called the *category of pseudometric spaces*. Changing the morphism class to Lipschitz maps between pseudometric spaces gives another category which we denote $\mathsf{PMetLip}$ and call the *category of pseudometric spaces and Lipschitz functions*. Metric spaces together with metric or Lipschitz maps between them form full subcategories $\mathsf{Met}$ and $\mathsf{MetLip}$ of $\mathsf{PMet}$ and $\mathsf{PMetLip}$, respectively. They are called the *category of metric spaces* respectively the
+*category of metric spaces and Lipschitz functions*.
+:::
+
+
+
+:::{prf:proof}
+
+The claim immediately follows from the observation that the identity map on a pseudometric space is metric and that the composition of two metric respectively Lipschitz maps is again metric respectively Lipschitz.
+:::
+
+
+
+:::{prf:remark} 
+Using metric or Lipschitz maps as morphisms for categories of metric or pseudometric spaces is natural. Other, more general type of morphisms, would be uniform continuous maps, which are discussed in later sections.
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*The metric topology -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXCo-Finite TopologiesXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Co-Finite Topologies -->
+## Co-Finite Topologies
+A potential source for counter-examples, the family of cofinite topologies is easily defined:
+
+
+:::{prf:proposition} 
+Let $E$ be a set. Let: 
+:::{math}
+\mathscr{T}_\mathrm{cof} (E) = \{\emptyset \} \cup \{ U \subset E : \complement_E U \textrm{ is finite } \} \textrm{.}
+:::
+ Then $\mathscr{T}_\mathrm{cof}(E)$ is a topology on $E$.
+:::
+
+
+
+:::{prf:proof}
+
+By definition, $\emptyset \in \mathscr{T}_\mathrm{cof}(E)$. Moreover, $\complement_E E=\emptyset$ which is finite, so $E\in\mathscr{T}_\mathrm{cof}(E)$. Let $U,V \in \mathscr{T}_\mathrm{cof}(E)$. If $U$ or $V$ is empty then $U\cap V = \emptyset$ so $U \cap V \in \mathscr{T}_\mathrm{cof}(E)$. Otherwise, $\complement_E (U\cap V) = \complement_E U \cup \complement V$ which is finite, since by definition $\complement_E U$ and $\complement_E V$ are finite. Hence $U\cap V \in \mathscr{T}_\mathrm{cof}(E)$. Last, let $\mathcal{U}\subset \mathscr{T}_\mathrm{cof}(E)$. Again, if $\mathcal{U}=\{\emptyset\}$ then $\bigcup \mathcal{U} = \emptyset \in \mathscr{T}_\mathrm{cof}(E)$. Let us now assume that $\mathcal{U}$ contains at least one nonempty set $V$. Then: 
+:::{math}
+\complement_E \bigcup \mathcal{U} = \bigcap \{ \complement_E U : U \in \mathcal{U} \} \subset \complement_E V\textrm{.}
+:::
+ Since $\complement_E V$ is finite by definition, so is $\bigcup \mathcal{U}$, which is therefore in $\mathscr{T}_\mathrm{cof}(E)$. This completes our proof.
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Co-Finite Topologies -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXThe one-point compactification of $\mathbb{N}$XXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*The one-point compactification of $\mathbb{N}$ -->
+## The one-point compactification of $\mathbb{N}$
+Limits of sequences is a central tool in topology and this section introduces the natural topology for this concept. The general notion of limit is the subject of the next chapter.
+
+
+:::{prf:definition} 
+Let $\infty$ be some symbol not found in $\mathbb{N}$. We define $\widebar{\mathbb{N}}$ to be $\mathbb{N}\cup \{\infty\}$.
+:::
+
+
+
+:::{prf:proposition} 
+The set: 
+:::{math}
+\mathscr{T}_{\widebar{\mathbb{N}}} = \{ U \subset \widebar{\mathbb{N}} : ( U\subset \mathbb{N})\vee (\infty \in U \wedge \complement_{\mathbb{N}} U \textrm{ is finite} ) \}
+:::
+ is a topology on $\widebar{\mathbb{N}}$.
+:::
+
+
+
+:::{prf:proof}
+
+By definition, $\emptyset \subset \mathbb{N}$ so $\emptyset\in\mathscr{T}_{\widebar{\mathbb{N}}}$. Moreover $\complement_{\widebar{\mathbb{N}}} \widebar{\mathbb{N}} = \emptyset$ which has cardinal $0$ so $\widebar{\mathbb{N}} \in \mathscr{T}_{\widebar{\mathbb{N}}}$. Let $U,V \in \mathscr{T}_{\widebar{\mathbb{N}}}$. If either $U$ or $V$ is a subset of $\mathbb{N}$ then $U\cap V$ is a subset of $\mathbb{N}$ so $U\cap V \in \mathscr{T}_{\widebar{\mathbb{N}}}$. Othwiwse, $\infty \in U \cap V$. Yet $\complement_{\widebar{\mathbb{N}}} (U\cap V) = \complement_{\widebar{\mathbb{N}}} U \cup \complement_{\widebar{\mathbb{N}}}V$ which is finite as a finite union of finite sets. Hence $U\cap V \in\mathscr{T}_{\widebar{\mathbb{N}}}$ again.
+
+Last, assume that $\mathcal{U}\subset \mathscr{T}_{\widebar{\mathbb{N}}}$. Of course, $\infty \in \bigcup \mathcal{U}$ if and only if $\infty \in U$ for some $U \in \mathcal{U}$. So, if $\infty \not \in \bigcup \mathcal{U}$ then $\bigcup \mathcal{U} \in \mathscr{T}_{\widebar{\mathbb{N}}}$ by definition. If, on the other hand, $\infty \in \bigcup \mathcal{U}$, then there exists $U\in\mathcal{U}$ with $\complement_{\widebar{\mathbb{N}}} U$ finite. Now, $\complement_{\widebar{\mathbb{N}}} \bigcup \mathcal{U} = \bigcap \{ \complement_{\widebar{\mathbb{N}}} V : V \in \mathcal{U} \} \subset \complement_{\widebar{\mathbb{N}}} U$ so it is finite, and thus again $\bigcup\mathcal{U} \in \mathscr{T}_{\widebar{\mathbb{N}}}$.
+:::
+
+
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*The one-point compactification of $\mathbb{N}$ -->
+
+
 \IfFileExists../CRingProject/sections/separation-properties 
-<!-- XXSEC_PREFIX_ENDXX\section -->
+<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXSeparation propertiesXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\sectionSeparation properties -->
+# Separation properties
+\para The general definition of a topology allows for examples where elements of a topological space, seen as a set, can not be distinguished from each other by open sets (for instance if the topology is indiscrete). When points can be topologically differentiated, a topology is in some sense separated. The standard separation axioms allow to subsume topological spaces with certain separability properties in particular classes. One then studies the properties of these clases, often with a view to particular applications, and attempts to create counter examples, meaning examples not satsifying the corresponding separation axioms. The most important separability property goes back to the founder of set-theoretic topology, Felix Hausdorff, who introduced it in 1914. The first full presentation of the separation axioms as we know them today appeared in the classic book *Topologie* by [@AleHopT]
+under their German name *Trennungsaxiome*.
 
-<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXXXSEC_DEF_SPLITTERXX -->
-<!-- XXSEC_PREFIX_BEGINXX\section -->
-# 
+Let us note that the literature on separation axioms is not uniform when it comes to the axioms {ref}`axiom:t3_1` to {ref}`axiom:t6_1` below, so one needs to always check which convention an author follows. Here, we follow the convention by [@SteSeeCT, Part I, Chap.~2] which coincides with the one of
+:::{prf:definition} The Separation Axioms
+Recall that two subsets $A,B$ of a topological space $(X,\mathscr{T})$ are called *disjoint* if $A\cap B = \emptyset$. The two sets are called
+*separated* if $ \widebar{A} \cap B = A \cap \widebar{B} = \emptyset$. The topological space $(X,\mathscr{T})$ now is said to be
+
+\setcounterenumi-1
+(axiom:t0_1)=
+( T1)\hspace2.3mm
+: or *Kolmogorov*
+   if for each pair of distinct points $x,y \in X$ there is an open $U\subset X$ such that $x\in U$ and $y \notin U$ holds true, or $y\in U$ and $x \notin U$,
+
+(axiom:t1_1)=
+( T2)\hspace2.3mm
+: or *Fr\'echet*
+   if for each pair of distinct points $x,y \in X$ there is an open $U\subset X$ such that $x\in U$ and $y \notin U$,
+
+(axiom:t2_1)=
+( T3)\hspace2.3mm
+: or *Hausdorff*
+   if for each pair of distinct points $x,y \in X$ there exist disjoint open sets $U,V \subset X$ such that $x\in U$ and $y \in V$,
+
+\rmfamily ( T2$_{\mathsf{\frac 12}}$\rmfamily )
+: or *Uryson* or *completely Hausdorff*
+   if for each pair of distinct points $x,y \in X$ there exist distinct closed neigborhoods $U$ of $x$ and $V$ of $y$,
+
+(axiom:t3_1)=
+( T4)\hspace2.3mm
+: if for each point $x \in X$ and closed subset $A \subset X$ with $x \notin A$ there exist disjoint open sets $U,V \subset X$ such that $x\in U$ and $A \subset V$,
+
+(axiom:t3a_1)=
+\rmfamily ( T3$_{\mathsf{\frac 12}}$\rmfamily )
+: if for each point $x \in X$ and closed subset $A \subset X$ with $x \notin A$ there exists a continuous function $f: X \to \mathbb{R}$ such that $f(x)=0$ and $f (A) = \{ 1 \}$,
+
+(axiom:t4_1)=
+( T5)\hspace2.3mm
+: if for each pair of closed disjoint subsets $A,B \subset X$ there exist disjoint open sets $U,V \subset X$ such that $A \subset U$ and $B \subset V$,
+
+(axiom:t5_1)=
+( T6)\hspace2.3mm
+: if for each pair of separated subsets $A,B \subset X$ there exist disjoint open sets $U,V \subset X$ such that $A \subset U$ and $B \subset V$,
+
+(axiom:t6_1)=
+( T7)\hspace2.3mm
+: if for each pair of disjoint closed subsets $A,B \subset X$ there exists a continuous function $f: X \to \mathbb{R}$ such that $A = f^{-1} (0)$ and $B = f^{-1}(0)$.
+
+A Hausdorff space will be called *regular*
+if it fulfills {ref}`axiom:t3_1`, *completely regular*, if it satisfies \hyperref[axiom:t3a]\rmfamily ( T3$_{\mathsf{\frac 12}}$\rmfamily ), and *normal* if {ref}`axiom:t4_1` holds true. Finally we call a Hausdorff space *completely normal* if it is {ref}`axiom:t5_1`
+and *perfectly normal* if it is {ref}`axiom:t6_1`.
+:::
+
+
+<!-- XXSEC_PREFIX_ENDXX\sectionSeparation properties -->
+
+
 \IfFileExists../CRingProject/sections/filters-convergence 
-<!-- XXSEC_PREFIX_ENDXX\section -->
+<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXFilters and convergenceXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\sectionFilters and convergence -->
+(sec:filters-convergence_1)=
+# Filters and convergence
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXFilters and ultrafiltersXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Filters and ultrafilters -->
+## Filters and ultrafilters
+:::{prf:definition} 
+Let $X$ be a set. A subset $\mathscr{F}$ of the powerset $\mathscr{P}(X)$ is called a *filter* on $X$ if it satisfies the following axioms:
 
-<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXXXSEC_DEF_SPLITTERXX -->
-<!-- XXSEC_PREFIX_BEGINXX\section -->
-# 
+
+(Fil1)
+: The empty set $\emptyset$ is not an element of $\mathscr{F}$.
+
+(Fil2)
+: The set $X$ is an element of $\mathscr{F}$.
+
+(Fil3)
+: If $A\in \mathscr{F}$ and if $B \in \mathscr{P}(X)$ satisfies $A \subset B$, then $B \in \mathscr{F}$.
+
+(Fil4)
+: If $A \in \mathscr{F}$ and $B \in \mathscr{F}$, then the intersection $A \cap B$ is an element of $\mathscr{F}$ as well.
+
+If $\mathscr{F}_1$ and $\mathscr{F}_2$ are two filters on $X$ such that $\mathscr{F}_1 \subset \mathscr{F}_2$, then one calls $\mathscr{F}_1$ a *subfilter* of $\mathscr{F}_2$ or says that $\mathscr{F}_2$ is *finer* than $\mathscr{F}_1$. Sometimes one expresses this by saying that $\mathscr{F}_2$ *refines* $\mathscr{F}_1$. Filters maximal with respect to set inclusion are called *ultrafilters*. A filter $\mathscr{F}$ is called *free* if $\bigcap_{A\in \mathscr{F}} A = \emptyset$ otherwise it is called *fixed*.
+:::
+
+
+
+:::{prf:example} 
+
+
+\itemindent
+: For every set $X$, the set $\{ X\}$ is a filter. It is the smallest of all filters on $X$.
+
+\itemindent
+: Given an element $x \in X$ the set $\mathscr{F}_x := \{ A \in \mathscr{P}(X) \mid x \in A \}$ is an ultrafilter on $X$. More generally, if $Y\subset X$ is a non-empty subset, then $\mathscr{F}_Y := \{ A \in \mathscr{P}(X) \mid Y \subset A \}$ is a filter on $X$. It is an ultrafilter if and only if $Y$ has exactly one element.
+
+\itemindent
+: If $(X,\mathscr{T})$ is a topological space and $x\in X$ an element, then the *neigborhood filter*
+   $\mathscr{U}_x := \{ V \in \mathscr{P}(X)\mid \exists U \in \mathscr{T} : \; x\in U \subset V \}$ is a filter contained in $\mathscr{F}_x$. The filters $\mathscr{U}_x$ and $\mathscr{F}_x$ coincide if and only if $x$ is an isolated point.
+
+\itemindent
+: Now consider the reals and let $\mathscr{F} = \{ A \in \mathscr{P}(\mathbb{R})\mid \exists \, \varepsilon > 0 : \:  {[ 0,\varepsilon \rtsbrak}  \subset A \}$. Then $\mathscr{F}$ is a filter on $\mathbb{R}$ which is properly contained in the ultrafilter $\mathscr{F}_0$ and which properly contains the neighborhood filter $\mathscr{U}_0$ (where $\mathbb{R}$ carries the standard topology).
+:::
+
+
+
+:::{prf:proposition} 
+Let $\mathscr{A}\subset \mathscr{P}(X)$ be a non-empty set of subset of $X$ which has the
+*finite intersection property*
+that is that $A_1 \cap \ldots \cap A_n $ is non-empty for all $n\in \mathbb{N}^*$ and all $A_1 , \ldots , A_n\in \mathscr{A}$. Then there is an ultrafilter $\mathscr{F}$ containing $\mathscr{A}$.
+:::
+
+
+:::{prf:proof}
+
+Let $P$ be the set of all $\mathscr{J}\subset \mathscr{P}(X)$ having the finite intersection property and containing $\mathscr{A}$. Then $P$ is non-empty, as it contains at least $\mathscr{A}$, and is ordered by set inclusion. If $C\subset P$ is a chain, then $\mathscr{M} := \bigcup_{\mathscr{J} \in C} \mathscr{J}$ contains $\mathscr{A}$ and fulfills the finite intersection property. To verify the latter let $Y_1,\ldots , Y_n \in \mathscr{M}$. Then there exist $\mathscr{J}_1,\ldots , \mathscr{J}_n \in C$ such that $Y_i \in \mathscr{J}_i$ for $i=1,\ldots ,n$. Hence all $Y_i$ lie in the maximum $\mathscr{J}_{m}$ of the sets $\mathscr{J}_1,\ldots , \mathscr{J}_n$. But $\mathscr{J}_{m}$ has the finite intersection property, hence $Y_1 \cap \ldots \cap Y_n \neq \emptyset$. So $\mathscr{M}$ is an upper bound of the chain $C$. By Zorn's Lemma, $P$ has a maximal element $\mathscr{F}$. It contains $\mathscr{A}$ and has the finite intersection property. Moreover, if $A\in \mathscr{F}$ and $B\in \mathscr{P}(X)$ contains $A$ as a subset, then $\mathscr{F} \cup \{ B \}$ also satisfies the finite intersection property, hence by maximality of $\mathscr{F}$ one concludes $B \in \mathscr{F}$. Again by maximality $\mathscr{F}$ has to be an ultrafilter.
+:::
+
+
+
+:::{prf:corollary} 
+Every filter on $X$ is contained in an ultrafilter.
+:::
+
+
+:::{prf:proof}
+
+This follows from the preceding proposition since a filter has the finite intersection property.
+:::
+
+
+
+:::{prf:theorem} 
+Let $\mathscr{F}$ be a filter on a set $X$. Then the following are equivalent:
+
+
+
+(i)
+: $\mathscr{F}$ is an ultrafilter.
+
+(ii)
+: If $A$ is a subset of $X$ and $A$ has non-empty intersection with every element of $\mathscr{F}$, then $A \in \mathscr{F}$.
+
+(iii)
+: For all $A \subset X$ either $A \in \mathscr{F}$ or $X\setminus A \in \mathscr{F}$.
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Filters and ultrafilters -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXConvergence of filtersXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Convergence of filters -->
+## Convergence of filters
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Convergence of filters -->
+
+<!-- XXSEC_PREFIX_ENDXX\sectionFilters and convergence -->
+
+
 \IfFileExists../CRingProject/sections/nets 
-<!-- XXSEC_PREFIX_ENDXX\section -->
+<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXNetsXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\sectionNets -->
+(sec:nets_1)=
+# Nets
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXDirected setsXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Directed sets -->
+## Directed sets
+Let us first recall that by a *preordered set* one understands a set $P$ together with a binary relation $\leq$ which is reflexive and transitive, see \Crefdef:ordered-set.
 
-<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXXXSEC_DEF_SPLITTERXX -->
-<!-- XXSEC_PREFIX_BEGINXX\section -->
-# 
+
+:::{prf:definition} Directed sets
+By a directed set one understands a preordered set $(P,\leq)$ such that the binary relation $\leq$ is *directed* which means that
+
+
+(\textsfDir)
+: for all $x,y\in D$ there exists an element $z\in D$ with $x \leq z$ and $y\leq z$.
+:::
+
+
+
+:::{prf:remark} 
+The property that $(P,\leq)$ is directed is the same as saying that any two elements of the preordered set $P$ have an upper bound.
+:::
+
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Directed sets -->
+
+<!-- XXSEC_PREFIX_ENDXX\sectionNets -->
+
+
 \IfFileExists../CRingProject/sections/compactness 
-<!-- XXSEC_PREFIX_ENDXX\section -->
+<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXCompactnessXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\sectionCompactness -->
+(sec:compactness_1)=
+# Compactness
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXQuasi-compact topological spacesXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Quasi-compact topological spaces -->
+## Quasi-compact topological spaces
+\para Before we come to defining quasi-compactness let us recall some relevant notation. By a *cover* (or *covering*) of a set $X$ one understands a family $\mathcal{U} = ( U_i )_{i\in I}$ of subsets $U_i \subset X$ such that $ X \subset \bigcup_{i\in I} U_i$. This terminology also holds for a subset $Y \subset X$. That is a family $\mathcal{U} = ( U_i )_{i\in I}$ of subsets $U_i \subset X$ is called a *cover* of $Y$ if $ Y \subset \bigcup_{i\in I} U_i$. A *subcover* of a cover $\mathcal{U} = ( U_i )_{i\in I}$ of $Y$ or shortly a subcover of $\mathcal{U}$ then is a subfamily $( U_i )_{i\in J}$ which also covers $Y$ which means that $J\subset I$ and $Y \subset \bigcup_{i\in J} U_i$. If $J$ is finite, one calls the subcover $( U_i )_{i\in J}$ a *finite subcover*. If $(X,\mathscr{T})$ is a topological space and all elements $U_i$ of a cover $\mathcal{U} = ( U_i )_{i\in I}$ of some $Y \subset X$ are open sets, the cover is called an
+*open cover* of $Y$.
 
-<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXXXSEC_DEF_SPLITTERXX -->
-<!-- XXSEC_PREFIX_BEGINXX\section -->
-# 
+
+:::{prf:proposition} 
+Let be a topological spaces $(X,\mathscr{T})$. Then the following are equivalent:
+
+
+
+(ite:subcover_1)=
+(i)
+: Every open cover of $X$ has a finite subcover.
+
+(ite:empty-intersection-property_1)=
+(ii)
+: For every family $(A_i)_{i\in I}$ of closed subset $A_i\subset X$ such that $\bigcap_{i\in I} A_i = \emptyset$ there exist finitely many elements $A_{i_1}, \ldots , A_{i_n}$ such that $A_{i_1} \cap \ldots \cap A_{i_n} =\emptyset $.
+
+(ite:filter-accummulation-point_1)=
+(iii)
+: Every filter on $X$ has an accummulation point.
+
+(ite:ultrafilter-convergence_1)=
+(iv)
+: Every ultrafilter on $X$ converges.
+:::
+
+
+
+:::{prf:proof}
+
+Assume that {ref}`ite:subcover_1` holds true and let $(A_i)_{i\in I}$ be a family of closed subset $A_i\subset X$ such that $\bigcap_{i\in I} A_i = \emptyset$. Put $U_i := X \setminus A_i$ for all $i\in I$. Then $(U_i)_{i\in I}$ is an open covering of $X$, hence by assumption there exist $i_1, \ldots , i_n \in I$ such that $X = U_{i_1} \cup \ldots \cup U_{i_n}$. By de Morgan's laws the relation $A_{i_1} \cap \ldots \cap A_{i_n} =\emptyset $ the follows, hence
+{ref}`ite:empty-intersection-property_1` follows.
+
+Next assume {ref}`ite:empty-intersection-property_1`, and let $\mathscr{F}$ be a filter on $X$. Then $\widebar{A_1} \cap \ldots \cap \widebar{A_n} \neq \emptyset $ for all $n\in \mathbb{N}^*$ and $A_1, \ldots , A_n\in \mathscr{F}$, since $\mathscr{F}$ is a filter. Hence $\bigcap_{A \in \mathscr{F}} \widebar{A} \neq \emptyset$ by {ref}`ite:empty-intersection-property_1`. Every element of $\bigcap_{A \in \mathscr{F}} \widebar{A}$ now is an accummulation point of $\mathscr{F}$, so {ref}`ite:filter-accummulation-point_1` follows.
+
+By \Crefthm: , {ref}`ite:filter-accummulation-point_1` implies {ref}`ite:ultrafilter-convergence_1`.
+
+Finally assume that every ultrafilter on $X$ converges, and let $\mathcal{U} = ( U_i )_{i\in I}$ be an open cover of $X$. Assume that $\mathcal{U}$ has no finite subcover. For each finite subset $J\subset I$ the set $B_J := X \setminus \bigcup_{i\in J} U_i$ then is non-empty, hence $\mathscr{B} := \{ B_J \in \mathscr{P}(X) \mid J \subset I \: \& \: \# J < \infty \}$ is a filter base. Let $\mathscr{F}$ be an ultrafilter containing $\mathscr{B}$. By assumption $\mathscr{F}$ converges to some $x\in X$. Since $\mathcal{U}$ is an open covering of $X$ there is some $U_i$ with $x \in U_i$, hence $U_i$ since $\mathscr{F}$ converges to $x$. On the other hand $X \setminus U_i \in \mathscr{B} \subset \mathscr{F}$ by construction. This is a contradiction, so $\mathcal{U}$ must have a finite subcover.
+:::
+
+
+
+:::{prf:definition} [@BouGTC1-4][I.\S9.1.]
+A topological space $(X,\mathscr{T})$ is called *quasi-compact*, if every filter on $X$ has an accummulation point.
+:::
+
+
+
+:::{prf:theorem} Alexander Subbase Theorem
+Let $(X,\mathscr{T})$ be a topological space, and $\mathscr{S}$ an *adequate* subbase of the topology that is a subbase of $\mathscr{T}$ such that $X = \bigcup_{S\in \mathscr{S}} S$. If every cover of $X$ by elements of $\mathscr{S}$ has a finite subcover, the topological space $(X,\mathscr{T})$ is quasi-compact.
+:::
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Quasi-compact topological spaces -->
+
+<!-- XXSEC_DEF_SPLITTERXX\subsection*XXSEC_DEF_SPLITTERXXCompact topological spacesXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\subsection*Compact topological spaces -->
+## Compact topological spaces
+
+<!-- XXSEC_PREFIX_ENDXX\subsection*Compact topological spaces -->
+
+<!-- XXSEC_PREFIX_ENDXX\sectionCompactness -->
+
+
 \IfFileExists../CRingProject/sections/compact-open-topology-function-spaces 
-<!-- XXSEC_PREFIX_ENDXX\section -->
+<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXThe compact-open topology on function spacesXXSEC_DEF_SPLITTERXX -->
+<!-- XXSEC_PREFIX_BEGINXX\sectionThe compact-open topology on function spaces -->
+(sec:compact-open-topology-function-spaces_1)=
+# The compact-open topology on function spaces
+Let $X$ and $Y$ be topological spaces. We denote the set of all functions from $Y$ to $X$ by $X^Y$. This is the same thing as the direct product $\prod_Y X$ of $X$ over $Y$. The space of continuous functions $\mathscr{C}(Y,X)$ sits in $X^Y$ so we can give $\mathscr{C}(Y,X)$ the product topology induced by $X^Y$. This is the topology of
+*pointwise convergence* and will not be useful for studying most function spaces. We will instead be interested in the *compact open topology* which is the topology of
+*uniform convergence on compact sets*.
 
-<!-- XXSEC_DEF_SPLITTERXX\sectionXXSEC_DEF_SPLITTERXXXXSEC_DEF_SPLITTERXX -->
-<!-- XXSEC_PREFIX_BEGINXX\section -->
-# 
 
-<!-- XXSEC_PREFIX_ENDXX\section -->
+:::{prf:definition} 
+Let $X$ and $Y$ be topological spaces. The *compact open topology* on $\mathscr{C}(Y,X)$ is the topology with subbasis given by the sets $\mathscr{V}(K,U)=\{f \in \mathscr{C} (Y,X)|f(K) \subset U\}$ for $K \subset Y$ compact and $U \subset X$ open.
+:::
+
+
+
+:::{prf:definition} 
+A topology $\mathscr{T}$ on $\mathscr{C}(Y,X)$ is called *admissable* if the evaluation map $e:\mathscr{C}(Y,X) \times Y \rightarrow X$, $(f,y) \mapsto f(y)$ is continuous.
+:::
+
+
+
+:::{prf:proposition} 
+The compact open topology is coarser than any admissable topology on $\mathscr{C}(Y,X)$.
+:::
+
+
+:::{prf:proof}
+
+Let $\mathscr{T}$ be an admissable topology on $\mathscr{C}(Y,X)$ so that the evaluation map $e:\mathscr{C}(Y,X) \times Y \rightarrow X$ is continuous. Let $K\subset Y$ be compact, $U\subset X$ be open and $f\in T(K,U)$. We have to find $V\in O$ such that $f \in V \subset T(K,U)$. Let $k \in K$. Since $e$ is continuous and $U$ is an open neighborhood of $f(x)$, then there are open sets $W_k \subset Y$ and $V_k \subset C_O(Y,X)$ such that $k\in W_k$, $f(k)\in V_k$ amd $e(V_k \times W_k)\subset U$. Since $K$ is compact, there are $k_1,k_2,...,k_l \in K$ such that $K\subset \bigcup_{i=1}^l W_{k_i}$. Put $V:=\bigcap_{i=1}^l V_{k_i}$ so that $f \in V$ and $V$ is open in $O$. Now take $g \in V$ and let $k \in K$. Choose $i$ such that $k\in W_{k_i}$ and observe that $g\in W_{k_i}$ so that 
+:::{math}
+g(k)=e(g,k) \in e(V_{k_i} \times W_{k_i} \subset U
+:::
+ Hense $g \in T(K,U)$
+:::
+
+
+
+:::{prf:theorem} 
+If $Y$ is locally compact, then the compact open topology on $\mathscr{C}(Y,X)$ is admissable, and it is the coarsets topology on $\mathscr{C}(Y,X)$ with that property.
+
+:::{prf:proof}
+
+We have to show that 
+:::{math}
+e:\mathscr{C}(Y,X) \times Y \rightarrow X \\ (f,y)\mapsto f(y)
+:::
+ is continuous. Since sets of the form $T(K,U)$ form a subbasis for the compact open topology, it suffices to show that for an open neighborhood $W \subset X$ of some $e(f,y)$, there is compact $K\subset Y$, open $U \subset X$ and open $V \subset Y$ such that $e(T(K,U) \times V) \subset W$ with $f \in T(K,U)$ and $y\in V$. By assumption, and since $f$ is continuous, there is an open neighborhood $\tilde{W}$ of $y$ such that $f(\tilde{W}) \subset W$. By local compactness, there is an open neighborhood $V\subset Y$ of $Y$ such that $y \in V \subset \bar{V} \subset \tilde{W}$ and $\bar{V}$ is compact. If we put $K:=\bar{V}$ and $U=W$, then $e(T(K,U) \times V) \subset W$ since for $f'\in T(K,U)$ and $y'\in V$, we have $e(f',y')=f'(y')\subset W$.
+:::
+:::
+
+
+Let $X,Y,Z$ be topological spaces. As sets, it is always true that $Z^{X \times Y} \cong Z^{Y^X}$ via the maps 
+:::{math}
+\Phi:Z^{X \times Y} \rightarrow Z^{Y^X} \\ f \mapsto (x \mapsto (y \mapsto f(x,y)))
+:::
+ and 
+:::{math}
+\Psi:Z^{Y^X} \rightarrow Z^{X \times Y} \\ g \mapsto ((x,y) \mapsto g(x)(y))
+:::
+
+
+
+:::{prf:theorem} The exponential law
+If $Y$ is locally compact, then 
+:::{math}
+\Phi(\mathscr{C}(X \times Y),Z) \subset \mathscr{C}(X,\mathscr{C}(Y,Z))
+:::
+ and 
+:::{math}
+\Psi(\mathscr{C}(X,\mathscr{C}(Y,Z))) \subset (\mathscr{C}(X \times Y),Z)
+:::
+
+
+:::{prf:proof}
+
+For $f\in\mathscr{C}(X \times Y, Z)$ and $x\in X$, we have to show that $\Phi(f)(x)\in\mathscr{C}(Y,Z)$ and $\Phi(f)\in \mathscr{C}(X,\mathscr{C}(Y,Z))$. $\Phi(f)(x)(y)=f \circ i_x(y)=f(x,y)$. Consider $T(K,U)$ for $K\subset Y$ compact and $U \subset X$ open. We need ot prove that the preimage $\Phi(f)^{-1}(T(K,U))$ is open in X. Let $x \in \Phi(f)^{-1}(T(K,U))$ so that $f(x,_) \in T(K,U)$. Hence for all $y \in K$, we have $f(x,y)\in U$. By the continuity of $f$, there are open neighborhoods $W_y$ of $x$ and $V_y$ of $y$ such that $f(W_y \times V_y)\subset U$. Since $K$ us compact, there are open sets $y_1,y_2, \ldots y_k \subset Y$ such that $K\subset V_{y_1} \cup V_{y_2} \cup \ldots \cup V_{y_k}$. Put $W=W_{y_1} \cap W_{y_2} \cap \ldots \cap W_{y_k}$ so that $W$ is a neighborhood of $x$ and $\Phi(f)(W)\subset T(K,U)$.
+
+Now we need to show for $g \in \mathscr{C}(X,\mathscr{C}(Y,Z))$ that $\Psi(g)\in \mathscr{C}(X \times Y,Z)$. Let $g:X \times \mathscr{C}(Y,Z)$ be continuous and assume that $U \subset Z$ be open. We have to show that $\Psi(g)^{-1}(U)$ is open. Take $(x,y)\in \Psi(g)^{-1}(U)$. Since $g$ is continuous, there is an open neighborhood $W$ of $y$ such that $g(x)(W) \subset U$. Since $Y$ is locally compact, there is an open $V \subset Y$ such that $y\in V \subset \bar{V} \subset W$ with $\bar{V}$ compact. Hence $g(x)(V)\subset g(x)(\bar{V})\subset U$. Thus $g(x)\in T(K,U)$ so there is an open neighborhood $O \subset X$ of $x$ such that $g(O) \subset T(\bar{V},U)$. Therefore 
+:::{math}
+\Psi(g)(O \times V) \subset g(O)(V) \subset g(O)(\bar{V}) \subset U
+:::
+:::
+:::
+
+
+
+:::{prf:lemma} 
+:label: cosubbasis_1
+The sets $(U^L)^K = T(K,T(L,U))$ with $K \subset X$ and $L \subset Y$ compact and $U \subset Z$ open form a subbasis for the compact open topology on $\mathscr{C}(X,\mathscr{C}(Y,Z))$.
+
+:::{prf:proof}
+
+Let $I$ be an index set $W_i \subset \mathscr{C}(Y,Z)$ be open and $K\subset X$ be compact. 
+:::{math}
+T\left(K,\bigcup_I W_i\right)=
+\bigcup_{n \in \mathbb{N}^+}
+\bigcup_{\substack{K_1 \times \ldots \times K_n \subset K^n \\ K_1\cup \ldots \cup K_n = K \\ K_i = \bar{K_i} \forall i }}
+\bigcup_{(i_1,\ldots,i_n)\in I^n}
+\bigcap_{l=1}^n T(K_{i_l},W_{i_l})
+:::
+ Suppose $J$ is a finite set. then $T\left(K,\bigcap_{j \in J}W_j\right)=\bigcap_{j \in J}T(K,W_j)$. Sets of the form $T(L,U)$ with $L \subset Y$ compact and $U \subset Z$ open form a subbasis of $\mathscr{C}(Y,Z)$, so if $W \subset \mathscr{C}(Y,Z)$ is open, we have $W=\bigcup_{i\in I}\bigcap_{j \in J_i} T(L_{i_j},U_{i_j})$ so that 
+:::{math}
+T(K,W)=
+\bigcup_{n \in \mathbb{N}^+}
+\bigcup_{\substack{K_1 \times \ldots \times K_n \subset K^n \\ K_1\cup \ldots \cup K_n = K \\ K_i = \bar{K_i} \forall i }}
+\bigcup_{(i_1,\ldots,i_n)\in J^n}
+\bigcap_{l=1}^n
+\bigcap_{j \in J_{i_l}}
+T(K_{i_l},T(L_{i_lj},U_{i_lj}))
+:::
+:::
+:::
+
+
+
+:::{prf:theorem} 
+Let $X,Y,Z$ be topological spaces with $X$ and $Y$ Hausdorff and $Y$ locally compact. Then the natural isomorphism 
+:::{math}
+\bar{\Phi}:\mathscr{C}(X \times Y, Z) \rightarrow \mathscr{C}(X, \mathscr{C}(Y,Z))
+:::
+ is a homeomorphism.
+
+:::{prf:proof}
+
+Let $f\in \mathscr{C}(X \times Y, Z)$ and let $W\in \mathscr{C}(X,\mathscr{C}(Y,Z))$ be an open neighborhood of $\bar{\Phi}(f)$. By {prf:ref}`cosubbasis_1`, there is an open $U \subset Z$ and compact subsets $L \subset Y$ and $K \subset X$ such that $\bar{phi}(f)\in T(K,T(L,U)) \subset W$. $T(K \times L ,U)$ is open in $\mathscr{C}(X \times Y, Z)$ and note that $f\in T(K \times L ,U)$ since for $(x,y)\in K \times L$, $\bar{\Phi}(f)(x)\in T(L,U)$ and $f(x,y)=\bar{\Phi}(f)(x)(y)\in U$.
+
+Assume that $g\in T(K \times L, U)$. The $\bar{\Phi}(g)(x)(y)=g(x,y)=\in U$ so $\bar{\Phi}(g)(x)\in T(L,U)$ so $\bar{\Phi}(g)\in T(K,T(L,U))$, hence $\bar{\Phi}$ is continuous.
+\marginparRest of proof in email 9/27/10
+:::
+:::
+
+
+
+<!-- XXSEC_PREFIX_ENDXX\sectionThe compact-open topology on function spaces -->
+
 
 <!-- XXSEC_PREFIX_ENDXX\chapterGeneral Topology -->
 
@@ -3498,7 +4765,7 @@ Let $\mathrm{E}$ be a \texttvs~over a topological division ring $R$. Then the fo
 : Let $A, B \subset \mathrm{E}$ be closed and assume that $A$ is quasi-compact that is that any filter on $A$ has a cluster point. Then the set $A+B$ is closed.
 
 (vi)
-: The space $\mathrm{E}$ is ERROR_UNDEFINED_LABEL_axiom:t3_-1 or, equivalently, each point of $\mathrm{E}$ possesses a neighborhood base consisting of closed subsets.
+: The space $\mathrm{E}$ is {ref}`axiom:t3_1` or, equivalently, each point of $\mathrm{E}$ possesses a neighborhood base consisting of closed subsets.
 :::
 
 
@@ -3531,7 +4798,7 @@ Let $\mathrm{E}$ be a \texttvs~over a topological division ring $R$. Then the fo
 : We can assume that $A$ and $B$ are non-empty because the claim is trivial otherwise. Assume that $A+B$ is not closed. Then there exists an element $v \in \mathrm{E} \setminus (A+B) $ such that each neighborhood of $v$ meets $A+B$. This means in particular that the restriction of the neighborhood filter $\mathscr{U}$ of $v$ to $A+B$ is a filter base. Consequently, $(- B + \mathscr{U})\cap A$ is a filter base on $A$, hence possesses an accummulation point $x \in A$. For each neighborhood $V \in \mathscr{U}$ the point $x$ is then contained in the closure of $-B +V$. Hence, by {ref}`ite:closure-terms-base_1`, $x$ is contained in $v -B + U + U$ for every zero neighborhood $U$. Since by continuity of addition $U + U$ runs through a base of zero neighborhoods when $U$ runs through the zero neighborhoods, $x \in v - \widebar{B} = v -B$ follows. Since $x \in A$ this contradicts the assumption $v \in A+B$ and $A+B$ has to be closed.
 
 \itemindent
-: Let $v \in \mathrm{E}$, $A\subset \mathrm{E}$ closed, and assume $v \notin A$. Choose an open neighborhood $V$ of $v$ such that $V \cap A = \emptyset$. Then there exists an open zero neighborhood $U$ such that $v + U + U \subset V$. By possibly passing to $U \cap (-U)$ we can assume that $U = -U$. Now $v+U$ is an open neighborhood of $v$ and $A+U$ one of $A$. These neighborhoods are disjoint because if the intersection $v+U \cap A+U$ is non-empty, then there exists an element $w \in v+U + U\cap A$ since $-U =U$. This contradicts $V \cap A = \emptyset$, so $v+U$ and $A+U$ are disjoint neighborhoods of $v$ and $A$, respectively. Hence $\mathrm{E}$ satisfies ERROR_UNDEFINED_LABEL_axiom:t3_-1.
+: Let $v \in \mathrm{E}$, $A\subset \mathrm{E}$ closed, and assume $v \notin A$. Choose an open neighborhood $V$ of $v$ such that $V \cap A = \emptyset$. Then there exists an open zero neighborhood $U$ such that $v + U + U \subset V$. By possibly passing to $U \cap (-U)$ we can assume that $U = -U$. Now $v+U$ is an open neighborhood of $v$ and $A+U$ one of $A$. These neighborhoods are disjoint because if the intersection $v+U \cap A+U$ is non-empty, then there exists an element $w \in v+U + U\cap A$ since $-U =U$. This contradicts $V \cap A = \emptyset$, so $v+U$ and $A+U$ are disjoint neighborhoods of $v$ and $A$, respectively. Hence $\mathrm{E}$ satisfies {ref}`axiom:t3_1`.
 :::
 
 
@@ -4704,7 +5971,7 @@ A topological vector space $\mathrm{E}$ is called *seminormable* if its topology
 
 
 :::{prf:theorem} Kolmogorov's normability criterion
-A topological vector space $\mathrm{E}$ is normable if and only if it is a ERROR_UNDEFINED_LABEL_axiom:t1_-1 space and possesses a bounded convex neighborhood of the origin.
+A topological vector space $\mathrm{E}$ is normable if and only if it is a {ref}`axiom:t1_1` space and possesses a bounded convex neighborhood of the origin.
 :::
 
 <!-- XXSEC_PREFIX_ENDXX\subsection*Normability -->
@@ -8477,12 +9744,17 @@ This entails that the product on $A$ is associative. In the same way one shows t
 
 \para As we have seen, the infinite tensor product construction works well for objects of algebraic categories like $R$-modules, vector spaces or $R$-algebras. As soon as a topologies compatible with the algebraic structure come in it becomes difficult and sometimes even impossible to construct or even define
 
+\newpage
+<!-- XXSEC_PREFIX_ENDXX\sectionInfinite tensor products -->
 
+<!-- XXSEC_PREFIX_ENDXX\chapterC$^*$-Algebras -->
+
+<!-- XXSEC_PREFIX_ENDXX\partFunctional Analysis -->
 
 \bibliographylmlib
 \bibliographystyleapalike \iheadBibliography
 \ohead
-<!-- XXSEC_PREFIX_ENDXX\sectionInfinite tensor products -->
+
 
 <!-- XXSEC_DEF_SPLITTERXX\chapter*XXSEC_DEF_SPLITTERXXLicensingXXSEC_DEF_SPLITTERXX -->
 <!-- XXSEC_PREFIX_BEGINXX\chapter*Licensing -->
@@ -8492,7 +9764,3 @@ This entails that the product on $A$ is associative. In the same way one shows t
 \oheadGNU FDL v1.3
 \addcontentslinetocchapterGNU FDL v1.3
 <!-- XXSEC_PREFIX_ENDXX\chapter*Licensing -->
-
-<!-- XXSEC_PREFIX_ENDXX\chapterC$^*$-Algebras -->
-
-<!-- XXSEC_PREFIX_ENDXX\partFunctional Analysis -->

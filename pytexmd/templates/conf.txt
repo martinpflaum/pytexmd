@@ -11,6 +11,20 @@ exclude_patterns = []
 
 
 
+mathjax3_config = {
+    "tex": {
+        "macros": {
+            "ltortoise": "\\unicode{x3014}",
+            "rtortoise": "\\unicode{x3015}",
+            "ltsbrak": ["\\mathopen{\\ltortoise\\mspace{1mu}}", 0],
+            "rtsbrak": ["\\mathopen{\\mspace{1mu}\\rtortoise}", 0],
+            "mathbbm": ["\\mathbb{#1}", 1],
+            "widebar": ["\\overline{#1}", 1],
+            "C": "\\mathbb{C}",
+        }
+    }
+}
+
 myst_enable_extensions = [
     "amsmath",
     "attrs_inline",

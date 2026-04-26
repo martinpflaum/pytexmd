@@ -103,36 +103,58 @@ def load_tex_file(file_name: str) -> LatexFile:
     content = load_file(file_name)
 
     def remove_extensions(file_name: str) -> str:
-        """Remove known extensions from a filename.
-
-        Args:
-            file_name (str): Filename to process.
-
-        Returns:
-            str: Filename without known extensions.
-        """
-        for ext in target_extensions:
-            file_name = file_name.replace(ext, "")
+        """Strip a single trailing known extension from a basename."""
+        root, ext = os.path.splitext(file_name)
+        if ext.lower() in target_extensions:
+            return root
         return file_name
-        
-    _tex_files = { remove_extensions(file.split("\\")[-1].split("/")[-1]):file for file in tex_files}
-    _bib_files = {remove_extensions(file.split("\\")[-1].split("/")[-1]): file for file in bib_files}
-    _image_files = {remove_extensions(file.split("\\")[-1].split("/")[-1]): file for file in image_files}
+
+    def _basename_key(abs_path: str) -> str:
+        """Return the bare basename (no extension) used as dict key."""
+        return remove_extensions(os.path.basename(abs_path))
+
+    _tex_files = {_basename_key(f): f for f in tex_files}
+    _bib_files = {_basename_key(f): f for f in bib_files}
+    _image_files = {_basename_key(f): f for f in image_files}
     all_files = {**_tex_files, **_bib_files, **_image_files}
 
     def input_to_filename(input_name: str) -> str:
         r"""Convert LaTeX input name to absolute filename.
+
+        Tries direct relative-path resolution first (handles paths like
+        ``../sibling/file`` or ``sections/foo``), then falls back to a
+        basename-only dict lookup for plain names like ``foo``.
 
         Args:
             input_name (str): Name from \input{} command.
 
         Returns:
             str: Absolute path to the file.
+
+        Raises:
+            FileNotFoundError: If no matching file can be located.
         """
-        input_name = remove_extensions(input_name)
-        input_name = input_name.split("\\")[-1]
-        input_name = input_name.split("/")[-1]
-        return all_files[input_name]
+        # Normalise separators so os.path works cross-platform
+        norm = input_name.replace("\\", "/")
+
+        # Strategy 1: resolve as a path relative to the project root
+        candidate = os.path.normpath(os.path.join(absolute_folder, norm))
+        if os.path.isfile(candidate):
+            return candidate
+        # Try appending each tex extension (LaTeX omits .tex in \input)
+        for ext in tex_extensions:
+            if os.path.isfile(candidate + ext):
+                return candidate + ext
+
+        # Strategy 2: bare-basename dict lookup (legacy fallback)
+        bare = remove_extensions(norm.split("/")[-1])
+        if bare in all_files:
+            return all_files[bare]
+
+        raise FileNotFoundError(
+            f"Cannot resolve \\input{{{input_name}}}: tried '{candidate}' "
+            f"and basename key '{bare}' in scanned files."
+        )
 
     def get_input_file(input_name: str) -> str:
         r"""Get the contents of an input file referenced in LaTeX.
@@ -145,10 +167,9 @@ def load_tex_file(file_name: str) -> LatexFile:
         """
         try:
             filename = input_to_filename(input_name)
-        #    print(filename)
             return load_file(filename)
-        except KeyError:
-            print(f"File not found for input: {input_name}")
+        except (KeyError, FileNotFoundError) as exc:
+            print(f"File not found for input: {input_name} ({exc})")
             return ""
     # Search for \input{filename} patterns in the content
     input_pattern = r'\\input\{([^}]+)\}'
