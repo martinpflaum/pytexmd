@@ -64,23 +64,39 @@ SECTION_LIKE_COMMANDS = [
     "\\subparagraph"
 ]
 
-SECTION_LIKE_COMMANDS_TO_HASHTAGS = {
+SECTION_LIKE_COMMANDS_TO_BEGIN = {
     "\\part": "# ",
     "\\chapter": "# ",
-    "\\section": "# ",
-    "\\subsection": "## ",
-    "\\subsubsection": "### ",
-    "\\paragraph": "#### ",
-    "\\subparagraph": "#### ",
-    "\\part*": "# ",
-    "\\chapter*": "# ",
-    "\\section*": "# ",
-    "\\subsection*": "## ",
-    "\\subsubsection*": "### ",
-    "\\paragraph*": "#### ",
-    "\\subparagraph*": "#### ",
+    "\\section": "## ",
+    "\\subsection": "### ",
+    "\\subsubsection": "#### ",
+    "\\paragraph": "##### ",
+    "\\subparagraph": "###### ",
+    "\\part*": "```{rubric}\n",
+    "\\chapter*": "```{rubric}\n",
+    "\\section*": "```{rubric}\n",
+    "\\subsection*": "```{rubric}\n",
+    "\\subsubsection*": "```{rubric}\n",
+    "\\paragraph*": "```{rubric}\n",
+    "\\subparagraph*": "```{rubric}\n",
 }
 
+SECTION_LIKE_COMMANDS_TO_END = {
+    "\\part": "",
+    "\\chapter": "",
+    "\\section": "",
+    "\\subsection": "",
+    "\\subsubsection": "",
+    "\\paragraph": "",
+    "\\subparagraph": "",
+    "\\part*": "\n```",
+    "\\chapter*": "\n```",
+    "\\section*": "\n```",
+    "\\subsection*": "\n```",
+    "\\subsubsection*": "\n```",
+    "\\paragraph*": "\n```",
+    "\\subparagraph*": "\n```",
+}
 SEC_DEF_SPLITTER = "XXSEC_DEF_SPLITTERXX"
 SEC_PREFIX_BEGIN = "XXSEC_PREFIX_BEGINXX"
 SEC_PREFIX_END = "XXSEC_PREFIX_ENDXX"
@@ -649,9 +665,9 @@ class SectionLike(StructureMaker):
         end_comment = make_myst_comment(f"{SEC_PREFIX_END}{self.command_name}{self.name}")
 
         if self.label is not None:
-            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
         else:
-            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
         out = ""
         for child in self.children:
             out += child.to_string()
@@ -663,9 +679,9 @@ class SectionLike(StructureMaker):
     def get_content(self)->str:
         
         if self.label is not None:
-            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
         else:
-            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
     
         out = ""
         for child in self.children:

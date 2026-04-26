@@ -27,6 +27,7 @@ from .core import *
 from typing import List,Tuple,Union
 from ..config import LATEX_REPLACEMENTS
 
+CURRENT_UNNAMED_LABEL = 0
 
 class EquationLabel(Element):
     def __init__(self,modifiable_content: str, parent: Element):
@@ -151,7 +152,7 @@ class DoubleDolarLatex(Element):
         """
         super().__init__(modifiable_content,parent)
         self.label = ""
-        self.enumerated = True
+        self.enumerated = False
 
     def add_label(self,label: str):
         if self.label != "":
@@ -159,15 +160,21 @@ class DoubleDolarLatex(Element):
         self.label = label.strip()
 
     def to_string(self) -> str:
+        global CURRENT_UNNAMED_LABEL
         pre = "\n:::{math}\n"
         if self.label != "":
             pre += ":label: " + self.label + "\n"
-        if not self.enumerated:
-            pre += ":enumerated: false\n"
+        elif self.enumerated:
+            pre += f":label: unamed_label{CURRENT_UNNAMED_LABEL}\n"
+            CURRENT_UNNAMED_LABEL += 1
 
         out = ""
         for child in self.children:
             out += child.to_string()
+        """        if not self.enumerated:
+            if "\\notag" not in out:
+                pre += "\\notag\n"
+        """
         pre += out.strip()
         pre += "\n:::\n"
         return pre
@@ -214,7 +221,10 @@ class DefaultEquation(Element):
         self.end = end
 
         self.label = ""
-        self.enumerated = True
+        if "*" in self.begin:
+            self.enumerated = False
+        else:
+            self.enumerated = True
 
     def add_label(self,label: str):
         if self.label != "":
@@ -222,12 +232,14 @@ class DefaultEquation(Element):
         self.label = label.strip()
 
     def to_string(self) -> str:
+        global CURRENT_UNNAMED_LABEL
         pre = "\n:::{math}\n"
         if self.label != "":
             pre += ":label: " + self.label + "\n"
-        if not self.enumerated:
-            pre += ":enumerated: false\n"
-            
+        elif self.enumerated:
+            pre += f":label: unamed_label{CURRENT_UNNAMED_LABEL}\n"
+            CURRENT_UNNAMED_LABEL += 1
+
         out = ""
         for child in self.children:
             out += child.to_string()
