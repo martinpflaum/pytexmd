@@ -42,6 +42,25 @@ myst_enable_extensions = [
     "tasklist",
 ]
 
+
+prf_realtyp_to_countertyp = {
+    "axiom": "theorem",
+    "theorem": "theorem",
+    "lemma": "theorem",
+    "algorithm": "theorem",
+    "definition": "theorem",
+    "remark": "theorem",
+    "conjecture": "theorem",
+    "corollary": "theorem",
+    "criterion": "theorem",
+    "example": "theorem",
+    "property": "theorem",
+    "observation": "theorem",
+    "proposition": "theorem",
+    "assumption": "theorem",
+    "notation": "theorem",
+}
+
 #math_number_all = True             # number *all* displayed equations
 math_eqref_format = "({number})"   # how equation refs look
 

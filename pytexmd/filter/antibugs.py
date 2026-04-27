@@ -10,7 +10,7 @@ __all__ = [
     "no_more_bugs_begin",
     "no_more_bugs_end"
 ]
-
+from . import splitting
 def raw_remove_comments(input: str) -> str:
     """
     Removes comments (lines starting with %) from a raw string.
@@ -137,35 +137,57 @@ def remove_empty_at_begin(input: str) -> str:
             break
     return input[out:]
 
-def only_two_breaks(input: str) -> str:
+
+
+def label_strip(string:str)->str:
     """
-    Ensures that there are at most two consecutive line breaks in the input string.
+    Strips LaTeX label commands from the input string.
 
     Args:
-        input (str): The input string.
-
-    Returns:
-        str: The processed string with at most two consecutive line breaks.
-
-    Example:
-        >>> only_two_breaks("a<br><br><br>b")
-        'a<br><br>b'
+        string (str): The input string containing LaTeX labels.
     """
-    input += "  "
-    input = input.split("<br>")
     out = ""
-    for elem in input[:-1]:
-        
-        out += (remove_empty_at_begin(elem)) + "<br>"
-    out += input[-1]
+    while splitting.position_of(string, "\\label{") != -1:
+        pre,middle,post = splitting.begin_end_split(string,"\\label{","}")
+        out += pre + "\\label{" + middle.strip() + "}" 
+        string = post
+    out += string
+    return out
 
-    while True:
-        tmp = out.replace("<br><br><br>","<br><br>")
-        if tmp == out:
-            out.replace("<br>","\n<br>")
-            return out
+def ref_strip(string:str)->str:
+    """
+    Strips LaTeX reference commands from the input string.
+
+    Args:
+        string (str): The input string containing LaTeX references.
+    """
+    out = ""
+    while splitting.position_of(string, "\\ref{") != -1:
+        pre,middle,post = splitting.begin_end_split(string,"\\ref{","}")
+        out += pre + "\\ref{" + middle.strip() + "}" 
+        string = post
+    out += string
+    return out
+
+def label_renamer(string: str) -> str:
+    label_counter = {}
+    string = label_strip(string)
+    string = ref_strip(string)
+
+    out = ""
+    while splitting.position_of(string, "\\label{") != -1:
+        pre,middle,post = splitting.begin_end_split(string,"\\label{","}")
+        if not middle in label_counter.keys():
+            label_counter[middle] = 0
         else:
-            out = tmp
+            label_counter[middle] += 1
+        out += pre
+        out = out.replace("\\label{"+middle+"}","\\label{"+middle+"_duplicate_"+str(label_counter[middle])+"}") 
+        out += "\\label{"+middle+"}"
+        string = post
+    out += string
+    
+    return out
 
 def no_more_bugs_begin(input: str) -> str:
     """
@@ -185,6 +207,7 @@ def no_more_bugs_begin(input: str) -> str:
     input = no_more_html_bugs(input)
     input = no_more_dolar_bugs_begin(input)
     input = no_more_textup_bugs_begin(input)
+    input = label_renamer(input)
     
     return input
 

@@ -40,7 +40,7 @@ sphinx_build([
 ])
 """
 #%%
-file_name = "../examples_tex/FANCyProject/FaNCyProject.tex"
+"""file_name = "../examples_tex/FANCyProject/FaNCyProject.tex"
 
 latex_content = ptm.file_loader.load_tex_file(file_name)
 file_string = latex_content.content
@@ -53,5 +53,4 @@ with open(output_file, 'w', encoding='utf-8') as f:
     f.write(document_md.to_string())
 
 print(f"✓ Full document written to: {output_file}")
-
-# %%
+"""
