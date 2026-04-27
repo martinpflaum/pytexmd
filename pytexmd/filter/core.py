@@ -663,7 +663,11 @@ class SectionLike(StructureMaker):
         comment = make_myst_comment(f"{SEC_DEF_SPLITTER}{self.command_name}{SEC_DEF_SPLITTER}{self.name}{SEC_DEF_SPLITTER}")
         begin_comment = make_myst_comment(f"{SEC_PREFIX_BEGIN}{self.command_name}{self.name}")
         end_comment = make_myst_comment(f"{SEC_PREFIX_END}{self.command_name}{self.name}")
-
+        if "*" in self.command_name:
+            comment = ""
+            begin_comment = ""
+            end_comment = ""
+            
         if self.label is not None:
             pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
         else:

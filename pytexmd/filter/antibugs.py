@@ -183,6 +183,7 @@ def label_renamer(string: str) -> str:
             label_counter[middle] += 1
         out += pre
         out = out.replace("\\label{"+middle+"}","\\label{"+middle+"_duplicate_"+str(label_counter[middle])+"}") 
+        out = out.replace("\\ref{"+middle+"}","\\ref{"+middle+"_duplicate_"+str(label_counter[middle])+"}") 
         out += "\\label{"+middle+"}"
         string = post
     out += string
