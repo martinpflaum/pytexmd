@@ -706,8 +706,8 @@ class SectionLike(StructureMaker):
         
         out.append(SectionStructure(self.name,self.get_content(),child_structures))
         return out
-    
-        
+
+  
 class SectionLikeSearcher(Searcher):
     """Searcher for LaTeX commands.
 

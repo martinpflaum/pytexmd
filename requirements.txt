@@ -1,6 +1,6 @@
 sphinx>=7.0
 myst-parser
-sphinx-proof
+sphinx-proof>=0.4.0
 furo
 regex
 sphinx-copybutton

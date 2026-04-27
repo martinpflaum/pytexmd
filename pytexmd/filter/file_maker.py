@@ -26,13 +26,13 @@ SECTION_HIERARCHY = {
     "\\subsubsection": 4,
     "\\paragraph": 5,
     "\\subparagraph": 6,
-    "\\part*": 999,
-    "\\chapter*": 999,
-    "\\section*": 999,
-    "\\subsection*": 999,
-    "\\subsubsection*": 999,
-    "\\paragraph*": 999,
-    "\\subparagraph*": 999,
+    "\\part*": 0,
+    "\\chapter*": 1,
+    "\\section*": 2,
+    "\\subsection*": 3,
+    "\\subsubsection*": 4,
+    "\\paragraph*": 5,
+    "\\subparagraph*": 6,
 }
 
 def string_to_tree(string:str)->core.Document:
@@ -345,20 +345,15 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
             f.write(":maxdepth: 2\n\n")
             
             child_files = []
-            inline_content = ""
             for child in section['children']:
-                if child.get('level', 0) == 999:
-                    # Starred section: include inline, don't create a separate file
-                    inline_content += child['content'] + "\n\n"
-                else:
-                    child_filename = write_section_files(
-                        child, 
-                        output_folder, 
-                        max_depth, 
-                        current_depth + 1,
-                        output_suffix
-                    )
-                    child_files.append(child_filename)
+                child_filename = write_section_files(
+                    child, 
+                    output_folder, 
+                    max_depth, 
+                    current_depth + 1,
+                    output_suffix
+                )
+                child_files.append(child_filename)
             
             # Store child filenames in section structure
             section['child_files'] = child_files
@@ -367,9 +362,6 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
                 f.write(f"{child_file}\n")
             
             f.write("```\n")
-            
-            if inline_content:
-                f.write("\n" + inline_content)
         else:
             # Include all content
             f.write(section['content'].strip() + "\n")

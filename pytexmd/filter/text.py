@@ -339,7 +339,7 @@ class TheoremElement(Element):
     def __init__(self, parent: Element, display_name: str, theorem_env_name: str, enum_parent_class):
         super().__init__("",parent)
         self.display_name = display_name
-        theorem_type = "prf:theorem"#"admonition"
+        theorem_type = "prf:theorem"#"admonition"   ---here FIXME
         if display_name.lower() in PRF_TYPES.keys():
             theorem_type = PRF_TYPES[display_name.lower()]
         self.theorem_type = theorem_type
