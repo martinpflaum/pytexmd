@@ -17,6 +17,7 @@ __all__ = [
     "get_theoremSearchers",
     "Textit",
     "ProofLabel",
+    "CUSTOM_THEOREM_TYPES",
 ]
 from typing import List, Tuple
 from .core import *
@@ -49,6 +50,10 @@ proof_theorem_types = [
 """
 for key in list(PRF_TYPES.keys()):
     PRF_TYPES[key+"s"] = PRF_TYPES[key]
+
+# Global registry of custom theorem types discovered during processing.
+# Maps type_name (str) -> display_name (str).
+CUSTOM_THEOREM_TYPES: dict = {}
     
 class ProofLabel(Element):
     """Element for MyST label.
@@ -339,9 +344,14 @@ class TheoremElement(Element):
     def __init__(self, parent: Element, display_name: str, theorem_env_name: str, enum_parent_class):
         super().__init__("",parent)
         self.display_name = display_name
-        theorem_type = "prf:theorem"#"admonition"   ---here FIXME
-        if display_name.lower() in PRF_TYPES.keys():
-            theorem_type = PRF_TYPES[display_name.lower()]
+        display_lower = display_name.lower()
+        if display_lower in PRF_TYPES:
+            theorem_type = PRF_TYPES[display_lower]
+        else:
+            # Unknown type: register as custom and use a prf: prefixed name.
+            type_name = display_lower.replace(" ", "_")
+            theorem_type = "prf:" + type_name
+            CUSTOM_THEOREM_TYPES[type_name] = display_name
         self.theorem_type = theorem_type
         
     def to_string(self) -> str:
