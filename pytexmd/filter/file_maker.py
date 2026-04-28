@@ -60,7 +60,9 @@ def string_to_tree(string:str)->core.Document:
     #basic_expands += junkSearcher+replaceSearcher
     #all_expands += [[core.BackMatter()]]  #backmatter and appendix splitter
     all_expands += core.get_section_like_filters_top_lvl()
-    all_expands += [text.get_theoremSearchers(string)]+[[text.Proof]]+ [enumitem.get_all_filters()]
+    theorem_searchers = text.get_theoremSearchers(string)
+    para_searcher = text.ParaSearcher([s.theorem_env_name for s in theorem_searchers])
+    all_expands += [theorem_searchers + [para_searcher]]+[[text.Proof]]+ [enumitem.get_all_filters()]
     all_expands += [equations.get_all_filters()]
     all_expands += [text.get_all_filters()] 
     all_expands += [[core.OneArgumentJunkSearcher(r"\hspace")]]

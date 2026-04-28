@@ -185,6 +185,7 @@ class Element():
         self.parent:Element|None = None
         self._modifiable_content = modifiable_content
         self.parent = parent
+        self._max_child_colon_count: int = 0
 
     def hasattr(self, string: str) -> bool:
         """Check if the element has a given attribute.
@@ -359,6 +360,32 @@ class Element():
             #raise AttributeError("No parent in the latex tree has the attribute " + name)
         else:
             return self.parent.__getattr__(name)
+
+    def _propagate_colon_count(self, count: int) -> None:
+        """Propagate a directive colon-depth upward through the tree.
+
+        Called by child elements after _finish_up so every ancestor knows the
+        maximum colon count used by any descendant directive.  Nodes that
+        produce their own fenced directives (e.g. ParaElement) read
+        ``_max_child_colon_count`` in ``to_string`` to decide how many colons
+        to use for their own fence.
+
+        Args:
+            count (int): Colon count reported by the calling child.
+        """
+        if count > self._max_child_colon_count:
+            self._max_child_colon_count = count
+        if self.parent is not None:
+            self.parent._propagate_colon_count(count)
+
+    def _after_finish_up(self) -> None:
+        """Hook called at the end of ``_finish_up`` once all children are done.
+
+        Override in subclasses that produce fenced directives (``:::``) to
+        report their colon count to their parent via
+        ``self.parent._propagate_colon_count(n)``.
+        """
+        pass
     
     def _finish_up(self) -> None:
         """Finalize the element by wrapping modifiable content in RawText.
@@ -382,6 +409,7 @@ class Element():
         else:
             for child in self.children:
                 child._finish_up()
+        self._after_finish_up()
 
     def expand(self, all_classes: List["Element"]) -> None:
         """Expand the element tree by processing children.

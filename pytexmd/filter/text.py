@@ -10,7 +10,8 @@ __all__ = [
     "Proof",
     "Textbf",
     "Emph",
-    "Para",
+    "ParaElement",
+    "ParaSearcher",
     "Cite",
     "get_all_filters",
     "get_number_within_equation",
@@ -192,13 +193,19 @@ class Proof(Element):
         return pre,out,post
 
     def to_string(self) -> str:
-        pre = f"\n:::{{prf:proof}}\n"
+        colons = ":" * max(3, self._max_child_colon_count + 1)
+        pre = "\n" + colons + "{prf:proof}\n"
         out = ""
         for child in self.children:
             out += child.to_string()
         out = out.rstrip()
-        out = pre +out+ "\n:::\n"
+        out = pre + out + "\n" + colons + "\n"
         return out
+
+    def _after_finish_up(self) -> None:
+        own_count = max(3, self._max_child_colon_count + 1)
+        if self.parent is not None:
+            self.parent._propagate_colon_count(own_count)
 
     
 class Textbf(Element):
@@ -333,6 +340,109 @@ class Textit(Element):
         return out
     
     
+class ParaElement(Element):
+    """Element for LaTeX \\para command.
+
+    Renders as a MyST prf:paragraph block, handled like TheoremElement types.
+
+    Example:
+        >>> para = ParaElement(None)
+        >>> isinstance(para, ParaElement)
+        True
+    """
+    def __init__(self, parent: Element):
+        super().__init__("", parent)
+        self.theorem_type = "prf:paragraph"
+        CUSTOM_THEOREM_TYPES["paragraph"] = "Paragraph"
+
+    def to_string(self) -> str:
+        """Convert to MyST prf:paragraph block.
+
+        Uses as many colons as needed so that any nested directives (e.g.
+        :::{math}) are properly fenced inside the outer directive.
+
+        Returns:
+            str: MyST paragraph block.
+        """
+        colons = ":" * max(3, self._max_child_colon_count + 1)
+        pre = "\n" + colons + "{" + self.theorem_type + "} "
+        out = ""
+        for child in self.children:
+            out += child.to_string()
+        out = out.rstrip()
+        out = pre + out
+        out += "\n" + colons + "\n"
+        return out
+
+    def _after_finish_up(self) -> None:
+        own_count = max(3, self._max_child_colon_count + 1)
+        if self.parent is not None:
+            self.parent._propagate_colon_count(own_count)
+
+
+class ParaSearcher(Searcher):
+    """Searcher for LaTeX \\para command.
+
+    Finds \\para and creates ParaElement blocks, handled like TheoremElement types.
+    Content is captured until the next \\para or any theorem environment.
+
+    Args:
+        extra_env_names (list[str] | None): Additional theorem environment names
+            (e.g. from custom \\newtheorem declarations) that also stop content capture.
+
+    Example:
+        >>> searcher = ParaSearcher()
+        >>> isinstance(searcher, ParaSearcher)
+        True
+    """
+
+    def __init__(self, extra_env_names: list = None):
+        super().__init__()
+        self._stop_envs: list[str] = list(PRF_TYPES.keys())
+        if extra_env_names:
+            for name in extra_env_names:
+                if name not in self._stop_envs:
+                    self._stop_envs.append(name)
+
+    def position(self, input: str) -> int:
+        return position_of(input, "\\para")
+
+    def split_and_create(self, input: str, parent: Element) -> Tuple[str, 'ParaElement', str]:
+        pre, post = split_on_next(input, "\\para")
+
+        # Find the earliest stop point: next \para or any theorem \begin{...}
+        stop_pos = position_of(post, "\\para")
+        for env_name in self._stop_envs:
+            p = position_of(post, "\\begin{" + env_name + "}")
+            if p != -1 and (stop_pos == -1 or p < stop_pos):
+                stop_pos = p
+
+        if stop_pos != -1:
+            content = post[:stop_pos]
+            remaining = post[stop_pos:]
+        else:
+            content = post
+            remaining = ""
+
+        content = content.strip()
+        if content == "":
+            return pre, Undefined("", parent), remaining
+
+        out = ParaElement(parent)
+        out.children = []
+        out.children.append(Undefined("", out))  # empty title placeholder
+
+        if content.startswith("\\label"):
+            label_ref, content = split_on_first_brace(content[len("\\label"):])
+            content = content.strip()
+            label = ProofLabel("", out, label_ref.strip())
+            out.children.append(label)
+
+        out.children.append(Undefined("\n" + content, out))
+
+        return pre, out, remaining
+
+
 class TheoremElement(Element):
     """Element for LaTeX theorem environments.
 
@@ -360,24 +470,20 @@ class TheoremElement(Element):
         Returns:
             str: Markdown theorem block.
         """
-        
-
-        pre = "\n:::{"+self.theorem_type+"} "
+        colons = ":" * max(3, self._max_child_colon_count + 1)
+        pre = "\n" + colons + "{" + self.theorem_type + "} "
         out = ""
         for child in self.children:
             out += child.to_string()
         out = out.rstrip()
-        
-        """
-        if out.startswith("["):
-            _,middle,out = begin_end_split(out,"[","]")
-            out = middle.strip()+"\n" + out.lstrip()
-        else:
-            out = "\n"+out.lstrip()
-        """
         out = pre + out
-        out += "\n:::\n"
+        out += "\n" + colons + "\n"
         return out
+
+    def _after_finish_up(self) -> None:
+        own_count = max(3, self._max_child_colon_count + 1)
+        if self.parent is not None:
+            self.parent._propagate_colon_count(own_count)
 
 
 class TheoremSearcher(Searcher):

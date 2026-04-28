@@ -179,6 +179,10 @@ class DoubleDolarLatex(Element):
         pre += "\n:::\n"
         return pre
     
+    def _after_finish_up(self) -> None:
+        if self.parent is not None:
+            self.parent._propagate_colon_count(3)
+
     @staticmethod
     def position(string: str) -> int:
         return position_of(string,"$$",save_split=False)
@@ -246,6 +250,10 @@ class DefaultEquation(Element):
         pre += out.strip()
         pre += "\n:::\n"
         return pre
+
+    def _after_finish_up(self) -> None:
+        if self.parent is not None:
+            self.parent._propagate_colon_count(3)
 
  
 class DefaultEquationSearcher():
