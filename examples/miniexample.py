@@ -13,7 +13,7 @@ import pytexmd as ptm
                                  (r"\mathbbm",r"\mathbb"),])#works in mathjax
 """
 file_name = "../examples_tex/FANCyProject/FaNCyProject.tex"
-ptm.process_file(file_name,"./my_docs3",depth=3)
+ptm.process_file(file_name,"./my_docs3",depth=3,project_name="The FANCy Project")
 
 # %%
 """from sphinx.cmd.quickstart import main as sphinx_quickstart

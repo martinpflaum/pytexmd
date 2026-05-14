@@ -182,3 +182,6 @@ numfig_format = {
     "proposition_and_definition": "Proposition and Definition %s",
 }
 ```
+
+
+also in the file loader make sure that all .bib files are found also in folder mentioned in the \input thingies than concatenate these .bib file but eliminate duplicated entries also copy this thing to the created sphinx project also use of sphinxcontrib-bibtex

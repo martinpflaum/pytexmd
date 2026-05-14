@@ -84,7 +84,7 @@ def generate_custom_types_code(custom_types: dict) -> str:
         "        self.body.append(_spn.latex_admonition_end)",
         "    else:",
         "        number = _spn.get_node_number(self, node, countertyp)",
-        "        idx = self.body.index(f'{countertyp} {number} ')",
+        "        idx = self.body.index(f'{countertyp.lower()} {number} ')",
         "        self.body[idx] = f'{_spn._(display)} {number} '",
         "        self.body.append('</div>')",
         "",

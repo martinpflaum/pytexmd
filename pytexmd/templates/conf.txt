@@ -4,12 +4,14 @@ author = 'XXAUTHORSXX'
 release = 'XXRELEASEXX'
 
 extensions = ['myst_parser',
-              "sphinx_proof"]
+              "sphinx_proof",
+              "sphinxcontrib.bibtex"]
 
 templates_path = ['_templates']
 exclude_patterns = []
 
-
+bibtex_bibfiles = ['references.bib']
+bibtex_default_style = 'unsrt'
 
 mathjax3_config = {
     "tex": {

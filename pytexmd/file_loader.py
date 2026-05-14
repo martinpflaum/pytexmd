@@ -8,9 +8,10 @@ Typical usage example:
     latex_file = load_tex_file("main.tex")
 """
 
-__all__ = ["load_tex_file", "LatexFile"]
+__all__ = ["load_tex_file", "LatexFile", "merge_bib_files"]
 
 import os
+import re
 import regex
 from typing import List, Dict, Tuple, Optional, Any, NamedTuple
 
@@ -23,12 +24,78 @@ class LatexFile(NamedTuple):
         bib_files (Dict[str, str]): Mapping from base filename (without extension) to absolute path for .bib/.bbl/.bibtex/.biblatex files.
         image_files (Dict[str, str]): Mapping from base filename (without extension) to absolute path for image files.
         all_files (Dict[str, str]): Combined mapping of all supported files.
+        merged_bib_content (str): Merged and deduplicated content of all found .bib files.
     """
     content: str
     tex_files: Dict[str, str]
     bib_files: Dict[str, str]
     image_files: Dict[str, str]
     all_files: Dict[str, str]
+    merged_bib_content: str = ""
+
+
+def _split_bib_entries(content: str) -> List[str]:
+    """Split .bib file content into individual top-level @-entries."""
+    entries = []
+    i = 0
+    n = len(content)
+    while i < n:
+        if content[i] != '@':
+            i += 1
+            continue
+        start = i
+        while i < n and content[i] != '{':
+            i += 1
+        if i >= n:
+            break
+        depth = 1
+        i += 1
+        while i < n and depth > 0:
+            if content[i] == '{':
+                depth += 1
+            elif content[i] == '}':
+                depth -= 1
+            i += 1
+        entries.append(content[start:i])
+    return entries
+
+
+def _extract_bib_key(entry: str) -> Optional[str]:
+    """Return the citation key from a bib entry, or None for @string/@preamble/@comment."""
+    m = re.match(r'@(\w+)\s*\{\s*([^,\s}]+)', entry, re.IGNORECASE)
+    if not m:
+        return None
+    if m.group(1).lower() in ('string', 'preamble', 'comment'):
+        return None
+    return m.group(2)
+
+
+def merge_bib_files(bib_paths: List[str]) -> str:
+    """Read and merge multiple .bib files, deduplicating entries by citation key.
+
+    Args:
+        bib_paths: List of absolute paths to .bib/.bbl files.
+
+    Returns:
+        str: Merged .bib content with duplicate entries removed (first occurrence wins).
+    """
+    seen_keys: set = set()
+    merged: List[str] = []
+    for bib_path in bib_paths:
+        try:
+            with open(bib_path, 'r', encoding='utf-8', errors='replace') as f:
+                raw = f.read()
+        except OSError as exc:
+            print(f"Warning: could not read {bib_path}: {exc}")
+            continue
+        for entry in _split_bib_entries(raw):
+            key = _extract_bib_key(entry)
+            if key is None:
+                merged.append(entry.strip())
+            elif key not in seen_keys:
+                seen_keys.add(key)
+                merged.append(entry.strip())
+    return "\n\n".join(e for e in merged if e)
 
 
 def load_tex_file(file_name: str) -> LatexFile:
@@ -167,11 +234,13 @@ def load_tex_file(file_name: str) -> LatexFile:
         """
         try:
             filename = input_to_filename(input_name)
+            _resolved_input_dirs.add(os.path.dirname(os.path.abspath(filename)))
             return load_file(filename)
         except (KeyError, FileNotFoundError) as exc:
             print(f"File not found for input: {input_name} ({exc})")
             return ""
     # Search for \input{filename} patterns in the content
+    _resolved_input_dirs: set = set()
     input_pattern = r'\\input\{([^}]+)\}'
     content_old = content
     done_matches = []
@@ -186,6 +255,33 @@ def load_tex_file(file_name: str) -> LatexFile:
         if content == content_old:
             break
         content_old = content
-    out = {"content": content, "tex_files": _tex_files, "bib_files": _bib_files, "image_files": _image_files, "all_files": all_files}
+
+    # Collect .bib files from directories outside the project root that were
+    # touched by \input{} resolution (the initial os.walk already covers the
+    # tree rooted at absolute_folder).
+    for _d in _resolved_input_dirs:
+        _d = os.path.normpath(_d)
+        try:
+            _rel = os.path.relpath(_d, absolute_folder)
+            if not _rel.startswith('..'):
+                continue  # already covered by the initial recursive walk
+        except ValueError:
+            pass  # different drive on Windows — definitely outside project root
+        if os.path.isdir(_d):
+            for _root, _dirs, _fls in os.walk(_d):
+                for _fl in _fls:
+                    if os.path.splitext(_fl)[1].lower() in bib_extensions:
+                        _abs = os.path.abspath(os.path.join(_root, _fl))
+                        if _abs not in bib_files:
+                            bib_files.append(_abs)
+
+    # Rebuild bib dict in case extra files were found
+    _bib_files = {_basename_key(f): f for f in bib_files}
+    all_files = {**_tex_files, **_bib_files, **_image_files}
+
+    # Merge all collected .bib files, deduplicating by citation key
+    merged_bib_content = merge_bib_files(bib_files)
+
+    out = {"content": content, "tex_files": _tex_files, "bib_files": _bib_files, "image_files": _image_files, "all_files": all_files, "merged_bib_content": merged_bib_content}
     return LatexFile(**out)
 

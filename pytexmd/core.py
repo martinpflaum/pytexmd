@@ -5,6 +5,7 @@ This module provides the main entry point for converting LaTeX files to Markdown
 
 __all__ = ["process_file"]
 
+import os
 from .filter import process_string
 from .file_loader import load_tex_file
 from .sphinx_doc import create_sphinx_documentation, make_html, create_config_file
@@ -38,8 +39,15 @@ def process_file(
     """
     latex_content = load_tex_file(input_file)
     file_string = latex_content.content
-    create_sphinx_documentation(output_folder,project_name,author,version)    
-    process_string(output_folder+"\\"+"source",file_string,depth,output_suffix)
+    create_sphinx_documentation(output_folder,project_name,author,version)
+    source_folder = os.path.join(output_folder, "source")
+    # Copy merged bibliography to the Sphinx source directory
+    if latex_content.merged_bib_content:
+        bib_dest = os.path.join(source_folder, "references.bib")
+        with open(bib_dest, "w", encoding="utf-8") as _f:
+            _f.write(latex_content.merged_bib_content)
+        print(f"Bibliography written to {bib_dest}")
+    process_string(source_folder, file_string, depth, output_suffix)
     # Re-write conf.py now that custom theorem types are known.
     create_config_file(output_folder,project_name,author,version,custom_types=CUSTOM_THEOREM_TYPES)
     #make_html(output_folder)

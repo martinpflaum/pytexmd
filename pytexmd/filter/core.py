@@ -685,13 +685,26 @@ class SectionLike(StructureMaker):
         self.command_name = command_name
         self.current_number = 0
 
-    
+    def is_numbered(self):
+        return not "*" in self.command_name
 
+    def get_file_name(self):
+        if self.is_numbered():
+            return self.command_name.replace("\\","") + "_" + self.name.strip().replace(" ","_")
+        else:
+            return self.command_name.replace("\\","") + "_" + self.name.strip().replace(" ","_") + "_unnumbered"
+
+    def get_begin_comment(self):
+        return make_myst_comment(f"{SEC_PREFIX_BEGIN}{self.command_name}{self.name}")
+
+    def get_end_comment(self):
+        return make_myst_comment(f"{SEC_PREFIX_END}{self.command_name}{self.name}")
+    
     def to_string(self) -> str:
         comment = make_myst_comment(f"{SEC_DEF_SPLITTER}{self.command_name}{SEC_DEF_SPLITTER}{self.name}{SEC_DEF_SPLITTER}")
-        begin_comment = make_myst_comment(f"{SEC_PREFIX_BEGIN}{self.command_name}{self.name}")
-        end_comment = make_myst_comment(f"{SEC_PREFIX_END}{self.command_name}{self.name}")
-        if "*" in self.command_name:
+        begin_comment = self.get_begin_comment()
+        end_comment = self.get_end_comment()
+        if not self.is_numbered():
             comment = ""
             begin_comment = ""
             end_comment = ""
