@@ -19,6 +19,9 @@ __all__ = [
     "Textit",
     "ProofLabel",
     "CUSTOM_THEOREM_TYPES",
+    "TikzElement",
+    "TikzSearcher",
+    "InlineTikz",
 ]
 from typing import List, Tuple
 from .core import *
@@ -600,6 +603,127 @@ def get_number_within_equation(input: str) -> str:
     out,_ = split_on_first_brace(input[1])
     return out
 
+# Basic TikZ libraries loaded for every tikz directive.
+_ALL_TIKZ_LIBS: list = [
+    "arrows",
+    "arrows.meta",
+    "calc",
+    "positioning",
+    "matrix",
+    "fit",
+    "quotes",
+    "cd",
+]
+
+class TikzElement(Element):
+    """Element for LaTeX tikzpicture environment.
+
+    Converts to a ``{tikz}`` MyST directive for use with sphinxcontrib-tikz.
+
+    Example:
+        >>> tikz = TikzElement(None, "\\draw (0,0) -- (1,1);", "", [])
+        >>> isinstance(tikz, TikzElement)
+        True
+    """
+
+    def __init__(self, parent: Element, content: str, caption: str, libs: list, label: str = ""):
+        super().__init__("", parent)
+        self._tikz_content = content
+        self._caption = caption
+        self._libs = libs
+        self._label = label
+
+    def to_string(self) -> str:
+        fence = "```"
+        directive = fence + "{tikz}"
+        if self._caption:
+            directive += " " + self._caption
+        out = "\n" + directive + "\n"
+        if self._label:
+            out += ":label: " + self._label + "\n"
+        if self._libs:
+            out += ":libs: " + ", ".join(self._libs) + "\n"
+        out += "\n" + self._tikz_content.strip() + "\n"
+        out += fence + "\n"
+        return out
+
+
+class TikzSearcher(Searcher):
+    """Searcher for LaTeX tikzpicture environments.
+
+    Finds ``\\begin{tikzpicture}...\\end{tikzpicture}`` blocks and converts
+    them to ``{tikz}`` MyST directives (sphinxcontrib-tikz).
+
+    Example:
+        >>> searcher = TikzSearcher()
+        >>> isinstance(searcher, TikzSearcher)
+        True
+    """
+
+    def position(self, input: str) -> int:
+        return position_of(input, "\\begin{tikzpicture}")
+
+    def split_and_create(self, input: str, parent: Element) -> Tuple[str, Element, str]:
+        pre, content, post = begin_end_split(
+            input, "\\begin{tikzpicture}", "\\end{tikzpicture}"
+        )
+
+        caption = ""
+
+        content = content.strip()
+        if not content:
+            return pre, Undefined("", parent), post
+
+        return pre, TikzElement(parent, content, caption, _ALL_TIKZ_LIBS), post
+
+
+class InlineTikz(Element):
+    """Element for LaTeX ``\\tikz{...}`` inline command.
+
+    Converts to an inline ``{tikz}`` role for sphinxcontrib-tikz.
+
+    Example:
+        >>> t = InlineTikz("", None)
+        >>> isinstance(t, InlineTikz)
+        True
+    """
+
+    def __init__(self, modifiable_content: str, parent: Element):
+        super().__init__(modifiable_content, parent)
+
+    @staticmethod
+    def position(input: str) -> int:
+        return position_of(input, "\\tikz")
+
+    @staticmethod
+    def split_and_create(input: str, parent: Element) -> Tuple[str, Element, str]:
+        pre, post = split_on_next(input, "\\tikz")
+        # \tikz may be followed by optional [options] then {content} or ; terminated
+        post = post.lstrip()
+        options = ""
+        if post.startswith("["):
+            options, post = split_on_first_brace(post, "[", "]")
+        if post.lstrip().startswith("{"):
+            content, post = split_on_first_brace(post.lstrip())
+        else:
+            # Semicolon-terminated single command: \tikz \draw ...;
+            idx = post.find(";")
+            if idx != -1:
+                content = post[: idx + 1]
+                post = post[idx + 1 :]
+            else:
+                content = post
+                post = ""
+        return pre, InlineTikz(content, parent), post
+
+    def to_string(self) -> str:
+        out = ""
+        for child in self.children:
+            out += child.to_string()
+        # Emit as an inline tikz role
+        return "{tikz}`" + out.strip() + "`"
+
+
 def get_all_filters() -> list:
     """Returns all section-related filter classes/searchers.
 
@@ -611,4 +735,4 @@ def get_all_filters() -> list:
         >>> isinstance(filters, list)
         True
     """
-    return [Emph,Textbf,Textit,Ref,EqRef,Cite]
+    return [TikzSearcher(), Emph, Textbf, Textit, Ref, EqRef, Cite]

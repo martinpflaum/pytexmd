@@ -5,7 +5,17 @@ release = 'XXRELEASEXX'
 
 extensions = ['myst_parser',
               "sphinx_proof",
-              "sphinxcontrib.bibtex"]
+              "sphinxcontrib.bibtex",
+              "sphinxcontrib.tikz"]
+
+tikz_latex_preamble = r"""
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathrsfs}
+\usepackage{bbm}
+\usepackage{mathtools}
+\usepackage{tikz-cd}
+"""
 
 templates_path = ['_templates']
 exclude_patterns = []

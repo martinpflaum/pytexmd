@@ -343,8 +343,13 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
             f.write(own_content.strip() + "\n\n")
             
             # Create toctree for children
+            # Parts get :numbered: so each part restarts its own numbering
+            is_part = section.get('level', 999) == 0
             f.write("```{toctree}\n")
-            f.write(":maxdepth: 2\n\n")
+            f.write(":maxdepth: 2\n")
+            if is_part:
+                f.write(":numbered:\n")
+            f.write("\n")
             
             child_files = []
             for child in section['children']:

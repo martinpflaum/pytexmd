@@ -18,6 +18,7 @@ __all__ = [
     "BeginAlignStar",
     "BeginAlignSearcher",
     "get_all_filters",
+    "MultiEquationElement",
 ]
 
 #%%
@@ -255,7 +256,79 @@ class DefaultEquation(Element):
         if self.parent is not None:
             self.parent._propagate_colon_count(3)
 
- 
+
+import re as _re
+
+# TikZ-family environments that should be emitted as {tikz} directives rather
+# than {math} blocks.  The environment content is preserved as-is; for envs
+# other than tikzpicture the caller is responsible for loading the required
+# LaTeX package (e.g. tikz-cd via tikz_latex_preamble in conf.py).
+_TIKZ_ENVS = [
+    "tikzpicture",
+    "tikzcd",
+    "tikzfadingfrompicture",
+]
+
+def _extract_tikz_only(content: str):
+    """Return ``(tikz_content, label, env_name)`` if *content* consists solely
+    of a recognised TikZ-family environment plus an optional ``\\label``,
+    otherwise ``None``.
+
+    For ``tikzpicture`` the inner content (without the begin/end tags) is
+    returned.  For every other environment the full ``\\begin{env}...\\end{env}``
+    block is returned so that sphinxcontrib-tikz receives a self-contained
+    snippet.
+    """
+    work = content
+
+    # Pull out \label{...} if present
+    raw_label = ""
+    label_match = _re.search(r"\\label\s*\{([^}]*)\}", work)
+    if label_match:
+        raw_label = label_match.group(1).strip()
+        work = work[:label_match.start()] + work[label_match.end():]
+
+    for env_name in _TIKZ_ENVS:
+        begin_tok = "\\begin{" + env_name + "}"
+        end_tok   = "\\end{"   + env_name + "}"
+        begin_pos = work.find(begin_tok)
+        end_pos   = work.find(end_tok)
+        if begin_pos == -1 or end_pos == -1:
+            continue
+
+        remaining = work[:begin_pos] + work[end_pos + len(end_tok):]
+        if remaining.strip():
+            continue  # real math content exists alongside the figure
+
+        if env_name == "tikzpicture":
+            # Strip the wrapper tags; sphinxcontrib-tikz adds them back
+            tikz_content = work[begin_pos + len(begin_tok):end_pos]
+        else:
+            # Keep the full environment so sphinxcontrib-tikz gets a valid snippet
+            tikz_content = work[begin_pos:end_pos + len(end_tok)]
+
+        return tikz_content, raw_label, env_name
+
+    return None
+
+
+class MultiEquationElement(Element):
+    """Container for multiple equation blocks produced by splitting a multi-label
+    align environment.  Each child is a separate :class:`DefaultEquation`.
+    """
+
+    def __init__(self, parent: Element):
+        super().__init__("", parent)
+        self.children = []
+
+    def to_string(self) -> str:
+        return "".join(child.to_string() for child in self.children)
+
+    def _after_finish_up(self) -> None:
+        if self.parent is not None:
+            self.parent._propagate_colon_count(3)
+
+
 class DefaultEquationSearcher():
     """Searcher for enumerated align-like environments.
 
@@ -295,18 +368,47 @@ class DefaultEquationSearcher():
             Tuple[str, BeginEquationEnumElement, str]: Pre-content, element, post-content.
         """
         pre,content,post = begin_end_split(string,self.begin,self.end)
-        
-        """if contains_drawtex(content):
-            out = Undefined(content,parent)
-            out.expand(get_drawtex_searchers())
+
+        # Tikz-only: if the content is just a tikzpicture + optional \label,
+        # emit a {tikz} directive instead of a {math} block.
+        tikz_result = _extract_tikz_only(content)
+        if tikz_result is not None:
+            from .text import TikzElement, _ALL_TIKZ_LIBS
+            tikz_content, raw_label, _env_name = tikz_result
+            registered_label = ""
+            if raw_label:
+                registered_label = label_call(raw_label, LabelType.REF)
+            return pre, TikzElement(parent, tikz_content, "", _ALL_TIKZ_LIBS, label=registered_label), post
+
+        # Fast path: zero or one \label → no splitting needed
+        if content.count("\\label") <= 1:
+            out = DefaultEquation(content,parent,self.begin,self.end)
+            out.expand([EquationLabel])
             out = apply_latex_protection(out)
             return pre,out,post
-        """
-        
-        out = DefaultEquation(content,parent,self.begin,self.end)
-        out.expand([EquationLabel])
-        out = apply_latex_protection(out)
-        return pre,out,post
+
+        # Multiple labels: split rows on \\ (LaTeX row separator) and group
+        # each run of rows up-to-and-including the labeled row into its own block.
+        rows = content.split("\\\\")
+        blocks: list = []
+        current: list = []
+        for row in rows:
+            current.append(row)
+            if "\\label" in row:
+                blocks.append(current)
+                current = []
+        if current:  # trailing unlabeled rows
+            blocks.append(current)
+
+        container = MultiEquationElement(parent)
+        for block_rows in blocks:
+            block_content = "\\begin{aligned} " + " \\\\ ".join(block_rows) + " \\end{aligned}"
+            sub_eq = DefaultEquation(block_content.strip(), container, self.begin, self.end)
+            sub_eq.expand([EquationLabel])
+            sub_eq = apply_latex_protection(sub_eq)
+            container.children.append(sub_eq)
+
+        return pre, container, post
        
 def get_all_filters() -> list:
     """Returns all equation-related filter classes/searchers.

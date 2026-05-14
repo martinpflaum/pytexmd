@@ -5,3 +5,4 @@ furo
 regex
 sphinx-copybutton
 nbsphinx
+sphinxcontrib-tikz
