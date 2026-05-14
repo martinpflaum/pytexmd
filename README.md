@@ -15,7 +15,7 @@ To install the required dependencies for pytexmd, run:
 pip install -r requirements.txt
 ```
 
-This will install all necessary packages for using pytexmd, including Sphinx and MyST support.
+you also need texlive https://www.tug.org/texlive/ and ghostscript https://ghostscript.com/releases/gsdnld.html
 
 ## Python Usage Example
 

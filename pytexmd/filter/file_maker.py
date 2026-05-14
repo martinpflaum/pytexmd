@@ -315,7 +315,7 @@ def extract_section_content(section):
     
     return content, ''
 
-def write_section_files(section, output_folder, max_depth, current_depth=0, output_suffix=".md"):
+def write_section_files(section, output_folder, max_depth, current_depth=0, output_suffix=".md", append_toc=None):
     """
     Recursively write section and its children to files.
     
@@ -325,6 +325,7 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
         max_depth (int): Maximum splitting depth
         current_depth (int): Current recursion depth
         output_suffix (str): File extension
+        append_toc (list): Extra filenames to append to this section's toctree
         
     Returns:
         str: Filename of created file (without extension)
@@ -335,9 +336,10 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
     filepath = os.path.join(output_folder, filename + output_suffix)
     
     should_split = current_depth < max_depth and len(section['children']) > 1
+    extra_toc = append_toc or []
     
     with open(filepath, 'w', encoding='utf-8') as f:
-        if should_split:
+        if should_split or extra_toc or extra_toc:
             # Extract only this section's own content
             own_content, remaining = extract_section_content(section)
             f.write(own_content.strip() + "\n\n")
@@ -367,6 +369,9 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
             
             for child_file in child_files:
                 f.write(f"{child_file}\n")
+            
+            for extra in extra_toc:
+                f.write(f"{extra}\n")
             
             f.write("```\n")
         else:
@@ -476,8 +481,19 @@ def split_document_to_files(document_md, output_folder, depth=2, output_suffix="
             print("\n⚠ Warning: Proceeding with file creation despite content mismatch")
     
     # Write files
-    write_section_files(root, output_folder, depth, 0, output_suffix)
-    
+    write_section_files(root, output_folder, depth, 0, output_suffix,
+                        append_toc=["references"])
+
+    # Create a dedicated references page so sphinxcontrib.bibtex renders the
+    # bibliography list.
+    refs_path = os.path.join(output_folder, "references" + output_suffix)
+    with open(refs_path, 'w', encoding='utf-8') as f:
+        f.write("# References\n\n")
+        f.write("```{bibliography}\n")
+        f.write(":style: unsrt\n")
+        f.write("```\n")
+    print(f"Created: {refs_path}")
+
     print(f"\n✓ Document split into files in: {output_folder}")
     return root
 

@@ -603,7 +603,9 @@ def get_number_within_equation(input: str) -> str:
     out,_ = split_on_first_brace(input[1])
     return out
 
-# Basic TikZ libraries loaded for every tikz directive.
+# Basic TikZ libraries loaded globally via tikz_tikzlibraries in conf.py.
+# "cd" is intentionally excluded — it is part of the tikz-cd *package*,
+# not a TikZ library, and is loaded via tikz_latex_preamble instead.
 _ALL_TIKZ_LIBS: list = [
     "arrows",
     "arrows.meta",
@@ -612,7 +614,6 @@ _ALL_TIKZ_LIBS: list = [
     "matrix",
     "fit",
     "quotes",
-    "cd",
 ]
 
 class TikzElement(Element):
@@ -634,13 +635,17 @@ class TikzElement(Element):
         self._label = label
 
     def to_string(self) -> str:
+        # Emit a MyST target label above the directive when a label is set.
+        # sphinxcontrib-tikz does not support the :name: option, so we use
+        # the standard MyST (label)= syntax instead.
+        out = ""
+        if self._label:
+            out += "\n(" + self._label + ")="
         fence = "```"
         directive = fence + "{tikz}"
         if self._caption:
             directive += " " + self._caption
-        out = "\n" + directive + "\n"
-        if self._label:
-            out += ":label: " + self._label + "\n"
+        out += "\n" + directive + "\n"
         if self._libs:
             out += ":libs: " + ", ".join(self._libs) + "\n"
         out += "\n" + self._tikz_content.strip() + "\n"

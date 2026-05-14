@@ -4,12 +4,13 @@ author = 'Author'
 release = '1.0'
 
 extensions = ['myst_parser',
-              "sphinx_proof"]
+              "sphinx_proof",
+              "sphinxcontrib.tikz"]
 
 templates_path = ['_templates']
 exclude_patterns = []
 
-
+tikz_proc_suite = 'GhostScript'
 
 mathjax3_config = {
     "tex": {

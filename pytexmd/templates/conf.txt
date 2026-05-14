@@ -23,6 +23,29 @@ exclude_patterns = []
 bibtex_bibfiles = ['references.bib']
 bibtex_default_style = 'unsrt'
 
+tikz_latex_preamble = r"""
+\pgfplotsset{compat=1.18}
+% --- core math ---
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{mathtools}
+% --- extra math symbols ---
+\usepackage{mathrsfs}
+\usepackage{bbm}
+\usepackage{stmaryrd}
+\usepackage{bm}
+\usepackage{dsfont}
+% --- tikz / diagrams ---
+\usepackage{tikz-cd}
+\usepackage{xcolor}
+"""
+
+tikz_tikzlibraries = "arrows, arrows.meta, calc, positioning, matrix, fit, quotes, shapes, decorations.pathmorphing, decorations.markings"
+tikz_proc_suite = 'GhostScript'
+tikz_output_format = 'png'
+
 mathjax3_config = {
     "tex": {
         "macros": {
@@ -73,12 +96,6 @@ prf_realtyp_to_countertyp = {
     "notation": "theorem",
 }
 
-#math_number_all = True             # number *all* displayed equations
-math_eqref_format = "({number})"   # how equation refs look
-
-html_theme = 'furo'
-html_static_path = ['_static']
-
 
 #math_number_all = True             # number *all* displayed equations
 math_eqref_format = "({number})"   # how equation refs look
@@ -87,4 +104,7 @@ math_numfig = True                 # apply section prefix to equations
 numfig_secnum_depth = 2            # use # and ## levels (e.g. 1.2.3)
 
 html_theme = 'furo'
+html_theme_options = {
+    "color_mode": "light",         # disable dark mode
+}
 html_static_path = ['_static']
