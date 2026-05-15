@@ -90,6 +90,38 @@ class ProofLabel(Element):
     def to_string(self) -> str:
         return "\n:label: "+self.label_ref.strip()
 
+class Cref(Element):
+    """Element for LaTeX \\cref and \\Cref references (cleveref package)."""
+
+    def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
+        super().__init__(modifiable_content, parent)
+        self.label_ref = label_ref
+
+    @staticmethod
+    def position(input: str) -> int:
+        pos_lower = position_of(input, "\\cref")
+        pos_upper = position_of(input, "\\Cref")
+        if pos_lower == -1:
+            return pos_upper
+        if pos_upper == -1:
+            return pos_lower
+        return min(pos_lower, pos_upper)
+
+    @staticmethod
+    def split_and_create(input: str, parent: Element) -> Tuple[str, 'Cref', str]:
+        pos_lower = position_of(input, "\\cref")
+        pos_upper = position_of(input, "\\Cref")
+        if pos_upper != -1 and (pos_lower == -1 or pos_upper < pos_lower):
+            pre, post = split_on_next(input, "\\Cref")
+        else:
+            pre, post = split_on_next(input, "\\cref")
+        label_ref, post = split_on_first_brace(post)
+        return pre, Cref("", parent, label_ref), post
+
+    def to_string(self) -> str:
+        return ref_call(self.label_ref)
+
+
 class Ref(Element):
     """Element for LaTeX \\ref reference.
 

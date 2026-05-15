@@ -72,13 +72,13 @@ SECTION_LIKE_COMMANDS_TO_BEGIN = {
     "\\subsubsection": "#### ",
     "\\paragraph": "##### ",
     "\\subparagraph": "###### ",
-    "\\part*": "```{rubric}\n",
-    "\\chapter*": "```{rubric}\n",
-    "\\section*": "```{rubric}\n",
-    "\\subsection*": "```{rubric}\n",
-    "\\subsubsection*": "```{rubric}\n",
-    "\\paragraph*": "```{rubric}\n",
-    "\\subparagraph*": "```{rubric}\n",
+    "\\part*": "```{rubric} ",
+    "\\chapter*": "```{rubric} ",
+    "\\section*": "```{rubric} ",
+    "\\subsection*": "```{rubric} ",
+    "\\subsubsection*": "```{rubric} ",
+    "\\paragraph*": "```{rubric} ",
+    "\\subparagraph*": "```{rubric} ",
 }
 
 SECTION_LIKE_COMMANDS_TO_END = {
@@ -704,11 +704,7 @@ class SectionLike(StructureMaker):
         comment = make_myst_comment(f"{SEC_DEF_SPLITTER}{self.command_name}{SEC_DEF_SPLITTER}{self.name}{SEC_DEF_SPLITTER}")
         begin_comment = self.get_begin_comment()
         end_comment = self.get_end_comment()
-        if not self.is_numbered():
-            comment = ""
-            begin_comment = ""
-            end_comment = ""
-            
+
         if self.label is not None:
             pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
         else:
