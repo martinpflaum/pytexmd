@@ -1,5 +1,8 @@
 # TikZ Example
 
+A citation example: {cite}`BouGTC1-4`.
+
+
 A simple node diagram:
 
 ```{tikz}
@@ -8,3 +11,8 @@ A simple node diagram:
 ```
 
 A commutative square using `tikz-cd`:
+
+## References
+
+```{bibliography}
+```

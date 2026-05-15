@@ -134,7 +134,8 @@ def load_config_template() -> str:
     with open(template_path, 'r', encoding='utf-8') as file:
         return file.read()
     
-def create_config_file(output_dir: str, project_name: str, author: str, version: str, custom_types: dict = None) -> None:
+def create_config_file(output_dir: str, project_name: str, author: str, version: str,
+                       custom_types: dict = None, bib_filenames: list = None) -> None:
     """Create a Sphinx conf.py configuration file in the source directory.
 
     Args:
@@ -144,6 +145,8 @@ def create_config_file(output_dir: str, project_name: str, author: str, version:
         version (str): Project version.
         custom_types (dict, optional): Mapping of type_name -> display_name for
             custom theorem environments not built into sphinx_proof. Defaults to None.
+        bib_filenames (list, optional): Basenames of bibliography files copied to the
+            source folder. Replaces the default ['references.bib'] in bibtex_bibfiles.
 
     Returns:
         None
@@ -157,6 +160,15 @@ def create_config_file(output_dir: str, project_name: str, author: str, version:
         config_content = config_template.replace("XXPROJECTXX", project_name)\
                                         .replace("XXAUTHORSXX", author)\
                                         .replace("XXRELEASEXX", version)
+
+        # Substitute bibtex_bibfiles with the actual copied files.
+        bib_list = bib_filenames if bib_filenames else ["references.bib"]
+        bib_repr = "[" + ", ".join(f"'{f}'" for f in bib_list) + "]"
+        config_content = config_content.replace(
+            "bibtex_bibfiles = ['references.bib']",
+            f"bibtex_bibfiles = {bib_repr}"
+        )
+
         config_content += generate_custom_types_code(custom_types or {})
         
         with open(config_path, 'w', encoding='utf-8') as file:

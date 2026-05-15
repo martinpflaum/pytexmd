@@ -42,9 +42,10 @@ tikz_latex_preamble = r"""
 \usepackage{xcolor}
 """
 
+
 tikz_tikzlibraries = "arrows, arrows.meta, calc, positioning, matrix, fit, quotes, shapes, decorations.pathmorphing, decorations.markings"
 tikz_proc_suite = 'GhostScript'
-tikz_output_format = 'png'
+tikz_resolution = 400   # default is 150; use 300–600 for sharp output
 
 mathjax3_config = {
     "tex": {
@@ -56,6 +57,7 @@ mathjax3_config = {
             "mathbbm": ["\\mathbb{#1}", 1],
             "widebar": ["\\overline{#1}", 1],
             "C": "\\mathbb{C}",
+            "H": "\\mathbb{H}",
         }
     }
 }

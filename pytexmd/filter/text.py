@@ -274,15 +274,10 @@ class Cite(Element):
         return pre,Cite("",parent,citations,rename),post
 
     def to_string(self) -> str:
-        out = "["
-        for elem in self.citations:
-            out += f"@{elem.strip()}; "
-        out = out[:-2]
-        if self.rename != "":
-            out += f", {self.rename.strip()}"
-        out += "]"
-        
-        return out
+        keys = ",".join(elem.strip() for elem in self.citations)
+        if self.rename:
+            return f"{{cite}}`{self.rename.strip()} <{keys}>`"
+        return f"{{cite}}`{keys}`"
 
 
 class Emph(Element):

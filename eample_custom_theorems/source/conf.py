@@ -5,7 +5,11 @@ release = '1.0'
 
 extensions = ['myst_parser',
               "sphinx_proof",
+              "sphinxcontrib.bibtex",
               "sphinxcontrib.tikz"]
+
+bibtex_bibfiles = ['FANCyProject.bib']
+bibtex_default_style = 'unsrt'
 
 templates_path = ['_templates']
 exclude_patterns = []

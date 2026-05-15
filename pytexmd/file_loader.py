@@ -8,12 +8,13 @@ Typical usage example:
     latex_file = load_tex_file("main.tex")
 """
 
-__all__ = ["load_tex_file", "LatexFile", "merge_bib_files"]
+__all__ = ["load_tex_file", "LatexFile", "merge_bib_files", "convert_bbl_to_bib"]
 
 import os
 import re
 import regex
 from typing import List, Dict, Tuple, Optional, Any, NamedTuple
+from pytexmd.filter.bibtex.core import convert_bbl_to_bib
 
 class LatexFile(NamedTuple):
     r"""Container for loaded LaTeX project files.
@@ -96,6 +97,18 @@ def merge_bib_files(bib_paths: List[str]) -> str:
                 seen_keys.add(key)
                 merged.append(entry.strip())
     return "\n\n".join(e for e in merged if e)
+
+
+def _clean_latex(text: str) -> str:
+    """Strip common LaTeX markup from a string, leaving plain text."""
+    # Unwrap braced groups: {text} -> text (but keep content)
+    text = re.sub(r'\{([^{}]*)\}', r'\1', text)
+    # Remove remaining LaTeX commands (e.g. \newblock, \em, \textbf)
+    text = re.sub(r'\\[a-zA-Z]+\*?', ' ', text)
+    # Remove lone backslashes
+    text = text.replace('\\', '')
+    # Collapse whitespace
+    return re.sub(r'\s+', ' ', text).strip()
 
 
 def load_tex_file(file_name: str) -> LatexFile:
