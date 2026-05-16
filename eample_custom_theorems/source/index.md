@@ -12,6 +12,14 @@ A simple node diagram:
 
 A commutative square using `tikz-cd`:
 
+::::{prf:paragraph}
+This is a test paragraph rendered via the `prf:paragraph` directive.
+::::
+
+::::{prf:theorem_and_definition}
+This is a test remark rendered via the `prf:Remarks` directive.
+::::
+
 ## References
 
 ```{bibliography}

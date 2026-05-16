@@ -763,16 +763,32 @@ class SectionLikeSearcher(Searcher):
         
     
     def position(self, string: str) -> int:
-        return splitting.position_of(string,self.command_name+"{",False)
+        pos_brace = splitting.position_of(string, self.command_name + "{" , False)
+        pos_opt   = splitting.position_of(string, self.command_name + "[", False)
+        positions = [p for p in (pos_brace, pos_opt) if p != -1]
+        return min(positions) if positions else -1
     
     def split_and_create(self,input: str, parent: Element) -> Tuple[str, Element, str]:
         #TODO HANDLE NESTED SECTIONS AKA LEVEL DEPENDENCIES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         
         pre,content = splitting.split_on_next(input,self.command_name)
+        # Discard optional short-title argument, e.g. \section[short]{long title}
+        opt = splitting.split_rename(content)
+        if opt is not None:
+            _, content = opt
         name,content = splitting.split_on_first_brace(content)
-        if self.command_name + "{" in content:
-            content_default,post_default = splitting.split_on_next(content,self.command_name + "{",False)
-            post_default = self.command_name + "{" + post_default
+        if self.command_name + "{" in content or self.command_name + "[" in content:
+            # Find whichever form of the next same-level section comes first
+            pos_brace = content.find(self.command_name + "{")
+            pos_opt   = content.find(self.command_name + "[")
+            positions = [p for p in (pos_brace, pos_opt) if p != -1]
+            split_at  = min(positions) if positions else -1
+            if split_at != -1:
+                content_default = content[:split_at]
+                post_default    = content[split_at:]
+            else:
+                content_default = content
+                post_default    = ""
         else:
             content_default = content
             post_default = ""
