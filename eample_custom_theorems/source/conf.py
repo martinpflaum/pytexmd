@@ -139,9 +139,7 @@ title_map = {
 def _depart_enumerable_node(self, node: sphinx_proof.nodes.Node) -> None:
     countertyp = node.attributes.get("countertype", "")
     realtyp = node.attributes.get("realtype", "")
-    #realtyp = realtyp.replace("_", " ").capitalize()
     realtyp = title_map[realtyp]
-    print("realtyp",realtyp)
     if isinstance(self, sphinx_proof.nodes.LaTeXTranslator):
         number = sphinx_proof.nodes.get_node_number(self, node, countertyp)
         idx = sphinx_proof.nodes.list_rindex(self.body, sphinx_proof.nodes.latex_admonition_start) + 2
@@ -159,7 +157,6 @@ def _depart_enumerable_node(self, node: sphinx_proof.nodes.Node) -> None:
 def _depart_unenumerable_node(self, node: sphinx_proof.nodes.Node) -> None:
     realtyp = node.attributes.get("realtype", "")
     realtyp = title_map[realtyp]
-    print("realtyp",realtyp)
     id = node.attributes.get("ids", [""])[0]
     if isinstance(self, sphinx_proof.nodes.LaTeXTranslator):
         idx = sphinx_proof.nodes.list_rindex(self.body, sphinx_proof.nodes.latex_admonition_start) + 2
@@ -172,6 +169,8 @@ def _depart_unenumerable_node(self, node: sphinx_proof.nodes.Node) -> None:
         element = f'<span class="caption-number">{sphinx_proof.nodes._(realtyp)} </span>'
         self.body.insert(idx, element)
         self.body.append("</div>")
+
+
 # Patch both the nodes module AND sphinx_proof's __init__ namespace.
 # sphinx_proof/__init__.py does `from .nodes import depart_enumerable_node`
 # which binds the name in its own globals. Sphinx's setup() looks up the name
