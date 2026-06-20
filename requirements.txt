@@ -1,8 +1,8 @@
-sphinx>=7.0
-myst-parser
-sphinx-proof>=0.4.0
-furo
-regex
-sphinx-copybutton
-nbsphinx
-sphinxcontrib-tikz
+sphinx==8.2.3
+myst-parser ==4.0.1
+sphinx-proof==0.4.0
+furo==2025.12.19
+regex==2025.11.3
+sphinx-copybutton==0.5.2
+nbsphinx==0.9.8
+sphinxcontrib-tikz==0.4.20

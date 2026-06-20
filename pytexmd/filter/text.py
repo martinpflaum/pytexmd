@@ -58,6 +58,27 @@ for key in list(PRF_TYPES.keys()):
 # Global registry of custom theorem types discovered during processing.
 # Maps type_name (str) -> display_name (str).
 CUSTOM_THEOREM_TYPES: dict = {}
+
+# Per-part suffix tracking: maps id(SectionLike_part) -> sequential int (1, 2, ...).
+_PART_SUFFIXES: dict = {}
+_PART_COUNTER: list = [0]  # single-element list so it is mutable inside functions
+
+
+def _get_part_suffix(element) -> int | None:
+    """Walk the parent chain to find the enclosing \\part and return its 1-based index.
+
+    Returns None when the theorem is not inside any \\part.
+    """
+    current = element
+    while current is not None:
+        if isinstance(current, SectionLike) and getattr(current, 'command_name', '') == "\\part":
+            part_id = id(current)
+            if part_id not in _PART_SUFFIXES:
+                _PART_COUNTER[0] += 1
+                _PART_SUFFIXES[part_id] = _PART_COUNTER[0]
+            return _PART_SUFFIXES[part_id]
+        current = current.parent
+    return None
     
 class ProofLabel(Element):
     """Element for MyST label.
@@ -382,8 +403,14 @@ class ParaElement(Element):
     """
     def __init__(self, parent: Element):
         super().__init__("", parent)
-        self.theorem_type = "prf:paragraph"
-        CUSTOM_THEOREM_TYPES["paragraph"] = "Paragraph"
+        part_suffix = _get_part_suffix(parent)
+        if part_suffix is not None:
+            type_name = "paragraph" + str(part_suffix)
+            CUSTOM_THEOREM_TYPES[type_name] = "Paragraph"
+        else:
+            type_name = "paragraph"
+            CUSTOM_THEOREM_TYPES[type_name] = "Paragraph"
+        self.theorem_type = "prf:" + type_name
 
     def to_string(self) -> str:
         """Convert to MyST prf:paragraph block.
@@ -485,10 +512,16 @@ class TheoremElement(Element):
         super().__init__("",parent)
         self.display_name = display_name
         display_lower = display_name.lower()
-        if display_lower in PRF_TYPES:
+        part_suffix = _get_part_suffix(parent)
+        if part_suffix is not None:
+            # Per-part custom type: definition1, definition2, …
+            type_name = display_lower.replace(" ", "_") + str(part_suffix)
+            theorem_type = "prf:" + type_name
+            CUSTOM_THEOREM_TYPES[type_name] = display_name
+        elif display_lower in PRF_TYPES:
             theorem_type = PRF_TYPES[display_lower]
         else:
-            # Unknown type: register as custom and use a prf: prefixed name.
+            # Unknown type without an enclosing part: register as global custom type.
             type_name = display_lower.replace(" ", "_")
             theorem_type = "prf:" + type_name
             CUSTOM_THEOREM_TYPES[type_name] = display_name
