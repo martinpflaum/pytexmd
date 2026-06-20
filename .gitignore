@@ -12,6 +12,7 @@ pytexmd\filter\__pycache__\
 pytexmd/filter/__pycache__/
 examples_tex
 
-
+pytexmd.egg-info/
+dist/
 build
 dist
