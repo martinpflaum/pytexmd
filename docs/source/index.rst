@@ -11,7 +11,11 @@ To install the required dependencies for pytexmd, run:
 
    pip install -r requirements.txt
 
-This will install all necessarys for using pytexmd, including Sphinx and MyST support.
+This will install all necessarys for using pytexmd, including Sphinx and MyST support. Also make sure to install texlive in ubuntu you can run the following command:
+.. code-block:: bash
+
+   sudo apt update && sudo apt install -y texlive-base texlive-binaries texlive-fonts-recommended texlive-latex-base texlive-latex-extra texlive-latex-recommended texlive-pictures texlive-plain-generic
+or visit the texlive website for other operating systems: https://www.tug.org/texlive/
 
 Python Usage Example
 --------------------

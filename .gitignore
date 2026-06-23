@@ -2,17 +2,15 @@ example_tex
 examples/my_docs
 examples/my_split_docs
 examples/my_docs3
-# Ignore Python cache files
 **/__pycache__/
-#**/*.py[cod]
 docs/build/
 **.pyc
 *.pyc
-pytexmd\filter\__pycache__\
 pytexmd/filter/__pycache__/
-examples_tex
+examples/tex/
 
-pytexmd.egg-info/
-dist/
+
 build
 dist
+examples/output/
+examples/tex/

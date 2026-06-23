@@ -6,3 +6,4 @@ regex==2025.11.3
 sphinx-copybutton==0.5.2
 nbsphinx==0.9.8
 sphinxcontrib-tikz==0.4.20
+sphinxcontrib-bibtex==2.7.0
