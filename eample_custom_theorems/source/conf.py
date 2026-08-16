@@ -136,39 +136,46 @@ title_map = {
     "notation": "Notation",
     "theorem_and_definition": "Theorem and Definition",
 }
+if not hasattr(sphinx_proof.nodes, '_pytexmd_original_depart_enumerable_node'):
+    sphinx_proof.nodes._pytexmd_original_depart_enumerable_node = sphinx_proof.nodes.depart_enumerable_node
+    sphinx_proof.nodes._pytexmd_original_depart_unenumerable_node = sphinx_proof.nodes.depart_unenumerable_node
+_original_depart_enumerable_node = sphinx_proof.nodes._pytexmd_original_depart_enumerable_node
+_original_depart_unenumerable_node = sphinx_proof.nodes._pytexmd_original_depart_unenumerable_node
+
 def _depart_enumerable_node(self, node: sphinx_proof.nodes.Node) -> None:
     countertyp = node.attributes.get("countertype", "")
     realtyp = node.attributes.get("realtype", "")
-    realtyp = title_map[realtyp]
+    display_name = title_map.get(realtyp, realtyp.title())
+    _original_depart_enumerable_node(self, node)
+    default_name = realtyp.title()
+    if display_name == default_name:
+        return
+    number = sphinx_proof.nodes.get_node_number(self, node, countertyp)
     if isinstance(self, sphinx_proof.nodes.LaTeXTranslator):
-        number = sphinx_proof.nodes.get_node_number(self, node, countertyp)
-        idx = sphinx_proof.nodes.list_rindex(self.body, sphinx_proof.nodes.latex_admonition_start) + 2
-        self.body.insert(idx, f"{realtyp} {number}")
-        self.body.append(sphinx_proof.nodes.latex_admonition_end)
+        old_title = f"{default_name} {number}"
+        new_title = f"{display_name} {number}"
     else:
-        # Find index in list of 'Proof #'
-        number = sphinx_proof.nodes.get_node_number(self, node, countertyp)
-        idx = self.body.index(f"{countertyp} {number} ")
-        self.body[idx] = f"{sphinx_proof.nodes._(realtyp)} {number} "
-        self.body.append("</div>")
-
+        old_title = f"{sphinx_proof.nodes._(default_name)} {number} "
+        new_title = f"{sphinx_proof.nodes._(display_name)} {number} "
+    idx = sphinx_proof.nodes.list_rindex(self.body, old_title)
+    self.body[idx] = new_title
 
 
 def _depart_unenumerable_node(self, node: sphinx_proof.nodes.Node) -> None:
     realtyp = node.attributes.get("realtype", "")
-    realtyp = title_map[realtyp]
-    id = node.attributes.get("ids", [""])[0]
+    display_name = title_map.get(realtyp, realtyp.title())
+    _original_depart_unenumerable_node(self, node)
+    default_name = realtyp.title()
+    if display_name == default_name:
+        return
     if isinstance(self, sphinx_proof.nodes.LaTeXTranslator):
-        idx = sphinx_proof.nodes.list_rindex(self.body, sphinx_proof.nodes.latex_admonition_start) + 2
-        self.body.insert(idx, f"{realtyp}")
-        self.body.append(sphinx_proof.nodes.latex_admonition_end)
+        old_title = default_name
+        new_title = display_name
     else:
-        # use the id to find the correct title location
-        search_str = f'<p class="admonition-title" id="{id}">'
-        idx = sphinx_proof.nodes.list_rindex(self.body, search_str) + 1
-        element = f'<span class="caption-number">{sphinx_proof.nodes._(realtyp)} </span>'
-        self.body.insert(idx, element)
-        self.body.append("</div>")
+        old_title = f'<span class="caption-number">{sphinx_proof.nodes._(default_name)} </span>'
+        new_title = f'<span class="caption-number">{sphinx_proof.nodes._(display_name)} </span>'
+    idx = sphinx_proof.nodes.list_rindex(self.body, old_title)
+    self.body[idx] = new_title
 
 
 # Patch both the nodes module AND sphinx_proof's __init__ namespace.
@@ -187,11 +194,9 @@ html_theme = 'furo'
 html_static_path = ['_static']
 
 
-#math_number_all = True             # number *all* displayed equations
-math_eqref_format = "({number})"   # how equation refs look
-numfig = True                      # enable section-prefixed numbering
-math_numfig = True                 # apply section prefix to equations
-numfig_secnum_depth = 2            # use # and ## levels (e.g. 1.2.3)
+math_number_all = False
+numfig = False
+math_numfig = False
 
 html_theme = 'furo'
 html_static_path = ['_static']

@@ -60,7 +60,7 @@ def process_file(
                 with open(dest, 'w', encoding='utf-8') as f:
                     f.write(bib_content)
                 copied_bib_names.append(dest_name)
-                print(f"Bibliography converted .bbl → .bib: {dest}")
+                print(f"Bibliography converted .bbl -> .bib: {dest}")
             except OSError as exc:
                 print(f"Warning: could not convert {abs_path}: {exc}")
         else:

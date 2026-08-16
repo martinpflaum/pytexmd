@@ -370,12 +370,9 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
             if own_content.strip():
                 f.write(own_content.strip() + "\n\n")
 
-            # Toctree for numbered children
-            is_part = section.get('level', 999) == 0
+            # Toctree navigation must not add implicit section numbers.
             f.write("```{toctree}\n")
             f.write(":maxdepth: 2\n")
-            if is_part:
-                f.write(":numbered:\n")
             f.write("\n")
 
             child_files = []
@@ -453,10 +450,10 @@ def verify_content_integrity(original_content, structure):
     }
     
     if stats['match']:
-        message = "✓ Content integrity verified: All content preserved!"
+        message = "Content integrity verified: All content preserved!"
         is_valid = True
     else:
-        message = f"✗ Content mismatch: {stats['difference']} character difference"
+        message = f"Content mismatch: {stats['difference']} character difference"
         is_valid = False
         
         # Find where they differ
@@ -508,7 +505,7 @@ def split_document_to_files(document_md, output_folder, depth=2, output_suffix="
         print(f"  Original: {stats['original_length']:,} chars")
         print(f"  Reconstructed: {stats['reconstructed_length']:,} chars")
         if not is_valid:
-            print("\n⚠ Warning: Proceeding with file creation despite content mismatch")
+            print("\nWarning: Proceeding with file creation despite content mismatch")
     
     # Write files
     write_section_files(root, output_folder, depth, 0, output_suffix,
@@ -524,7 +521,7 @@ def split_document_to_files(document_md, output_folder, depth=2, output_suffix="
         f.write("```\n")
     print(f"Created: {refs_path}")
 
-    print(f"\n✓ Document split into files in: {output_folder}")
+    print(f"\nDocument split into files in: {output_folder}")
     return root
 
 def process_string(output_folder:str, string:str, depth=2, output_suffix:str=".md", verify=True):

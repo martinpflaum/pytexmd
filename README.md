@@ -2,6 +2,22 @@
 
 Pytexmd is a Python package designed to translate LaTeX documents to Markdown MyST and HTML. It provides utilities for filtering content, loading files, and integrating with Sphinx documentation. 
 
+## Numbering
+
+PyTeXmd does not automatically number theorems, displayed equations, or sections. Write any desired numbers explicitly:
+
+```latex
+\section{2 Background}
+\begin{theorem}[2.3]
+The statement.
+\end{theorem}
+\begin{equation}
+x = 1 \tag{2.4}
+\end{equation}
+```
+
+The theorem's optional title, the equation's `\tag`, and the section title are preserved verbatim.
+
 ## Documentation
 
 - **Full Documentation**: [pytexmd.readthedocs.io](https://pytexmd.readthedocs.io/en/latest/index.html)
@@ -91,11 +107,9 @@ html_theme = 'furo'
 html_static_path = ['_static']
 
 
-#math_number_all = True             # number *all* displayed equations
-math_eqref_format = "({number})"   # how equation refs look
-numfig = True                      # enable section-prefixed numbering
-math_numfig = True                 # apply section prefix to equations
-numfig_secnum_depth = 2            # use # and ## levels (e.g. 1.2.3)
+math_number_all = False
+numfig = False
+math_numfig = False
 
 html_theme = 'furo'
 html_static_path = ['_static']
@@ -131,51 +145,8 @@ for _name, (_node_cls, _directive_cls) in _CUSTOM_TYPES.items():
     sphinx_proof.domain.ProofDomain.directives[_name] = _directive_cls
     prf_realtyp_to_countertyp[_name] = "theorem"
 
-# Monkey-patch the 4 realtyp.title() calls in sphinx_proof.nodes so that
-# underscored names like 'theorem_and_definition' render as
-# 'Theorem And Definition' instead of 'Theorem_And_Definition'.
-import sphinx_proof.nodes as _spn
-import sphinx_proof as _sp
-from sphinx.writers.latex import LaTeXTranslator as _LaTeXTranslator
-
-def _depart_enumerable_node(self, node):
-    countertyp = node.attributes.get("countertype", "")
-    realtyp = node.attributes.get("realtype", "")
-    display = realtyp.replace("_", " ").title()
-    if isinstance(self, _LaTeXTranslator):
-        number = _spn.get_node_number(self, node, countertyp)
-        idx = _spn.list_rindex(self.body, _spn.latex_admonition_start) + 2
-        self.body.insert(idx, f"{display} {number}")
-        self.body.append(_spn.latex_admonition_end)
-    else:
-        number = _spn.get_node_number(self, node, countertyp)
-        idx = self.body.index(f"{countertyp} {number} ")
-        self.body[idx] = f"{_spn._(display)} {number} "
-        self.body.append("</div>")
-
-def _depart_unenumerable_node(self, node):
-    realtyp = node.attributes.get("realtype", "")
-    display = realtyp.replace("_", " ").title()
-    node_id = node.attributes.get("ids", [""])[0]
-    if isinstance(self, _LaTeXTranslator):
-        idx = _spn.list_rindex(self.body, _spn.latex_admonition_start) + 2
-        self.body.insert(idx, display)
-        self.body.append(_spn.latex_admonition_end)
-    else:
-        search_str = f'<p class="admonition-title" id="{node_id}">'
-        idx = _spn.list_rindex(self.body, search_str) + 1
-        element = f'<span class="caption-number">{_spn._(display)} </span>'
-        self.body.insert(idx, element)
-        self.body.append("</div>")
-
-# Patch both the nodes module AND sphinx_proof's __init__ namespace.
-# sphinx_proof/__init__.py does `from .nodes import depart_enumerable_node`
-# which binds the name in its own globals. Sphinx's setup() looks up the name
-# there, so patching only sphinx_proof.nodes has no effect.
-_spn.depart_enumerable_node = _depart_enumerable_node
-_spn.depart_unenumerable_node = _depart_unenumerable_node
-_sp.depart_enumerable_node = _depart_enumerable_node
-_sp.depart_unenumerable_node = _depart_unenumerable_node
+# PyTeXmd generates the remaining renderer registration. It delegates HTML
+# structure to sphinx-proof and only substitutes the custom display names.
 
 numfig_format = {
     "theorem_and_definition": "Theorem and Definition %s",

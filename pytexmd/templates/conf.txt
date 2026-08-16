@@ -113,3 +113,34 @@ html_theme_options = {
     "color_mode": "light",         # disable dark mode
 }
 html_static_path = ['_static']
+
+# sphinxcontrib-tikz always emits its closing </div>, even when rendering
+# failed before the matching opening element was written. That malformed HTML
+# can close a theme layout container and split the rest of the page into
+# columns. Only run the departure callback after a successful HTML visit.
+import sphinxcontrib.tikz as _pytexmd_tikz
+
+if not hasattr(_pytexmd_tikz, "_pytexmd_original_html_visit_tikz"):
+    _pytexmd_tikz._pytexmd_original_html_visit_tikz = _pytexmd_tikz.html_visit_tikz
+    _pytexmd_tikz._pytexmd_original_html_depart_tikz = _pytexmd_tikz.html_depart_tikz
+
+_pytexmd_tikz_html_visit = _pytexmd_tikz._pytexmd_original_html_visit_tikz
+_pytexmd_tikz_html_depart = _pytexmd_tikz._pytexmd_original_html_depart_tikz
+
+
+def _pytexmd_html_visit_tikz(translator, node):
+    body_start = len(translator.body)
+    _pytexmd_tikz_html_visit(translator, node)
+    node["_pytexmd_html_container_opened"] = any(
+        fragment.lstrip().startswith("<div")
+        for fragment in translator.body[body_start:]
+    )
+
+
+def _pytexmd_html_depart_tikz(translator, node):
+    if node.get("_pytexmd_html_container_opened", False):
+        _pytexmd_tikz_html_depart(translator, node)
+
+
+_pytexmd_tikz.html_visit_tikz = _pytexmd_html_visit_tikz
+_pytexmd_tikz.html_depart_tikz = _pytexmd_html_depart_tikz

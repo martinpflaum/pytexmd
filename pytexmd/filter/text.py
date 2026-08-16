@@ -422,7 +422,7 @@ class ParaElement(Element):
             str: MyST paragraph block.
         """
         colons = ":" * max(3, self._max_child_colon_count + 1)
-        pre = "\n" + colons + "{" + self.theorem_type + "} "
+        pre = "\n" + colons + "{" + self.theorem_type + "} \n:nonumber:\n"
         out = ""
         for child in self.children:
             out += child.to_string()
@@ -539,7 +539,10 @@ class TheoremElement(Element):
         for child in self.children:
             out += child.to_string()
         out = out.rstrip()
-        out = pre + out
+        title, separator, content = out.partition("\n")
+        out = pre + title + "\n:nonumber:\n"
+        if separator:
+            out += content
         out += "\n" + colons + "\n"
         return out
 
@@ -615,6 +618,9 @@ def get_theoremSearchers(input: str) -> list:
         pre,post = split_on_next(input,"\\newtheorem")
         if input == pre:
             break
+        post = post.lstrip()
+        if post.startswith("*"):
+            post = post[1:].lstrip()
         theorem_env_name,post = split_on_first_brace(post)
         display_name = ""
         if first_char_brace(post):

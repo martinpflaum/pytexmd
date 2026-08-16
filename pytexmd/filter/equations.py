@@ -27,13 +27,20 @@ from .splitting import *
 from .core import *
 from typing import List,Tuple,Union
 from ..config import LATEX_REPLACEMENTS
+import re as _re
 
-CURRENT_UNNAMED_LABEL = 0
+
+def _handwritten_tag(content: str) -> str:
+    r"""Return the value of a simple LaTeX ``\tag`` or ``\tag*`` command."""
+    match = _re.search(r"\\tag\*?\s*\{([^{}]*)\}", content)
+    return match.group(1).strip() if match else ""
 
 class EquationLabel(Element):
     def __init__(self,modifiable_content: str, parent: Element):
         super().__init__("",parent)
-        self.label = label_call(modifiable_content,LabelType.EQ)
+        self.label = label_call(
+            modifiable_content, LabelType.EQ, rename=parent.handwritten_tag
+        )
         if self.label == "":
             self.label = "equation_label_error"
         parent.add_label(self.label)
@@ -135,7 +142,6 @@ class InlineLatex(Element):
             out += child.to_string()
         out += "$"
         return out
-
 class DoubleDolarLatex(Element):
     """Represents display math ($$...$$).
 
@@ -154,6 +160,7 @@ class DoubleDolarLatex(Element):
         super().__init__(modifiable_content,parent)
         self.label = ""
         self.enumerated = False
+        self.handwritten_tag = _handwritten_tag(modifiable_content)
 
     def add_label(self,label: str):
         if self.label != "":
@@ -161,13 +168,10 @@ class DoubleDolarLatex(Element):
         self.label = label.strip()
 
     def to_string(self) -> str:
-        global CURRENT_UNNAMED_LABEL
-        pre = "\n:::{math}\n"
+        pre = "\n"
         if self.label != "":
-            pre += ":label: " + self.label + "\n"
-        elif self.enumerated:
-            pre += f":label: unamed_label{CURRENT_UNNAMED_LABEL}\n"
-            CURRENT_UNNAMED_LABEL += 1
+            pre += "(" + self.label + ")=\n"
+        pre += ":::{math}\n"
 
         out = ""
         for child in self.children:
@@ -226,6 +230,7 @@ class DefaultEquation(Element):
         self.end = end
 
         self.label = ""
+        self.handwritten_tag = _handwritten_tag(modifiable_content)
         if "*" in self.begin:
             self.enumerated = False
         else:
@@ -237,13 +242,10 @@ class DefaultEquation(Element):
         self.label = label.strip()
 
     def to_string(self) -> str:
-        global CURRENT_UNNAMED_LABEL
-        pre = "\n:::{math}\n"
+        pre = "\n"
         if self.label != "":
-            pre += ":label: " + self.label + "\n"
-        elif self.enumerated:
-            pre += f":label: unamed_label{CURRENT_UNNAMED_LABEL}\n"
-            CURRENT_UNNAMED_LABEL += 1
+            pre += "(" + self.label + ")=\n"
+        pre += ":::{math}\n"
 
         out = ""
         for child in self.children:
@@ -256,8 +258,6 @@ class DefaultEquation(Element):
         if self.parent is not None:
             self.parent._propagate_colon_count(3)
 
-
-import re as _re
 
 # TikZ-family environments that should be emitted as {tikz} directives rather
 # than {math} blocks.  The environment content is preserved as-is; for envs
@@ -519,4 +519,3 @@ class Cases(Element):
 
         out += "\\end{cases}"
         return out
-    
