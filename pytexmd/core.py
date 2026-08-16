@@ -20,6 +20,7 @@ def process_file(
     project_name: str = "My Project",
     author: str = "Author",
     version: str = "1.0",
+    mathjax_macros: dict = None,
 ) -> None:
     """Process a LaTeX file and generate documentation.
 
@@ -30,6 +31,7 @@ def process_file(
         output_folder (str): Path to the output folder for documentation.
         depth (int, optional): Depth for processing sections. Defaults to 3.
         output_suffix (str, optional): Suffix for output files. Defaults to ".md".
+        mathjax_macros (dict, optional): MathJax macro definitions for conf.py.
 
     Returns:
         None
@@ -76,5 +78,6 @@ def process_file(
     # Re-write conf.py now that custom theorem types are known.
     create_config_file(output_folder, project_name, author, version,
                        custom_types=CUSTOM_THEOREM_TYPES,
-                       bib_filenames=copied_bib_names)
+                       bib_filenames=copied_bib_names,
+                       mathjax_macros=mathjax_macros)
     #make_html(output_folder)

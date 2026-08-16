@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import ast
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -28,6 +29,27 @@ class _DivBalanceParser(HTMLParser):
 
 
 class SphinxLayoutTests(unittest.TestCase):
+    def test_config_uses_supplied_mathjax_macros(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            macros = {"R": [r"\mathbb{#1}", 1]}
+
+            create_config_file(
+                str(root), "Macro Test", "Author", "1.0", mathjax_macros=macros
+            )
+
+            module = ast.parse((root / "source" / "conf.py").read_text(encoding="utf-8"))
+            assignment = next(
+                node
+                for node in module.body
+                if isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "mathjax3_config"
+                    for target in node.targets
+                )
+            )
+            self.assertEqual(ast.literal_eval(assignment.value)["tex"]["macros"], macros)
+
     def test_repeated_unnumbered_proofs_do_not_break_page_layout(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

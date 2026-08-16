@@ -31,9 +31,41 @@ To install the required dependencies for pytexmd, run:
 pip install -r requirements.txt
 ```
 
-you also need texlive https://www.tug.org/texlive/ and ghostscript https://ghostscript.com/releases/gsdnld.html
+TikZ image generation also requires external TeX tools:
+
+- Linux: install TeX Live with TikZ and one supported converter, for example
+  `texlive-latex-extra texlive-pictures ghostscript`.
+- Windows: install MiKTeX with TikZ. PyTeXmd detects standard MiKTeX user and
+  system installations and can use MiKTeX's `mgs.exe` converter.
+
+The desktop UI uses Tkinter. It is included with standard Windows Python
+installations. On Debian/Ubuntu, install it with `sudo apt install python3-tk`.
 
 ## Python Usage Example
+
+Generate a complete Furo HTML site from a LaTeX entry file with the application:
+
+```bash
+pytexmd-html path/to/main.tex output/site --depth 3 --project-name "My Project" --author "Author" --version "1.0" --open
+```
+
+The Markdown and Sphinx sources are written to `output/site/source`. The HTML
+entry point is `output/site/build/html/index.html`. TikZ diagrams are rendered
+through `sphinxcontrib-tikz` when a supported TeX installation and converter are
+available.
+
+For the desktop interface, run:
+
+```bash
+pytexmd-gui
+```
+
+Choose the main `.tex` file and output folder, enter the project metadata, and
+select **Generate HTML**. The interface shows live build output and can open the
+completed site automatically.
+
+The repository keeps the reusable conversion library in `pytexmd/` and the
+user-facing command-line and desktop applications in `app/`.
 
 If you want to use pytexmd from a Python script, make sure your script is in the same folder (or a subfolder) as the pytexmd package, or add pytexmd to your Python path. The following example can also be found in the examples folder:
 

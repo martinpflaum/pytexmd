@@ -9,15 +9,30 @@ __all__ = [
     "create_sphinx_documentation",
     "make_html",
     "generate_custom_types_code",
+    "DEFAULT_MATHJAX_MACROS",
 ]
 
 import os
+from pprint import pformat
 import sys
 from pathlib import Path
 import subprocess
 import time
+from typing import Optional
 from sphinx.cmd.quickstart import main as sphinx_quickstart
 from sphinx.cmd.build import main as sphinx_build
+
+
+DEFAULT_MATHJAX_MACROS = {
+    "ltortoise": r"\unicode{x3014}",
+    "rtortoise": r"\unicode{x3015}",
+    "ltsbrak": [r"\mathopen{\ltortoise\mspace{1mu}}", 0],
+    "rtsbrak": [r"\mathopen{\mspace{1mu}\rtortoise}", 0],
+    "mathbbm": [r"\mathbb{#1}", 1],
+    "widebar": [r"\overline{#1}", 1],
+    "C": r"\mathbb{C}",
+    "H": r"\mathbb{H}",
+}
 
 
 def generate_custom_types_code(custom_types: dict) -> str:
@@ -164,7 +179,8 @@ def load_config_template() -> str:
         return file.read()
     
 def create_config_file(output_dir: str, project_name: str, author: str, version: str,
-                       custom_types: dict = None, bib_filenames: list = None) -> None:
+                       custom_types: dict = None, bib_filenames: list = None,
+                       mathjax_macros: dict = None) -> None:
     """Create a Sphinx conf.py configuration file in the source directory.
 
     Args:
@@ -176,6 +192,8 @@ def create_config_file(output_dir: str, project_name: str, author: str, version:
             custom theorem environments not built into sphinx_proof. Defaults to None.
         bib_filenames (list, optional): Basenames of bibliography files copied to the
             source folder. Replaces the default ['references.bib'] in bibtex_bibfiles.
+        mathjax_macros (dict, optional): MathJax macro definitions. Uses the
+            application defaults when omitted.
 
     Returns:
         None
@@ -188,7 +206,16 @@ def create_config_file(output_dir: str, project_name: str, author: str, version:
         config_template = load_config_template()
         config_content = config_template.replace("XXPROJECTXX", project_name)\
                                         .replace("XXAUTHORSXX", author)\
-                                        .replace("XXRELEASEXX", version)
+                                        .replace("XXRELEASEXX", version)\
+                                        .replace(
+                                            "XXMATHJAXMACROSXX",
+                                            pformat(
+                                                mathjax_macros
+                                                if mathjax_macros is not None
+                                                else DEFAULT_MATHJAX_MACROS,
+                                                sort_dicts=False,
+                                            ),
+                                        )
 
         # Substitute bibtex_bibfiles with the actual copied files.
         bib_list = bib_filenames if bib_filenames else ["references.bib"]
@@ -269,7 +296,7 @@ def create_sphinx_documentation(
     create_config_file(output_dir, project_name, author, version)
 
 
-def make_html(output_dir: str) -> None:
+def make_html(output_dir: str, raise_on_error: bool = False) -> Optional[Path]:
     """Build the Sphinx documentation to HTML format.
 
     Args:
@@ -281,12 +308,18 @@ def make_html(output_dir: str) -> None:
     try:
         source_dir = os.path.join(output_dir, "source")
         build_dir = os.path.join(output_dir, "build")
-        sphinx_build([
+        result = sphinx_build([
             "-M",
             "html",
             source_dir,
             build_dir
         ])
+        if result != 0:
+            raise RuntimeError(f"Sphinx HTML build failed with exit code {result}")
         print(f"Sphinx documentation built successfully at {build_dir}")
+        return Path(build_dir) / "html"
     except Exception as e:
         print(f"An error occurred while building the documentation: {e}")
+        if raise_on_error:
+            raise
+        return None

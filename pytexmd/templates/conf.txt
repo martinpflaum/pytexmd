@@ -5,21 +5,27 @@ release = 'XXRELEASEXX'
 
 import os as _pytexmd_os
 import shutil as _pytexmd_shutil
+import sys as _pytexmd_sys
 from pathlib import Path as _PytexmdPath
 
 # A running notebook does not see PATH updates made by a MiKTeX installer.
-# Discover its standard per-user installation so sphinxcontrib-tikz can invoke
-# pdflatex and MiKTeX's Ghostscript-compatible mgs executable immediately.
-_pytexmd_miktex_bin = (
-    _PytexmdPath(_pytexmd_os.environ.get('LOCALAPPDATA', ''))
-    / 'Programs' / 'MiKTeX' / 'miktex' / 'bin' / 'x64'
-)
-if _pytexmd_miktex_bin.is_dir():
-    _pytexmd_os.environ['PATH'] = (
-        str(_pytexmd_miktex_bin)
-        + _pytexmd_os.pathsep
-        + _pytexmd_os.environ.get('PATH', '')
-    )
+# Check standard per-user and system Windows installations. Linux TeX
+# distributions install their executables on PATH and need no special case.
+if _pytexmd_sys.platform == 'win32':
+    _pytexmd_miktex_bins = [
+        _PytexmdPath(_pytexmd_os.environ.get('LOCALAPPDATA', ''))
+        / 'Programs' / 'MiKTeX' / 'miktex' / 'bin' / 'x64',
+        _PytexmdPath(_pytexmd_os.environ.get('PROGRAMFILES', ''))
+        / 'MiKTeX' / 'miktex' / 'bin' / 'x64',
+    ]
+    for _pytexmd_miktex_bin in _pytexmd_miktex_bins:
+        if _pytexmd_miktex_bin.is_dir():
+            _pytexmd_os.environ['PATH'] = (
+                str(_pytexmd_miktex_bin)
+                + _pytexmd_os.pathsep
+                + _pytexmd_os.environ.get('PATH', '')
+            )
+            break
 
 extensions = ['myst_parser',
               "sphinx_proof",
@@ -80,16 +86,7 @@ tikz_resolution = 400   # default is 150; use 300–600 for sharp output
 
 mathjax3_config = {
     "tex": {
-        "macros": {
-            "ltortoise": "\\unicode{x3014}",
-            "rtortoise": "\\unicode{x3015}",
-            "ltsbrak": ["\\mathopen{\\ltortoise\\mspace{1mu}}", 0],
-            "rtsbrak": ["\\mathopen{\\mspace{1mu}\\rtortoise}", 0],
-            "mathbbm": ["\\mathbb{#1}", 1],
-            "widebar": ["\\overline{#1}", 1],
-            "C": "\\mathbb{C}",
-            "H": "\\mathbb{H}",
-        }
+        "macros": XXMATHJAXMACROSXX
     }
 }
 
@@ -140,9 +137,6 @@ math_numfig = False
 #numfig_secnum_depth = 2            # use # and ## levels (e.g. 1.2.3)
 
 html_theme = 'furo'
-html_theme_options = {
-    "color_mode": "light",         # disable dark mode
-}
 html_static_path = ['_static']
 
 # sphinxcontrib-tikz always emits its closing </div>, even when rendering

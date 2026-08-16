@@ -12,5 +12,6 @@ examples/tex/
 
 build
 dist
+*.egg-info/
 examples/output/
 examples/tex/
