@@ -6,7 +6,7 @@ from pathlib import Path
 
 from sphinx.cmd.build import build_main
 
-from pytexmd.sphinx_doc import create_config_file
+from pytexmd.sphinx_doc import _ensure_mathjax_manual_tags, create_config_file
 
 
 class _DivBalanceParser(HTMLParser):
@@ -57,6 +57,35 @@ class SphinxLayoutTests(unittest.TestCase):
             self.assertEqual(
                 ast.literal_eval(assignment.value)["tex"]["macros"], macros
             )
+            self.assertEqual(
+                ast.literal_eval(assignment.value)["tex"]["tags"], "ams"
+            )
+
+    def test_older_config_is_migrated_without_overriding_explicit_tag_mode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            config = source / "conf.py"
+            config.write_text(
+                'mathjax3_config = {"tex": {"macros": {"R": "mathbb"}}}\n',
+                encoding="utf-8",
+            )
+
+            _ensure_mathjax_manual_tags(source)
+            _ensure_mathjax_manual_tags(source)
+            migrated = config.read_text(encoding="utf-8")
+
+            self.assertEqual(migrated.count("PyTeXmd manual equation tags"), 1)
+            self.assertIn('["tags"] = "ams"', migrated)
+
+            config.write_text(
+                'mathjax3_config = {"tex": {"tags": "none"}}\n',
+                encoding="utf-8",
+            )
+            _ensure_mathjax_manual_tags(source)
+            self.assertNotIn(
+                "PyTeXmd manual equation tags",
+                config.read_text(encoding="utf-8"),
+            )
 
     def test_repeated_unnumbered_proofs_do_not_break_page_layout(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -97,7 +126,7 @@ Custom block.
 Block containing display math.
 
 :::{math}
-x = 1
+x = 1 \\tag{NESTED}
 :::
 ::::
 
@@ -139,6 +168,7 @@ Content after a failed TikZ render.
         self.assertIn("Theorem and Definition", html)
         self.assertNotIn("Theorem_And_Definition", html)
         self.assertIn("Block containing display math.", html)
+        self.assertIn(r"\tag{NESTED}", html)
         self.assertIn("Second custom block.", html)
         self.assertIn("Content after a failed TikZ render.", html)
         self.assertIn("TikZ diagram source", html)

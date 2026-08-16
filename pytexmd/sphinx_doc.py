@@ -1,5 +1,6 @@
 """Create and build the Sphinx project used by pytexmd."""
 
+import ast
 import os
 import time
 from pathlib import Path
@@ -20,6 +21,38 @@ DEFAULT_MATHJAX_MACROS = {
     "C": r"\mathbb{C}",
     "H": r"\mathbb{H}",
 }
+_MATHJAX_TAGS_MARKER = "# PyTeXmd manual equation tags"
+
+
+def _ensure_mathjax_manual_tags(source_dir: str | Path) -> None:
+    """Enable manual ``\\tag`` rendering in older generated configurations."""
+    config_path = Path(source_dir) / "conf.py"
+    content = config_path.read_text(encoding="utf-8")
+    if _MATHJAX_TAGS_MARKER in content:
+        return
+    try:
+        tree = ast.parse(content)
+        assignment = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "mathjax3_config"
+                for target in node.targets
+            )
+        )
+        config = ast.literal_eval(assignment.value)
+    except (StopIteration, SyntaxError, ValueError):
+        return
+    if "tags" in config.get("tex", {}):
+        return
+    config_path.write_text(
+        content.rstrip()
+        + "\n\n"
+        + _MATHJAX_TAGS_MARKER
+        + '\nmathjax3_config.setdefault("tex", {})["tags"] = "ams"\n',
+        encoding="utf-8",
+    )
 
 
 def load_config_template() -> str:
@@ -124,6 +157,7 @@ def make_html(output_dir: str, raise_on_error: bool = False) -> Optional[Path]:
     try:
         source_dir = os.path.join(output_dir, "source")
         build_dir = os.path.join(output_dir, "build")
+        _ensure_mathjax_manual_tags(source_dir)
         result = sphinx_build(["-M", "html", source_dir, build_dir])
         if result != 0:
             raise RuntimeError(f"Sphinx HTML build failed with exit code {result}")
