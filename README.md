@@ -156,7 +156,7 @@ python -m app.PytexmdEditor.editor path/to/output/site
 ```
 
 The editor opens locally in your browser and provides a page navigator, editable
-Sphinx preview, structured inspector, MyST source editor, and build log. It can
+Sphinx preview, contextual inspector, and build log. It can
 round-trip these visual changes back to Markdown before rebuilding the HTML:
 
 - section headings and paragraphs
@@ -172,23 +172,20 @@ block type, `:name:` creates link targets, and standard `{ref}` roles provide
 cross-references. Both a whole block and its individual leaf content are editable;
 the editor prevents overlapping edits from being saved together.
 
-The **Add Structure** panel inserts correctly formed MyST at the current source
-cursor. It supports sections, subsections, paragraph/proof/theorem admonitions,
-generic custom admonitions, bullet and numbered lists, custom enumerations,
-equations, web links, bibliography citations, generic references, proof
-references, and standalone labels. Inserted structures remain pending in the
-MyST source panel until **Save MyST source** is selected.
+The inspector has **General** and **Raw** tabs. General presents contextual fields
+for titles, custom-admonition colors, structured lists, TikZ scale, and displayed
+equation numbers using `\tag{...}`. Raw provides a large syntax-highlighted editor
+for the exact selected MyST block. Clicking the page background opens the complete
+page source in Raw.
 
-Pages can be created, deleted, and moved up or down within their real Sphinx
-toctree. The index and references pages are protected. Navigation changes create
-backups and trigger a Sphinx rebuild.
+Pages can be created and reordered by dragging sibling entries. Right-clicking
+opens an in-app menu for copy, cut, positional paste, and deletion; paste remains
+disabled until a page is in the editor clipboard. The index and references pages
+are protected. Navigation changes create backups and trigger a Sphinx rebuild.
 
-Visual inspector changes write directly back to Markdown and rebuild the site;
-there is no staging step. Direct heading and paragraph edits save when the
-edited element loses focus. **Save MyST source** is only for changes made in the
-advanced source panel. If **Rebuild** is selected while source edits are pending,
-the editor asks whether to save them first and warns that rebuilding without
-saving will discard them.
+Inspector changes write directly back to Markdown and rebuild the site; there is
+no staging step. Direct heading, paragraph, and admonition-title edits save when
+the edited element loses focus.
 
 Lists use dedicated controls rather than a single raw-text field. Bullet and
 normal enumeration items can be added, removed, and edited, while custom
@@ -208,9 +205,8 @@ directly editable in place; the change saves when the title loses focus.
 Generated HTML remains a build artifact: the editor writes changes to the
 corresponding file under `source/` and rebuilds Sphinx rather than leaving edits
 in HTML that the next build would overwrite. Each save creates an automatic
-timestamped backup under `.pytexmd-editor/backups/`. Use the MyST source panel
-for complex inline markup or directive-level edits that are not exposed by the
-visual inspector.
+timestamped backup under `.pytexmd-editor/backups/`. Use the inspector's Raw tab
+for complex inline markup or directive-level edits.
 
 The repository keeps the reusable conversion library in `pytexmd/`. The two
 applications are separated into `app/PytexmdConverter/` and

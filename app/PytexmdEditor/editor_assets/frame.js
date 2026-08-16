@@ -12,6 +12,7 @@
     tikz_scale: 0,
     admonition: 0,
     list: 0,
+    page: 0,
   };
 
   const editorStyle = document.createElement('style');
@@ -51,6 +52,13 @@
     );
     return parentBlock ? Number(parentBlock.dataset.pytexmdIndex) : null;
   };
+  const siblingIndex = (node) => {
+    const kind = node.dataset.pytexmdKind;
+    const parentIndex = parentAdmonitionIndex(node);
+    return [...root.querySelectorAll(`[data-pytexmd-kind="${kind}"]`)]
+      .filter((item) => parentAdmonitionIndex(item) === parentIndex)
+      .indexOf(node);
+  };
   const admonitionTitle = (node) => {
     if (node.dataset.pytexmdKind !== 'admonition') return null;
     const title = [...node.children].find((child) =>
@@ -67,14 +75,14 @@
         index: Number(node.dataset.pytexmdIndex),
         value: value(node),
         parentAdmonitionIndex: parentAdmonitionIndex(node),
+        siblingIndex: siblingIndex(node),
         admonitionTitle: admonitionTitle(node),
         dirty,
       },
       location.origin,
     );
   const select = (node) => {
-    root
-      .querySelectorAll('[data-pytexmd-kind]')
+    [root, ...root.querySelectorAll('[data-pytexmd-kind]')]
       .forEach((item) => (item.style.outline = ''));
     node.style.outline = '2px solid #c65232';
     send(node);
@@ -107,6 +115,7 @@
           index: Number(node.dataset.pytexmdIndex),
           value: value(node),
           parentAdmonitionIndex: parentAdmonitionIndex(node),
+          siblingIndex: siblingIndex(node),
           admonitionTitle: admonitionTitle(node),
         },
         location.origin,
@@ -145,8 +154,10 @@
           const nearestBlock = event.target.closest(
             '[data-pytexmd-kind="admonition"]',
           );
+          const nearestEditable = event.target.closest('[data-pytexmd-kind]');
           if (
             nearestBlock !== node ||
+            nearestEditable !== node ||
             event.target.closest('.pytexmd-edit-block') ||
             event.target.closest('.admonition-title')
           )
@@ -180,6 +191,7 @@
       return;
     register(node, 'list');
   });
+  register(root, 'page');
 
   window.addEventListener('message', (event) => {
     if (event.origin !== location.origin) return;

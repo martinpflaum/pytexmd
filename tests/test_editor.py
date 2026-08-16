@@ -224,6 +224,19 @@ chapter-two
 
         self.assertFalse(any(block.kind == "paragraph" for block in blocks))
 
+    def test_whole_page_source_is_editable(self):
+        page = next(
+            block for block in parse_editable_blocks(SAMPLE_MARKDOWN) if block.kind == "page"
+        )
+
+        self.assertEqual(page.value, SAMPLE_MARKDOWN)
+        updated = apply_visual_changes(
+            SAMPLE_MARKDOWN,
+            [{"kind": "page", "index": 0, "value": "# Replaced page\n\nNew body."}],
+        )
+
+        self.assertEqual(updated, "# Replaced page\n\nNew body.\n")
+
     def test_stale_and_duplicate_visual_edits_have_distinct_errors(self):
         with self.assertRaisesRegex(ValueError, "no longer mapped"):
             apply_visual_changes(
@@ -310,7 +323,7 @@ references
 
             with patch.object(project, "build", return_value="built"):
                 relative, _ = project.create_page("New Results")
-                project.move_page(relative, "up")
+                project.reorder_page(relative, "chapter.md")
 
             index = (source / "index.md").read_text(encoding="utf-8")
             self.assertLess(index.index("new_results"), index.index("chapter"))
@@ -319,6 +332,17 @@ references
                 [page["path"] for page in project.pages()],
                 ["index.md", "new_results.md", "chapter.md", "references.md"],
             )
+
+            with patch.object(project, "build", return_value="built"):
+                copied, _ = project.paste_page(
+                    "chapter.md", "references.md", "above", "copy"
+                )
+                project.paste_page(copied, "chapter.md", "below", "cut")
+
+            self.assertTrue((source / copied).is_file())
+            index = (source / "index.md").read_text(encoding="utf-8")
+            self.assertLess(index.index("chapter"), index.index(Path(copied).stem))
+            self.assertLess(index.index(Path(copied).stem), index.index("references"))
 
             with patch.object(project, "build", return_value="built"):
                 project.delete_page(relative)
@@ -363,8 +387,10 @@ references
             try:
                 with urlopen(server.editor_url + "api/project") as response:
                     project_payload = response.read().decode("utf-8")
+                    api_cache_control = response.headers["Cache-Control"]
                 with urlopen(server.editor_url + "preview/index.html") as response:
                     preview = response.read().decode("utf-8")
+                    preview_cache_control = response.headers["Cache-Control"]
             finally:
                 server.shutdown()
                 server.server_close()
@@ -372,6 +398,8 @@ references
 
             self.assertIn('"path": "index.md"', project_payload)
             self.assertIn("pytexmd-select", preview)
+            self.assertEqual(api_cache_control, "no-store")
+            self.assertEqual(preview_cache_control, "no-store")
 
 
 if __name__ == "__main__":

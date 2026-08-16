@@ -3,9 +3,12 @@ const state = {
   page: null,
   elements: [],
   selection: null,
-  sourceDirty: false,
   pageLoadSequence: 0,
   previewPath: null,
+  inspectorTab: "general",
+  draggedPage: null,
+  pageClipboard: null,
+  contextPage: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -75,6 +78,13 @@ function sourceDisplayText(source) {
 
 function resolveSourceElement(message) {
   const candidates = state.elements.filter((item) => item.kind === message.kind);
+  const nestedSibling = candidates.find(
+    (item) =>
+      message.parentAdmonitionIndex !== null &&
+      item.metadata?.nesting?.parent === message.parentAdmonitionIndex &&
+      item.metadata?.nesting?.sibling === message.siblingIndex,
+  );
+  if (nestedSibling) return nestedSibling;
   const rendered = comparableText(message.value);
   const matchesByText = ["heading", "paragraph", "directive_title", "list"].includes(
     message.kind,
@@ -113,11 +123,57 @@ function resolveSourceElement(message) {
 }
 
 function updatePageActions() {
-  const selected = state.page;
-  const canMove = Boolean(selected && selected.parent);
-  $("moveUpButton").disabled = !canMove;
-  $("moveDownButton").disabled = !canMove;
-  $("deletePageButton").disabled = !selected || selected.protected;
+  return;
+}
+
+function hidePageContextMenu() {
+  $("pageContextMenu").classList.add("hidden");
+  state.contextPage = null;
+}
+
+function showPageContextMenu(page, x, y) {
+  state.contextPage = page;
+  const menu = $("pageContextMenu");
+  const clipboardReady = Boolean(state.pageClipboard && page.parent);
+  menu.querySelector('[data-page-action="copy"]').disabled = !page.parent;
+  menu.querySelector('[data-page-action="cut"]').disabled =
+    page.protected || !page.parent;
+  menu.querySelector('[data-page-action="delete"]').disabled = page.protected;
+  for (const action of ["paste-above", "paste-below"]) {
+    menu.querySelector(`[data-page-action="${action}"]`).disabled =
+      !clipboardReady ||
+      (state.pageClipboard?.mode === "cut" && state.pageClipboard.path === page.path);
+  }
+  menu.classList.remove("hidden");
+  const bounds = menu.getBoundingClientRect();
+  menu.style.left = `${Math.min(x, window.innerWidth - bounds.width - 8)}px`;
+  menu.style.top = `${Math.min(y, window.innerHeight - bounds.height - 8)}px`;
+}
+
+async function handlePageContextAction(action) {
+  const page = state.contextPage;
+  hidePageContextMenu();
+  if (!page) return;
+  if (action === "copy" || action === "cut") {
+    state.pageClipboard = { mode: action, path: page.path, title: page.title };
+    toast(`${action === "copy" ? "Copied" : "Cut"} ${page.title}.`);
+    return;
+  }
+  if (action === "delete") {
+    if (!confirm(`Delete "${page.title}"? A backup will be retained.`)) return;
+    await managePage("/api/pages/delete", { path: page.path }, "index.md");
+    return;
+  }
+  if (action.startsWith("paste-") && state.pageClipboard) {
+    const clipboard = state.pageClipboard;
+    const result = await managePage("/api/pages/paste", {
+      source: clipboard.path,
+      target: page.path,
+      position: action.removeprefix("paste-"),
+      mode: clipboard.mode,
+    });
+    if (result && clipboard.mode === "cut") state.pageClipboard = null;
+  }
 }
 
 function renderPages(filter = "") {
@@ -136,6 +192,40 @@ function renderPages(filter = "") {
       button.querySelector("strong").textContent = page.title;
       button.querySelector("small").textContent = page.path;
       button.onclick = () => openPage(page);
+      button.oncontextmenu = (event) => {
+        event.preventDefault();
+        showPageContextMenu(page, event.clientX, event.clientY);
+      };
+      button.draggable = Boolean(page.parent && !page.protected);
+      button.ondragstart = (event) => {
+        state.draggedPage = page;
+        button.classList.add("dragging");
+        event.dataTransfer.effectAllowed = "move";
+      };
+      button.ondragend = () => {
+        state.draggedPage = null;
+        button.classList.remove("dragging");
+        document.querySelectorAll(".drop-target").forEach((item) =>
+          item.classList.remove("drop-target"),
+        );
+      };
+      button.ondragover = (event) => {
+        if (!state.draggedPage || state.draggedPage.parent !== page.parent) return;
+        event.preventDefault();
+        button.classList.add("drop-target");
+      };
+      button.ondragleave = () => button.classList.remove("drop-target");
+      button.ondrop = (event) => {
+        event.preventDefault();
+        button.classList.remove("drop-target");
+        const dragged = state.draggedPage;
+        if (!dragged || dragged.path === page.path || dragged.parent !== page.parent) return;
+        managePage(
+          "/api/pages/reorder",
+          { path: dragged.path, target: page.path },
+          dragged.path,
+        );
+      };
       list.append(button);
     });
   $("pageCount").textContent = state.pages.length;
@@ -153,27 +243,61 @@ async function loadProject(selectedPath = null) {
 }
 
 async function openPage(page) {
-  if (state.sourceDirty) {
-    toast("Save or discard current edits before reloading or changing pages.");
-    return;
-  }
   const loadSequence = ++state.pageLoadSequence;
   state.previewPath = null;
   state.selection = null;
   state.elements = [];
-  state.sourceDirty = false;
   const data = await request(`/api/page?path=${encodeURIComponent(page.path)}`);
   if (loadSequence !== state.pageLoadSequence) return;
   state.page = page;
   state.elements = data.elements;
-  $("sourceEditor").value = data.markdown;
   $("pageTitle").textContent = page.title;
   state.previewPath = page.preview;
   $("preview").src = `${page.preview}?v=${Date.now()}`;
-  $("emptyInspector").classList.remove("hidden");
-  $("emptyInspector").innerHTML = emptyInspectorDefault;
-  $("inspectorForm").classList.add("hidden");
+  selectElement({ kind: "page", index: 0, value: data.markdown });
   renderPages($("pageSearch").value);
+}
+
+function escapeHtml(value) {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function highlightMyst(value) {
+  return value.split("\n").map((line) => {
+    let escaped = escapeHtml(line);
+    if (/^\s*<!--/.test(line)) return `<span class="syn-comment">${escaped}</span>`;
+    if (/^\s*#{1,6}\s/.test(line)) return `<span class="syn-heading">${escaped}</span>`;
+    if (/^\s*[:`]{3,}\{/.test(line)) return `<span class="syn-directive">${escaped}</span>`;
+    if (/^\s*:[\w-]+:/.test(line)) return `<span class="syn-option">${escaped}</span>`;
+    escaped = escaped.replace(/(\{[\w:-]+\}`[^`]+`)/g, '<span class="syn-role">$1</span>');
+    escaped = escaped.replace(/(\$[^$]+\$)/g, '<span class="syn-math">$1</span>');
+    return escaped;
+  }).join("\n");
+}
+
+function updateRawHighlight() {
+  $("rawHighlight").innerHTML = highlightMyst($("elementValue").value);
+}
+
+function syncRawSource() {
+  $("elementValue").value = $("rawHighlight").textContent.replace(/\r/g, "");
+}
+
+function setInspectorTab(tab) {
+  state.inspectorTab = tab;
+  $("generalTab").classList.toggle("hidden", tab !== "general");
+  $("rawTab").classList.toggle("hidden", tab !== "raw");
+  $("generalTabButton").classList.toggle("active", tab === "general");
+  $("rawTabButton").classList.toggle("active", tab === "raw");
+  if (tab === "raw") updateRawHighlight();
+}
+
+function parseEquation(value) {
+  const match = value.match(/\\tag\{([^}]*)\}/);
+  return {
+    content: value.replace(/\s*\\tag\{[^}]*\}\s*/, "\n").trim(),
+    number: match?.[1] || "",
+  };
 }
 
 function selectElement(message) {
@@ -182,61 +306,74 @@ function selectElement(message) {
     state.selection = null;
     $("elementType").value = "";
     $("elementValue").value = "";
-    $("admonitionTitle").value = "";
-    $("admonitionColor").value = "";
-    $("admonitionEditor").classList.add("hidden");
-    $("nestingContext").classList.add("hidden");
-    $("listEditor").classList.add("hidden");
-    $("childTools").classList.add("hidden");
+    updateRawHighlight();
     $("inspectorForm").classList.add("hidden");
     $("emptyInspector").classList.remove("hidden");
     $("emptyInspector").innerHTML =
-      "<strong>Generated Sphinx element</strong><span>This rendered element has no independent Markdown source block. Select its parent admonition or use the MyST source panel.</span>";
+      "<strong>Generated Sphinx element</strong><span>This rendered element has no independent Markdown source block. Select its containing admonition or the page background.</span>";
     return;
   }
   state.selection = { kind: source.kind, index: source.index };
   $("emptyInspector").classList.add("hidden");
   $("emptyInspector").innerHTML = emptyInspectorDefault;
   $("inspectorForm").classList.remove("hidden");
-  $("elementType").value = message.kind.replace("_", " ");
-  $("elementValue").value =
-    source?.value ?? message.value;
-  const isAdmonition = source.kind === "admonition";
-  $("admonitionEditor").classList.toggle("hidden", !isAdmonition);
-  if (isAdmonition) {
+  $("elementType").value = source.kind.replace("_", " ");
+  $("elementValue").value = source.value;
+  updateRawHighlight();
+
+  const kind = source.kind;
+  const structuredList = kind === "list" && source.metadata?.style !== "raw";
+  const generalText = [
+    "heading",
+    "paragraph",
+    "directive_title",
+    "tikz_scale",
+  ].includes(kind);
+  $("generalValueLabel").classList.toggle("hidden", !generalText);
+  if (generalText) {
+    $("generalValue").value = source.value;
+    $("generalValueLabel").firstChild.textContent =
+      kind === "tikz_scale"
+        ? "Scale "
+        : kind === "paragraph"
+          ? "Content "
+          : "Title ";
+  }
+  $("admonitionEditor").classList.toggle("hidden", kind !== "admonition");
+  if (kind === "admonition") {
     $("admonitionTitle").value = source.metadata?.title || "";
     $("admonitionColor").value = source.metadata?.color || "";
   }
-  const structuredList = message.kind === "list" && source?.metadata?.style !== "raw";
-  const nesting = source?.metadata?.nesting;
+  $("equationEditor").classList.toggle("hidden", kind !== "equation");
+  if (kind === "equation") {
+    const equation = parseEquation(source.value);
+    $("equationValue").value = equation.content;
+    $("equationNumber").value = equation.number;
+  }
+  $("listEditor").classList.toggle("hidden", !structuredList);
+  if (structuredList) renderListEditor(source.metadata);
+  $("childTools").classList.toggle("hidden", kind !== "admonition");
+  const hasGeneral = generalText || kind === "admonition" || kind === "equation" || structuredList;
+  $("generalUnavailable").classList.toggle("hidden", hasGeneral);
+
+  const nesting = source.metadata?.nesting;
   const nested = Boolean(nesting?.depth);
   $("nestingContext").classList.toggle("hidden", !nested);
   if (nested) {
     $("nestingLabel").textContent = `Nested level ${nesting.depth}`;
     $("selectParentButton").dataset.parentIndex = nesting.parent;
   }
-  $("valueLabel").classList.toggle("hidden", structuredList);
-  $("listEditor").classList.toggle("hidden", !structuredList);
-  $("childTools").classList.toggle("hidden", message.kind !== "admonition");
-  if (structuredList) renderListEditor(source.metadata);
+  const defaultTab = hasGeneral ? "general" : "raw";
+  setInspectorTab(defaultTab);
   const help = {
-    heading: "Edit the section heading. Markdown heading depth is preserved.",
-    paragraph:
-      "Visual paragraph edits become plain MyST text. Use the source panel to preserve complex inline markup.",
-    directive_title: "Edit the admonition title here or type directly in the preview. It saves when focus leaves the title.",
-    equation: "Edit the LaTeX equation source. Labels and tags may be included.",
-    tikz_scale: "Scale the rendered TikZ image from 0.1 to 4.",
-    admonition:
-      "Edit the title and color above or the complete MyST block below.",
-    list: "Add, remove, and edit items. Custom labels are editable only for custom enumerations.",
+    page: "Edit the complete page as MyST. Saving rebuilds the Sphinx project.",
+    paragraph: "Edit paragraph content in General, or use Raw MyST for exact markup.",
+    directive_title: "Edit here or type directly in the preview; direct edits save on blur.",
+    equation: "Set an optional displayed number using MathJax \\tag{...} functionality.",
+    admonition: "Edit the custom title and theme color, or use Raw for the complete block.",
+    list: "Edit structured list items here or use Raw for exact MyST.",
   };
-  $("fieldHelp").textContent = help[message.kind] || "";
-  $("valueLabel").firstChild.textContent =
-    message.kind === "tikz_scale"
-      ? "Scale "
-      : isAdmonition
-        ? "Advanced MyST source "
-        : "Content ";
+  $("fieldHelp").textContent = help[kind] || "Raw contains the exact selected MyST source.";
 }
 
 function renderListEditor(metadata) {
@@ -296,10 +433,6 @@ function serializeListEditor() {
 }
 
 async function saveSingleVisual(change) {
-  if (state.sourceDirty) {
-    toast("Save or discard MyST source changes before editing the preview.");
-    return false;
-  }
   const pagePath = state.page?.path;
   if (!pagePath) return false;
   setBusy(true);
@@ -322,45 +455,14 @@ async function saveSingleVisual(change) {
   }
 }
 
-async function saveSource() {
-  if (!state.page) return;
-  setBusy(true);
-  setStatus("Saving MyST source and rebuilding...");
-  try {
-    const result = await post("/api/save", {
-      path: state.page.path,
-      markdown: $("sourceEditor").value,
-      rebuild: true,
-    });
-    showLog(result.log);
-    state.sourceDirty = false;
-    await loadProject(state.page.path);
-    toast("MyST source saved.");
-  } catch (error) {
-    toast(error.message);
-    setStatus("Save failed");
-  } finally {
-    setBusy(false);
-  }
-}
-
-async function rebuild(discardSource = false) {
-  if (state.sourceDirty && !discardSource) {
-    $("rebuildDialogTitle").textContent = "Unsaved MyST source";
-    $("rebuildDialogText").textContent =
-      "The MyST source panel contains changes that have not been written to the current Markdown file.";
-    $("saveAndRebuildButton").textContent = "Save MyST source and rebuild";
-    $("rebuildDialog").showModal();
-    return;
-  }
+async function rebuild() {
   setBusy(true);
   setStatus("Building Sphinx project...");
   try {
     const result = await post("/api/build");
     showLog(result.log);
-    state.sourceDirty = false;
     if (state.page) await loadProject(state.page.path);
-    toast(discardSource ? "Unsaved source edits discarded." : "Build complete.");
+    toast("Build complete.");
   } catch (error) {
     toast(error.message);
     setStatus("Build failed");
@@ -370,10 +472,6 @@ async function rebuild(discardSource = false) {
 }
 
 async function managePage(url, body, selectedPath) {
-  if (state.sourceDirty) {
-    toast("Save or discard current edits before changing page navigation.");
-    return;
-  }
   setBusy(true);
   setStatus("Updating navigation and rebuilding...");
   try {
@@ -381,9 +479,11 @@ async function managePage(url, body, selectedPath) {
     showLog(result.log);
     await loadProject(selectedPath || result.page);
     toast("Page navigation updated.");
+    return result;
   } catch (error) {
     toast(error.message);
     setStatus("Page update failed");
+    return null;
   } finally {
     setBusy(false);
   }
@@ -485,10 +585,6 @@ const insertConfiguration = {
 function configureInsertDialog() {
   const kind = $("insertKind").value;
   const config = insertConfiguration[kind];
-  const sourcePanel = $("sourceEditor").closest("details");
-  state.insertionPosition = sourcePanel.open
-    ? $("sourceEditor").selectionStart
-    : $("sourceEditor").value.length;
   $("insertDialogTitle").textContent =
     `Insert ${$("insertKind").selectedOptions[0].textContent}`;
   for (const [field, label] of [
@@ -582,11 +678,22 @@ $("inspectorForm").onsubmit = async (event) => {
   event.preventDefault();
   if (!state.selection) return;
   try {
-    const value = state.selection.kind === "list" && !$("listEditor").classList.contains("hidden")
-      ? serializeListEditor()
-      : $("elementValue").value;
+    const kind = state.selection.kind;
+    if (state.inspectorTab === "raw") syncRawSource();
+    let value = $("elementValue").value;
+    if (state.inspectorTab === "general") {
+      if (["heading", "paragraph", "directive_title", "tikz_scale"].includes(kind)) {
+        value = $("generalValue").value;
+      } else if (kind === "list" && !$("listEditor").classList.contains("hidden")) {
+        value = serializeListEditor();
+      } else if (kind === "equation") {
+        const number = $("equationNumber").value.trim();
+        value = $("equationValue").value.trim();
+        if (number) value += `\n\\tag{${number}}`;
+      }
+    }
     const change = { ...state.selection, value };
-    if (state.selection.kind === "admonition") {
+    if (kind === "admonition" && state.inspectorTab === "general") {
       change.admonition_title = $("admonitionTitle").value;
       change.admonition_color = $("admonitionColor").value;
     }
@@ -597,6 +704,9 @@ $("inspectorForm").onsubmit = async (event) => {
 };
 
 $("addListItemButton").onclick = () => addListItemRow();
+$("generalTabButton").onclick = () => setInspectorTab("general");
+$("rawTabButton").onclick = () => setInspectorTab("raw");
+$("rawHighlight").oninput = syncRawSource;
 $("selectParentButton").onclick = () => {
   const index = Number($("selectParentButton").dataset.parentIndex);
   $("preview").contentWindow?.postMessage(
@@ -615,11 +725,6 @@ $("newPageForm").onsubmit = async (event) => {
   event.target.reset();
 };
 
-$("openInsertButton").onclick = () => {
-  if (!state.page) return;
-  state.insertionMode = "source";
-  configureInsertDialog();
-};
 $("addChildButton").onclick = () => {
   if (!state.selection || state.selection.kind !== "admonition") return;
   state.insertionMode = "child";
@@ -655,59 +760,25 @@ $("insertForm").onsubmit = async (event) => {
       await saveSingleVisual({ ...state.selection, value });
       return;
     }
-    const inline = [
-      "link",
-      "citation",
-      "reference",
-      "proof_reference",
-    ].includes(kind);
-    const source = $("sourceEditor");
-    const position = state.insertionPosition ?? source.value.length;
-    const prefix = inline || position === 0 || source.value.slice(0, position).endsWith("\n\n")
-      ? ""
-      : "\n\n";
-    const suffix = inline || source.value.slice(position).startsWith("\n\n")
-      ? ""
-      : "\n\n";
-    const text = `${prefix}${insertion}${suffix}`;
-    source.setRangeText(text, position, position, "end");
-    source.closest("details").open = true;
-    source.focus();
-    state.sourceDirty = true;
-    setStatus("Unsaved MyST source changes");
-    $("insertDialog").close();
-    toast('Structure inserted. Select "Save MyST source" to save it.');
+    throw new Error("Structures can only be inserted into a selected admonition.");
   } catch (error) {
     toast(error.message);
   }
 };
 
 $("newPageButton").onclick = () => $("newPageDialog").showModal();
-$("moveUpButton").onclick = () =>
-  managePage("/api/pages/move", { path: state.page.path, direction: "up" }, state.page.path);
-$("moveDownButton").onclick = () =>
-  managePage("/api/pages/move", { path: state.page.path, direction: "down" }, state.page.path);
-$("deletePageButton").onclick = () => {
-  if (!state.page || state.page.protected) return;
-  if (!confirm(`Delete "${state.page.title}"? A backup will be retained.`)) return;
-  managePage("/api/pages/delete", { path: state.page.path }, "index.md");
-};
-$("saveSourceButton").onclick = saveSource;
-$("buildButton").onclick = () => rebuild(false);
+$("buildButton").onclick = rebuild;
 $("reloadButton").onclick = () => state.page && openPage(state.page);
 $("pageSearch").oninput = (event) => renderPages(event.target.value);
-$("sourceEditor").oninput = () => {
-  state.sourceDirty = true;
-  setStatus("Unsaved MyST source changes");
-};
-$("saveAndRebuildButton").onclick = async () => {
-  $("rebuildDialog").close();
-  await saveSource();
-};
-$("discardAndRebuildButton").onclick = async () => {
-  $("rebuildDialog").close();
-  await rebuild(true);
-};
+$("pageContextMenu").querySelectorAll("[data-page-action]").forEach((button) => {
+  button.onclick = () => handlePageContextAction(button.dataset.pageAction);
+});
+document.addEventListener("pointerdown", (event) => {
+  if (!event.target.closest("#pageContextMenu")) hidePageContextMenu();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") hidePageContextMenu();
+});
 document.querySelectorAll("[data-close]").forEach((button) => {
   button.onclick = () => $(button.dataset.close).close();
 });

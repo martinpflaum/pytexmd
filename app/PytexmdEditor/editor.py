@@ -202,6 +202,8 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
     if plain_fence is not None:
         protected.update(range(plain_fence[1], len(lines)))
 
+    blocks.append(EditableBlock("page", 0, len(lines), markdown))
+
     for item in ranges:
         name = item["name"]
         start = item["start"]
@@ -345,6 +347,7 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
         counters[block.kind] = block.index + 1
 
     admonitions = [block for block in blocks if block.kind == "admonition"]
+    sibling_counts: dict[tuple[str, int | None], int] = {}
     for block in blocks:
         parents = [
             parent
@@ -355,9 +358,14 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
         ]
         parent = min(parents, key=lambda item: item.end - item.start, default=None)
         metadata = dict(block.metadata or {})
+        parent_index = parent.index if parent is not None else None
+        sibling_key = (block.kind, parent_index)
+        sibling_index = sibling_counts.get(sibling_key, 0)
+        sibling_counts[sibling_key] = sibling_index + 1
         metadata["nesting"] = {
             "depth": len(parents),
-            "parent": parent.index if parent is not None else None,
+            "parent": parent_index,
+            "sibling": sibling_index,
         }
         block.metadata = metadata
     return blocks
@@ -648,6 +656,136 @@ class SphinxProject:
             self._write(owner_relative, updated)
             return self.build()
 
+    def reorder_page(self, relative: str, target_relative: str) -> str:
+        """Move a page before another sibling in the same toctree."""
+        if relative == target_relative:
+            return "Page order unchanged."
+        with self._lock:
+            pages = {item["path"]: item for item in self.pages()}
+            page = pages.get(relative)
+            target_page = pages.get(target_relative)
+            if not page or not target_page or page["parent"] != target_page["parent"]:
+                raise ValueError("Pages can only be reordered among siblings.")
+            owner_relative = page["parent"]
+            if owner_relative is None:
+                raise ValueError("Root pages cannot be reordered.")
+            markdown = self._source_path(owner_relative).read_text(encoding="utf-8")
+            entries = _toctree_entries(markdown, owner_relative)
+            selected = next((item for item in entries if item.document == relative), None)
+            target = next(
+                (item for item in entries if item.document == target_relative), None
+            )
+            if selected is None or target is None or selected.group != target.group:
+                raise ValueError("Pages must belong to the same navigation group.")
+            siblings = [item for item in entries if item.group == selected.group]
+            ordered = [item.document for item in siblings]
+            ordered.remove(relative)
+            ordered.insert(ordered.index(target_relative), relative)
+            lines = markdown.splitlines()
+            original = {item.document: lines[item.line] for item in siblings}
+            for item, document in zip(siblings, ordered):
+                lines[item.line] = original[document]
+            updated = "\n".join(lines) + ("\n" if markdown.endswith("\n") else "")
+            self._write(owner_relative, updated)
+            return self.build()
+
+    def paste_page(
+        self, source_relative: str, target_relative: str, position: str, mode: str
+    ) -> tuple[str, str]:
+        """Copy or move a page above or below another navigation entry."""
+        if position not in {"above", "below"} or mode not in {"copy", "cut"}:
+            raise ValueError("Invalid page paste operation.")
+        with self._lock:
+            pages = {item["path"]: item for item in self.pages()}
+            source_page = pages.get(source_relative)
+            target_page = pages.get(target_relative)
+            if source_page is None or target_page is None or target_page["parent"] is None:
+                raise ValueError("Both clipboard and target pages must be in navigation.")
+            if source_page["parent"] is None:
+                raise ValueError("The navigation root cannot be copied or moved.")
+            if mode == "cut" and source_page["protected"]:
+                raise ValueError("This required page cannot be moved.")
+            if mode == "cut" and source_relative == target_relative:
+                raise ValueError("Choose a different target for the cut page.")
+
+            if mode == "cut":
+                ancestor = target_relative
+                while ancestor is not None:
+                    if ancestor == source_relative:
+                        raise ValueError("A page cannot be moved inside its own descendants.")
+                    ancestor = pages.get(ancestor, {}).get("parent")
+                pasted_relative = source_relative
+            else:
+                source_path = PurePosixPath(source_relative)
+                target_parent = PurePosixPath(target_relative).parent
+                stem = source_path.stem + "_copy"
+                candidate = target_parent / f"{stem}.md"
+                suffix = 2
+                while (self.source / candidate).exists():
+                    candidate = target_parent / f"{stem}_{suffix}.md"
+                    suffix += 1
+                pasted_relative = candidate.as_posix()
+                destination = self._source_path(pasted_relative)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_text(
+                    self._source_path(source_relative).read_text(encoding="utf-8"),
+                    encoding="utf-8",
+                )
+
+            target_owner = target_page["parent"]
+            source_owner = source_page["parent"]
+            target_markdown = self._source_path(target_owner).read_text(encoding="utf-8")
+
+            if mode == "cut" and source_owner == target_owner:
+                lines = target_markdown.splitlines()
+                entries = _toctree_entries(target_markdown, target_owner)
+                source_entry = next(
+                    (item for item in entries if item.document == source_relative), None
+                )
+                target_entry = next(
+                    (item for item in entries if item.document == target_relative), None
+                )
+                if source_entry is None or target_entry is None:
+                    raise ValueError("Could not locate page navigation entries.")
+                lines.pop(source_entry.line)
+                target_line = target_entry.line - (source_entry.line < target_entry.line)
+            else:
+                if mode == "cut":
+                    old_markdown = self._source_path(source_owner).read_text(encoding="utf-8")
+                    old_entries = _toctree_entries(old_markdown, source_owner)
+                    source_entry = next(
+                        (item for item in old_entries if item.document == source_relative),
+                        None,
+                    )
+                    if source_entry is None:
+                        raise ValueError("Could not locate the page being moved.")
+                    old_lines = old_markdown.splitlines()
+                    old_lines.pop(source_entry.line)
+                    self._write(
+                        source_owner,
+                        "\n".join(old_lines)
+                        + ("\n" if old_markdown.endswith("\n") else ""),
+                    )
+                lines = target_markdown.splitlines()
+                target_entries = _toctree_entries(target_markdown, target_owner)
+                target_entry = next(
+                    (item for item in target_entries if item.document == target_relative),
+                    None,
+                )
+                if target_entry is None:
+                    raise ValueError("Could not locate the target navigation entry.")
+                target_line = target_entry.line
+
+            owner_parent = PurePosixPath(target_owner).parent.as_posix() or "."
+            document = PurePosixPath(pasted_relative).with_suffix("").as_posix()
+            reference = posixpath.relpath(document, owner_parent)
+            indentation = re.match(r"\s*", lines[target_line]).group()
+            insertion = target_line + (1 if position == "below" else 0)
+            lines.insert(insertion, indentation + reference)
+            updated = "\n".join(lines) + ("\n" if target_markdown.endswith("\n") else "")
+            self._write(target_owner, updated)
+            return pasted_relative, self.build()
+
     def read_page(self, relative: str) -> dict:
         path = self._source_path(relative)
         markdown = path.read_text(encoding="utf-8")
@@ -713,6 +851,7 @@ class EditorRequestHandler(BaseHTTPRequestHandler):
         payload = json.dumps(value).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
@@ -729,6 +868,7 @@ class EditorRequestHandler(BaseHTTPRequestHandler):
             or mimetypes.guess_type(path.name)[0]
             or "application/octet-stream",
         )
+        self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(payload)))
         self.end_headers()
         self.wfile.write(payload)
@@ -770,6 +910,7 @@ class EditorRequestHandler(BaseHTTPRequestHandler):
                     payload = html.encode("utf-8")
                     self.send_response(HTTPStatus.OK)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Cache-Control", "no-store")
                     self.send_header("Content-Length", str(len(payload)))
                     self.end_headers()
                     self.wfile.write(payload)
@@ -803,6 +944,17 @@ class EditorRequestHandler(BaseHTTPRequestHandler):
             elif self.path == "/api/pages/move":
                 log = self.server.project.move_page(
                     str(body["path"]), str(body["direction"])
+                )
+            elif self.path == "/api/pages/reorder":
+                log = self.server.project.reorder_page(
+                    str(body["path"]), str(body["target"])
+                )
+            elif self.path == "/api/pages/paste":
+                page, log = self.server.project.paste_page(
+                    str(body["source"]),
+                    str(body["target"]),
+                    str(body["position"]),
+                    str(body["mode"]),
                 )
             else:
                 self.send_error(HTTPStatus.NOT_FOUND)
