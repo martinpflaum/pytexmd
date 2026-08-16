@@ -38,7 +38,6 @@ class LabelType(Enum):
     SECTION_LIKE = "section_like"
     DOC = "doc"
     EQ = "eq"
-    PRF_REF = "prf:ref"
     ENUMERATION_ITEM = "enumeration_item"
 
 LABEL_TYPE_TO_STR_FUNCS = {
@@ -49,7 +48,6 @@ LABEL_TYPE_TO_STR_FUNCS = {
     LabelType.EQ: lambda label_name,rename: (
         f"[({rename})](#{label_name})" if rename else f"[equation](#{label_name})"
     ),
-    LabelType.PRF_REF: lambda label_name,rename: "{prf:ref}"+f"`{label_name}`",
     LabelType.NUMREF: lambda label_name,rename: "{numref}"+f"`{label_name}`",
     LabelType.ENUMERATION_ITEM:  lambda label_name,rename: "{ref}"+f"`{label_name}`",#lambda label_name,rename: f"[{rename}](#{label_name})",
 }
@@ -969,4 +967,3 @@ class OneArgumentCommandSearcher(Searcher):
         pre,post = splitting.split_on_next(string,self.command_name)
         name,post = splitting.split_on_first_brace(post)
         return pre,Undefined(self.begin + name + self.end,parent),post
-

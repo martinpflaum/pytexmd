@@ -34,9 +34,14 @@
     </section>
     <aside class="inspector">
       <div class="panel-heading">Inspector</div>
-      <div id="emptyInspector" class="empty-state"><strong>Select content in the preview</strong><span>Edit headings and paragraphs directly. Whole theorem/proof admonitions, equations, lists, and TikZ images have structured source controls.</span></div>
+      <div id="emptyInspector" class="empty-state"><strong>Select content in the preview</strong><span>Click and type on an admonition title to edit it directly. Click its body to edit the title, color, and complete source block.</span></div>
       <form id="inspectorForm" class="inspector-form hidden">
         <label>Element <input id="elementType" disabled></label>
+        <div id="nestingContext" class="nesting-context hidden"><span id="nestingLabel"></span><button id="selectParentButton" class="mini-button" type="button">Select parent block</button></div>
+        <div id="admonitionEditor" class="admonition-editor hidden">
+          <label>Title <input id="admonitionTitle" maxlength="240" placeholder="Admonition title"></label>
+          <label>Color <select id="admonitionColor"><option value="">Theme default</option><option value="note">Blue</option><option value="tip">Green</option><option value="warning">Amber</option><option value="danger">Red</option><option value="important">Purple</option></select></label>
+        </div>
         <label id="valueLabel">Content <textarea id="elementValue" rows="10"></textarea></label>
         <div id="listEditor" class="list-editor hidden">
           <div class="list-editor-heading"><strong id="listStyleLabel">List items</strong><button id="addListItemButton" class="mini-button" type="button">+ Add item</button></div>

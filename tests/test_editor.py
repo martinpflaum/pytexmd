@@ -19,8 +19,8 @@ SAMPLE_MARKDOWN = r"""# Original heading
 
 Original paragraph.
 
-:::{prf:theorem} Original title
-:nonumber:
+:::{admonition} Theorem Original title
+:class: pytexmd-admonition theorem
 
 Theorem body.
 :::
@@ -46,8 +46,8 @@ class EditorRoundTripTests(unittest.TestCase):
 
         self.assertEqual(elements[("heading", 0)], "Original heading")
         self.assertEqual(elements[("paragraph", 0)], "Original paragraph.")
-        self.assertEqual(elements[("directive_title", 0)], "Original title")
-        self.assertIn("prf:theorem", elements[("admonition", 0)])
+        self.assertEqual(elements[("directive_title", 0)], "Theorem Original title")
+        self.assertIn("{admonition} Theorem", elements[("admonition", 0)])
         self.assertEqual(elements[("equation", 0)], r"x = 1 \tag{1}")
         self.assertEqual(elements[("tikz_scale", 0)], "1")
 
@@ -65,7 +65,7 @@ class EditorRoundTripTests(unittest.TestCase):
 
         self.assertIn("# Edited heading", updated)
         self.assertIn("Edited paragraph.", updated)
-        self.assertIn(":::{prf:theorem} Edited title", updated)
+        self.assertIn(":::{admonition} Edited title", updated)
         self.assertIn(r"y = 2 \tag{2}", updated)
         self.assertIn(":label: equation-one", updated)
         self.assertIn(":xscale: 0.65", updated)
@@ -74,8 +74,9 @@ class EditorRoundTripTests(unittest.TestCase):
     def test_whole_admonitions_and_lists_are_editable(self):
         markdown = """# Page
 
-:::{prf:proof} Details
-:label: proof-label
+:::{admonition} Proof Details
+:class: pytexmd-admonition proof
+:name: proof-label
 
 Proof body.
 :::
@@ -97,7 +98,7 @@ Custom B
         elements = {(block.kind, block.index): block.value for block in blocks}
         list_blocks = [block for block in blocks if block.kind == "list"]
 
-        self.assertIn(":label: proof-label", elements[("admonition", 0)])
+        self.assertIn(":name: proof-label", elements[("admonition", 0)])
         self.assertEqual(elements[("list", 0)], "- First\n- Second")
         self.assertEqual(elements[("list", 1)], "Custom A\n: Alpha\nCustom B\n: Beta")
         self.assertEqual(list_blocks[0].metadata["style"], "bullet")
@@ -110,13 +111,49 @@ Custom B
                 {
                     "kind": "admonition",
                     "index": 0,
-                    "value": ":::{prf:proof} Revised\n:label: revised-proof\n\nNew proof.\n:::",
+                    "value": ":::{admonition} Proof Revised\n:class: pytexmd-admonition proof\n:name: revised-proof\n\nNew proof.\n:::",
                 },
                 {"kind": "list", "index": 0, "value": "- One\n- Two"},
             ],
         )
-        self.assertIn(":label: revised-proof", updated)
+        self.assertIn(":name: revised-proof", updated)
         self.assertIn("- One\n- Two", updated)
+
+    def test_admonition_title_and_color_are_structured_fields(self):
+        markdown = """:::{admonition} Original title
+:class: pytexmd-admonition theorem warning
+:name: theorem-one
+
+Statement.
+:::
+"""
+        admonition = next(
+            block
+            for block in parse_editable_blocks(markdown)
+            if block.kind == "admonition"
+        )
+
+        self.assertEqual(admonition.metadata["title"], "Original title")
+        self.assertEqual(admonition.metadata["color"], "warning")
+
+        updated = apply_visual_changes(
+            markdown,
+            [
+                {
+                    "kind": "admonition",
+                    "index": 0,
+                    "value": admonition.value,
+                    "admonition_title": "Revised title",
+                    "admonition_color": "danger",
+                }
+            ],
+        )
+
+        self.assertIn(":::{admonition} Revised title", updated)
+        self.assertIn(":class: pytexmd-admonition theorem danger", updated)
+        self.assertNotIn(" warning", updated)
+        self.assertIn(":name: theorem-one", updated)
+        self.assertIn("Statement.", updated)
 
     def test_overlapping_admonition_and_child_edits_are_rejected(self):
         with self.assertRaisesRegex(ValueError, "Overlapping visual edits"):
@@ -126,11 +163,66 @@ Custom B
                     {
                         "kind": "admonition",
                         "index": 0,
-                        "value": ":::{prf:theorem} Replacement\n:::",
+                        "value": ":::{admonition} Theorem Replacement\n:class: pytexmd-admonition theorem\n:::",
                     },
                     {"kind": "directive_title", "index": 0, "value": "Title"},
                 ],
             )
+
+    def test_nested_admonition_children_are_independently_editable(self):
+        markdown = """::::{admonition} Outer theorem
+:class: pytexmd-admonition theorem
+
+Outer introduction.
+
+- First item
+- Second item
+
+:::{admonition} Inner proof
+:class: pytexmd-admonition proof
+
+Inner body.
+:::
+
+Outer conclusion.
+::::
+"""
+        blocks = parse_editable_blocks(markdown)
+        paragraphs = [block for block in blocks if block.kind == "paragraph"]
+        lists = [block for block in blocks if block.kind == "list"]
+        admonitions = [block for block in blocks if block.kind == "admonition"]
+
+        self.assertEqual(
+            [block.value for block in paragraphs],
+            ["Outer introduction.", "Inner body.", "Outer conclusion."],
+        )
+        self.assertEqual(lists[0].value, "- First item\n- Second item")
+        self.assertEqual(admonitions[1].metadata["nesting"]["parent"], 0)
+        self.assertEqual(admonitions[1].metadata["nesting"]["depth"], 1)
+        self.assertEqual(paragraphs[1].metadata["nesting"]["parent"], 1)
+        self.assertEqual(paragraphs[1].metadata["nesting"]["depth"], 2)
+
+        updated = apply_visual_changes(
+            markdown,
+            [{"kind": "paragraph", "index": 1, "value": "Revised inner body."}],
+        )
+
+        self.assertIn("Revised inner body.", updated)
+        self.assertIn("Outer introduction.", updated)
+        self.assertIn("Outer conclusion.", updated)
+
+    def test_non_admonition_directive_body_is_not_exposed_as_paragraph(self):
+        markdown = """:::{toctree}
+:maxdepth: 2
+
+chapter-one
+chapter-two
+:::
+"""
+
+        blocks = parse_editable_blocks(markdown)
+
+        self.assertFalse(any(block.kind == "paragraph" for block in blocks))
 
     def test_stale_and_duplicate_visual_edits_have_distinct_errors(self):
         with self.assertRaisesRegex(ValueError, "no longer mapped"):

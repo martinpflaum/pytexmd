@@ -66,10 +66,6 @@ class SphinxLayoutTests(unittest.TestCase):
                 "Layout Test",
                 "Author",
                 "1.0",
-                custom_types={
-                    "paragraph": "Paragraph",
-                    "theorem_and_definition": "Theorem and Definition",
-                },
             )
             source = root / "source"
             (source / "_static").mkdir()
@@ -77,26 +73,26 @@ class SphinxLayoutTests(unittest.TestCase):
             (source / "index.md").write_text(
                 """# Page
 
-:::{prf:paragraph}
-:nonumber:
+:::{admonition} Paragraph
+:class: pytexmd-admonition paragraph
 
 First block.
 :::
 
-:::{prf:proposition}
-:nonumber:
+:::{admonition} Proposition
+:class: pytexmd-admonition proposition
 
 Second block.
 :::
 
-:::{prf:theorem_and_definition}
-:nonumber:
+:::{admonition} Theorem and Definition
+:class: pytexmd-admonition theorem-and-definition
 
 Custom block.
 :::
 
-::::{prf:paragraph}
-:nonumber:
+::::{admonition} Paragraph
+:class: pytexmd-admonition paragraph
 
 Block containing display math.
 
@@ -105,13 +101,14 @@ x = 1
 :::
 ::::
 
-:::{prf:theorem_and_definition}
-:nonumber:
+:::{admonition} Theorem and Definition
+:class: pytexmd-admonition theorem-and-definition
 
 Second custom block.
 :::
 
-:::{prf:proof}
+:::{admonition} Proof
+:class: pytexmd-admonition proof
 
 Proof content.
 :::

@@ -4,6 +4,8 @@ const state = {
   elements: [],
   selection: null,
   sourceDirty: false,
+  pageLoadSequence: 0,
+  previewPath: null,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -52,6 +54,64 @@ function currentSourceElement(kind, index) {
   return state.elements.find((item) => item.kind === kind && item.index === index);
 }
 
+function comparableText(value) {
+  return String(value || "")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\{[^}]+\}`([^`]+)`/g, "$1")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function sourceDisplayText(source) {
+  if (source.kind === "list" && source.metadata?.items) {
+    return source.metadata.items
+      .map((item) => `${item.label || ""} ${item.content || ""}`)
+      .join(" ");
+  }
+  return source.value;
+}
+
+function resolveSourceElement(message) {
+  const candidates = state.elements.filter((item) => item.kind === message.kind);
+  const rendered = comparableText(message.value);
+  const matchesByText = ["heading", "paragraph", "directive_title", "list"].includes(
+    message.kind,
+  );
+  if (matchesByText) {
+    const textMatches = candidates.filter(
+      (item) => comparableText(sourceDisplayText(item)) === rendered,
+    );
+    if (textMatches.length === 1) return textMatches[0];
+    const nestedMatches = textMatches.filter(
+      (item) => item.metadata?.nesting?.parent === message.parentAdmonitionIndex,
+    );
+    if (nestedMatches.length === 1) return nestedMatches[0];
+  }
+  if (message.kind === "admonition" && message.admonitionTitle) {
+    const titleMatches = candidates.filter(
+      (item) => comparableText(item.metadata?.title) === comparableText(message.admonitionTitle),
+    );
+    if (titleMatches.length === 1) return titleMatches[0];
+    const nestedTitleMatches = titleMatches.filter(
+      (item) => item.metadata?.nesting?.parent === message.parentAdmonitionIndex,
+    );
+    if (nestedTitleMatches.length === 1) return nestedTitleMatches[0];
+  }
+  const nestedCandidates = candidates.filter(
+    (item) => item.metadata?.nesting?.parent === message.parentAdmonitionIndex,
+  );
+  if (matchesByText) {
+    return nestedCandidates.length === 1 ? nestedCandidates[0] : undefined;
+  }
+  const indexed = currentSourceElement(message.kind, message.index);
+  if (indexed && (!nestedCandidates.length || nestedCandidates.includes(indexed))) {
+    return indexed;
+  }
+  return nestedCandidates[0] || indexed;
+}
+
 function updatePageActions() {
   const selected = state.page;
   const canMove = Boolean(selected && selected.parent);
@@ -97,13 +157,18 @@ async function openPage(page) {
     toast("Save or discard current edits before reloading or changing pages.");
     return;
   }
-  state.page = page;
+  const loadSequence = ++state.pageLoadSequence;
+  state.previewPath = null;
   state.selection = null;
+  state.elements = [];
   state.sourceDirty = false;
   const data = await request(`/api/page?path=${encodeURIComponent(page.path)}`);
+  if (loadSequence !== state.pageLoadSequence) return;
+  state.page = page;
   state.elements = data.elements;
   $("sourceEditor").value = data.markdown;
   $("pageTitle").textContent = page.title;
+  state.previewPath = page.preview;
   $("preview").src = `${page.preview}?v=${Date.now()}`;
   $("emptyInspector").classList.remove("hidden");
   $("emptyInspector").innerHTML = emptyInspectorDefault;
@@ -112,23 +177,44 @@ async function openPage(page) {
 }
 
 function selectElement(message) {
-  const source = currentSourceElement(message.kind, message.index);
+  const source = resolveSourceElement(message);
   if (!source) {
     state.selection = null;
+    $("elementType").value = "";
+    $("elementValue").value = "";
+    $("admonitionTitle").value = "";
+    $("admonitionColor").value = "";
+    $("admonitionEditor").classList.add("hidden");
+    $("nestingContext").classList.add("hidden");
+    $("listEditor").classList.add("hidden");
+    $("childTools").classList.add("hidden");
     $("inspectorForm").classList.add("hidden");
     $("emptyInspector").classList.remove("hidden");
     $("emptyInspector").innerHTML =
       "<strong>Generated Sphinx element</strong><span>This rendered element has no independent Markdown source block. Select its parent admonition or use the MyST source panel.</span>";
     return;
   }
-  state.selection = { kind: message.kind, index: message.index };
+  state.selection = { kind: source.kind, index: source.index };
   $("emptyInspector").classList.add("hidden");
   $("emptyInspector").innerHTML = emptyInspectorDefault;
   $("inspectorForm").classList.remove("hidden");
   $("elementType").value = message.kind.replace("_", " ");
   $("elementValue").value =
     source?.value ?? message.value;
+  const isAdmonition = source.kind === "admonition";
+  $("admonitionEditor").classList.toggle("hidden", !isAdmonition);
+  if (isAdmonition) {
+    $("admonitionTitle").value = source.metadata?.title || "";
+    $("admonitionColor").value = source.metadata?.color || "";
+  }
   const structuredList = message.kind === "list" && source?.metadata?.style !== "raw";
+  const nesting = source?.metadata?.nesting;
+  const nested = Boolean(nesting?.depth);
+  $("nestingContext").classList.toggle("hidden", !nested);
+  if (nested) {
+    $("nestingLabel").textContent = `Nested level ${nesting.depth}`;
+    $("selectParentButton").dataset.parentIndex = nesting.parent;
+  }
   $("valueLabel").classList.toggle("hidden", structuredList);
   $("listEditor").classList.toggle("hidden", !structuredList);
   $("childTools").classList.toggle("hidden", message.kind !== "admonition");
@@ -137,16 +223,20 @@ function selectElement(message) {
     heading: "Edit the section heading. Markdown heading depth is preserved.",
     paragraph:
       "Visual paragraph edits become plain MyST text. Use the source panel to preserve complex inline markup.",
-    directive_title: "Edit the theorem, definition, or proposition title.",
+    directive_title: "Edit the admonition title here or type directly in the preview. It saves when focus leaves the title.",
     equation: "Edit the LaTeX equation source. Labels and tags may be included.",
     tikz_scale: "Scale the rendered TikZ image from 0.1 to 4.",
     admonition:
-      "Edit the complete semantic MyST block, including its type, title, label, options, nested equations, and body.",
+      "Edit the title and color above or the complete MyST block below.",
     list: "Add, remove, and edit items. Custom labels are editable only for custom enumerations.",
   };
   $("fieldHelp").textContent = help[message.kind] || "";
   $("valueLabel").firstChild.textContent =
-    message.kind === "tikz_scale" ? "Scale " : "Content ";
+    message.kind === "tikz_scale"
+      ? "Scale "
+      : isAdmonition
+        ? "Advanced MyST source "
+        : "Content ";
 }
 
 function renderListEditor(metadata) {
@@ -316,13 +406,13 @@ const insertConfiguration = {
     title: "Paragraph title",
     target: "Optional paragraph label",
     content: "Paragraph content",
-    help: "Creates an editable prf:paragraph custom admonition.",
+    help: "Creates an editable MyST paragraph admonition.",
   },
   proof: {
     title: "Optional proof title",
     target: "Optional proof label",
     content: "Proof content",
-    help: "Creates a semantic prf:proof admonition.",
+    help: "Creates a semantic MyST proof admonition.",
   },
   theorem: {
     title: "Theorem title or manual number",
@@ -382,7 +472,7 @@ const insertConfiguration = {
     title: null,
     target: "Theorem, proof, or paragraph label",
     content: null,
-    help: "Creates a sphinx-proof {prf:ref} role.",
+    help: "Creates a standard MyST {ref} role.",
   },
   label: {
     title: null,
@@ -416,11 +506,24 @@ function configureInsertDialog() {
   $("insertDialog").showModal();
 }
 
+function requiredFenceLength(content) {
+  const innerFences = [...content.matchAll(/^(:{3,})(?:\{|\s*$)/gm)]
+    .map((match) => match[1].length);
+  return Math.max(3, ...innerFences.map((length) => length + 1));
+}
+
 function directive(name, title, target, content, options = []) {
   const optionLines = [...options];
   if (target) optionLines.push(`:label: ${target}`);
   const optionBlock = optionLines.length ? `${optionLines.join("\n")}\n\n` : "";
-  return `:::{${name}}${title ? ` ${title}` : ""}\n${optionBlock}${content}\n:::`;
+  const fence = ":".repeat(requiredFenceLength(content));
+  return `${fence}{${name}}${title ? ` ${title}` : ""}\n${optionBlock}${content}\n${fence}`;
+}
+
+function customAdmonition(title, cssClass, target, content) {
+  const options = [`:class: pytexmd-admonition ${cssClass}`];
+  if (target) options.push(`:name: ${target}`);
+  return directive("admonition", title, "", content, options);
 }
 
 function buildInsertion(kind, title, target, content) {
@@ -440,11 +543,11 @@ function buildInsertion(kind, title, target, content) {
     case "subsection":
       return `${target ? `(${target})=\n` : ""}### ${title}${content ? `\n\n${content}` : ""}`;
     case "paragraph":
-      return directive("prf:paragraph", title, target, content, [":nonumber:"]);
+      return customAdmonition(`Paragraph ${title}`, "paragraph", target, content);
     case "proof":
-      return directive("prf:proof", title, target, content);
+      return customAdmonition(`Proof${title ? ` ${title}` : ""}`, "proof", target, content);
     case "theorem":
-      return directive("prf:theorem", title, target, content, [":nonumber:"]);
+      return customAdmonition(`Theorem ${title}`, "theorem", target, content);
     case "admonition":
       return directive("admonition", title, "", content, target ? [`:class: ${target}`] : []);
     case "bullet_list":
@@ -467,7 +570,7 @@ function buildInsertion(kind, title, target, content) {
     case "reference":
       return title ? `{ref}\`${title} <${target}>\`` : `{ref}\`${target}\``;
     case "proof_reference":
-      return `{prf:ref}\`${target}\``;
+      return `{ref}\`${target}\``;
     case "label":
       return `(${target})=`;
     default:
@@ -482,13 +585,25 @@ $("inspectorForm").onsubmit = async (event) => {
     const value = state.selection.kind === "list" && !$("listEditor").classList.contains("hidden")
       ? serializeListEditor()
       : $("elementValue").value;
-    await saveSingleVisual({ ...state.selection, value });
+    const change = { ...state.selection, value };
+    if (state.selection.kind === "admonition") {
+      change.admonition_title = $("admonitionTitle").value;
+      change.admonition_color = $("admonitionColor").value;
+    }
+    await saveSingleVisual(change);
   } catch (error) {
     toast(error.message);
   }
 };
 
 $("addListItemButton").onclick = () => addListItemRow();
+$("selectParentButton").onclick = () => {
+  const index = Number($("selectParentButton").dataset.parentIndex);
+  $("preview").contentWindow?.postMessage(
+    { type: "pytexmd-select-element", kind: "admonition", index },
+    location.origin,
+  );
+};
 
 $("newPageForm").onsubmit = async (event) => {
   event.preventDefault();
@@ -525,11 +640,14 @@ $("insertForm").onsubmit = async (event) => {
       let parent = $("elementValue").value.trim();
       const opener = parent.match(/^(:{3,})(\{[^\n]+\})/);
       const closer = parent.match(/\n(:{3,})\s*$/);
-      if (!closer) throw new Error("The selected admonition has no closing fence.");
-      if (opener && opener[1].length < 4) {
-        const expanded = ":".repeat(4);
+      if (!opener || !closer) {
+        throw new Error("Nested insertion requires a colon-fenced admonition.");
+      }
+      const requiredLength = requiredFenceLength(insertion);
+      if (opener[1].length < requiredLength) {
+        const expanded = ":".repeat(requiredLength);
         parent = expanded + parent.slice(opener[1].length);
-        parent = parent.replace(/\n:{3}\s*$/, `\n${expanded}`);
+        parent = parent.replace(/\n:{3,}\s*$/, `\n${expanded}`);
       }
       const closing = parent.match(/\n(:{3,})\s*$/);
       const value = parent.slice(0, closing.index) + `\n\n${insertion}\n` + closing[0];
@@ -597,16 +715,20 @@ document.querySelectorAll("[data-close]").forEach((button) => {
 window.addEventListener("message", (event) => {
   if (event.origin !== location.origin || event.source !== $("preview").contentWindow)
     return;
+  if (event.data?.previewPath !== state.previewPath) return;
   if (event.data?.type === "pytexmd-select") selectElement(event.data);
   if (event.data?.type === "pytexmd-commit") {
-    const source = currentSourceElement(event.data.kind, event.data.index);
+    const source =
+      state.selection?.kind === event.data.kind
+        ? currentSourceElement(state.selection.kind, state.selection.index)
+        : resolveSourceElement(event.data);
     if (!source) {
       toast("This generated element is not independently editable. Select its parent block.");
       return;
     }
     saveSingleVisual({
-      kind: event.data.kind,
-      index: event.data.index,
+      kind: source.kind,
+      index: source.index,
       value: event.data.value,
     });
   }

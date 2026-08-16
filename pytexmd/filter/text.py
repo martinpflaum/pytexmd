@@ -18,30 +18,30 @@ __all__ = [
     "get_theoremSearchers",
     "Textit",
     "ProofLabel",
-    "CUSTOM_THEOREM_TYPES",
     "TikzElement",
     "TikzSearcher",
     "InlineTikz",
 ]
+import re
 from typing import List, Tuple
 from .core import *
 from .splitting import *
 
-PRF_TYPES = {
-    "algorithm": "prf:algorithm",
-    "axiom": "prf:axiom",
-    "conjecture": "prf:conjecture",
-    "corollary": "prf:corollary",
-    "criteria": "prf:criteria",
-    "definition": "prf:definition",
-    "example": "prf:example",
-    "lemma": "prf:lemma",
-    "observation": "prf:observation",
-    "property": "prf:property",
-    "proposition": "prf:proposition",
-    "proof": "prf:proof",
-    "remark": "prf:remark",
-    "theorem": "prf:theorem"
+THEOREM_TYPES = {
+    "algorithm": "Algorithm",
+    "axiom": "Axiom",
+    "conjecture": "Conjecture",
+    "corollary": "Corollary",
+    "criteria": "Criteria",
+    "definition": "Definition",
+    "example": "Example",
+    "lemma": "Lemma",
+    "observation": "Observation",
+    "property": "Property",
+    "proposition": "Proposition",
+    "proof": "Proof",
+    "remark": "Remark",
+    "theorem": "Theorem",
 }
 
 """
@@ -52,34 +52,26 @@ proof_theorem_types = [
     ("claim", "Claim"),  # <-- custom type
 ]
 """
-for key in list(PRF_TYPES.keys()):
-    PRF_TYPES[key+"s"] = PRF_TYPES[key]
-
-# Global registry of custom theorem types discovered during processing.
-# Maps type_name (str) -> display_name (str).
-CUSTOM_THEOREM_TYPES: dict = {}
-
-# Per-part suffix tracking: maps id(SectionLike_part) -> sequential int (1, 2, ...).
-_PART_SUFFIXES: dict = {}
-_PART_COUNTER: list = [0]  # single-element list so it is mutable inside functions
+for key in list(THEOREM_TYPES.keys()):
+    THEOREM_TYPES[key + "s"] = THEOREM_TYPES[key]
 
 
-def _get_part_suffix(element) -> int | None:
-    """Walk the parent chain to find the enclosing \\part and return its 1-based index.
+def _render_admonition(title: str, css_class: str, body: str, fence: str) -> str:
+    """Render a non-collapsible MyST custom admonition."""
+    body = body.lstrip("\n")
+    name_option = ""
+    if body.startswith(":name:"):
+        name_option, _, body = body.partition("\n")
+        body = body.lstrip("\n")
+    options = f":class: pytexmd-admonition {css_class}\n"
+    if name_option:
+        options += name_option + "\n"
+    return (
+        f"\n{fence}{{admonition}} {title}\n"
+        f"{options}\n{body.rstrip()}\n{fence}\n"
+    )
 
-    Returns None when the theorem is not inside any \\part.
-    """
-    current = element
-    while current is not None:
-        if isinstance(current, SectionLike) and getattr(current, 'command_name', '') == "\\part":
-            part_id = id(current)
-            if part_id not in _PART_SUFFIXES:
-                _PART_COUNTER[0] += 1
-                _PART_SUFFIXES[part_id] = _PART_COUNTER[0]
-            return _PART_SUFFIXES[part_id]
-        current = current.parent
-    return None
-    
+
 class ProofLabel(Element):
     """Element for MyST label.
 
@@ -96,7 +88,7 @@ class ProofLabel(Element):
     def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
         super().__init__(modifiable_content, parent)
 
-        self.label_ref =  label_call(label_ref,LabelType.PRF_REF)
+        self.label_ref = label_ref.strip()
 
     @staticmethod
     def position(string: str) -> int:
@@ -109,7 +101,7 @@ class ProofLabel(Element):
         return pre,ProofLabel("",parent,label_ref),post
 
     def to_string(self) -> str:
-        return "\n:label: "+self.label_ref.strip()
+        return "\n:name: " + self.label_ref + "\n"
 
 class Cref(Element):
     """Element for LaTeX \\cref and \\Cref references (cleveref package)."""
@@ -250,13 +242,12 @@ class Proof(Element):
 
     def to_string(self) -> str:
         colons = ":" * max(3, self._max_child_colon_count + 1)
-        pre = "\n" + colons + "{prf:proof}\n"
         out = ""
         for child in self.children:
             out += child.to_string()
-        out = out.rstrip()
-        out = pre + out + "\n" + colons + "\n"
-        return out
+        title, _, body = out.rstrip().partition("\n")
+        full_title = "Proof" + (" " + title.strip() if title.strip() else "")
+        return _render_admonition(full_title, "proof", body, colons)
 
     def _after_finish_up(self) -> None:
         own_count = max(3, self._max_child_colon_count + 1)
@@ -394,7 +385,7 @@ class Textit(Element):
 class ParaElement(Element):
     """Element for LaTeX \\para command.
 
-    Renders as a MyST prf:paragraph block, handled like TheoremElement types.
+    Renders as a non-collapsible MyST custom admonition.
 
     Example:
         >>> para = ParaElement(None)
@@ -403,17 +394,10 @@ class ParaElement(Element):
     """
     def __init__(self, parent: Element):
         super().__init__("", parent)
-        part_suffix = _get_part_suffix(parent)
-        if part_suffix is not None:
-            type_name = "paragraph" + str(part_suffix)
-            CUSTOM_THEOREM_TYPES[type_name] = "Paragraph"
-        else:
-            type_name = "paragraph"
-            CUSTOM_THEOREM_TYPES[type_name] = "Paragraph"
-        self.theorem_type = "prf:" + type_name
+        self.admonition_class = "paragraph"
 
     def to_string(self) -> str:
-        """Convert to MyST prf:paragraph block.
+        """Convert to a MyST custom paragraph admonition.
 
         Uses as many colons as needed so that any nested directives (e.g.
         :::{math}) are properly fenced inside the outer directive.
@@ -422,14 +406,11 @@ class ParaElement(Element):
             str: MyST paragraph block.
         """
         colons = ":" * max(3, self._max_child_colon_count + 1)
-        pre = "\n" + colons + "{" + self.theorem_type + "} \n:nonumber:\n"
         out = ""
         for child in self.children:
             out += child.to_string()
-        out = out.rstrip()
-        out = pre + out
-        out += "\n" + colons + "\n"
-        return out
+        _, _, body = out.rstrip().partition("\n")
+        return _render_admonition("Paragraph", self.admonition_class, body, colons)
 
     def _after_finish_up(self) -> None:
         own_count = max(3, self._max_child_colon_count + 1)
@@ -455,7 +436,7 @@ class ParaSearcher(Searcher):
 
     def __init__(self, extra_env_names: list = None):
         super().__init__()
-        self._stop_envs: list[str] = list(PRF_TYPES.keys())
+        self._stop_envs: list[str] = list(THEOREM_TYPES.keys())
         if extra_env_names:
             for name in extra_env_names:
                 if name not in self._stop_envs:
@@ -511,21 +492,8 @@ class TheoremElement(Element):
     def __init__(self, parent: Element, display_name: str, theorem_env_name: str, enum_parent_class):
         super().__init__("",parent)
         self.display_name = display_name
-        display_lower = display_name.lower()
-        part_suffix = _get_part_suffix(parent)
-        if part_suffix is not None:
-            # Per-part custom type: definition1, definition2, …
-            type_name = display_lower.replace(" ", "_") + str(part_suffix)
-            theorem_type = "prf:" + type_name
-            CUSTOM_THEOREM_TYPES[type_name] = display_name
-        elif display_lower in PRF_TYPES:
-            theorem_type = PRF_TYPES[display_lower]
-        else:
-            # Unknown type without an enclosing part: register as global custom type.
-            type_name = display_lower.replace(" ", "_")
-            theorem_type = "prf:" + type_name
-            CUSTOM_THEOREM_TYPES[type_name] = display_name
-        self.theorem_type = theorem_type
+        type_name = display_name.lower().replace(" ", "_")
+        self.admonition_class = re.sub(r"[^a-z0-9_-]+", "-", type_name).strip("-")
         
     def to_string(self) -> str:
         """Convert to Markdown theorem block.
@@ -534,17 +502,12 @@ class TheoremElement(Element):
             str: Markdown theorem block.
         """
         colons = ":" * max(3, self._max_child_colon_count + 1)
-        pre = "\n" + colons + "{" + self.theorem_type + "} "
         out = ""
         for child in self.children:
             out += child.to_string()
-        out = out.rstrip()
-        title, separator, content = out.partition("\n")
-        out = pre + title + "\n:nonumber:\n"
-        if separator:
-            out += content
-        out += "\n" + colons + "\n"
-        return out
+        title, _, content = out.rstrip().partition("\n")
+        full_title = self.display_name + (" " + title.strip() if title.strip() else "")
+        return _render_admonition(full_title, self.admonition_class, content, colons)
 
     def _after_finish_up(self) -> None:
         own_count = max(3, self._max_child_colon_count + 1)

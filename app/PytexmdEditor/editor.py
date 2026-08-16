@@ -41,6 +41,7 @@ _ADMONITION_DIRECTIVES = {
     "tip",
     "warning",
 }
+_ADMONITION_COLORS = {"note", "tip", "warning", "danger", "important"}
 
 
 @dataclass
@@ -124,6 +125,63 @@ def _list_metadata(value: str) -> dict:
     return {"style": "raw", "items": []}
 
 
+def _admonition_metadata(lines: list[str], item: dict) -> dict:
+    classes = []
+    for line in lines[item["start"] + 1 : item["end"]]:
+        if line.startswith(":class:"):
+            classes = line.partition(":class:")[2].strip().split()
+            break
+        if line.strip() and not line.startswith(":"):
+            break
+    return {
+        "directive": item["name"],
+        "title": item["title"],
+        "color": next((name for name in classes if name in _ADMONITION_COLORS), ""),
+    }
+
+
+def _update_admonition(value: str, title: str, color: str) -> str:
+    """Apply structured title and color fields to an admonition source block."""
+    lines = value.splitlines()
+    if not lines:
+        raise ValueError("Admonition source cannot be empty.")
+    opener = _DIRECTIVE_RE.match(lines[0])
+    if not opener or opener.group("name") not in _ADMONITION_DIRECTIVES:
+        raise ValueError("The edited source is not a supported MyST admonition.")
+    title = title.strip()
+    directive_name = opener.group("name")
+    if not title and directive_name == "admonition":
+        raise ValueError("Admonition title cannot be empty.")
+    if color not in _ADMONITION_COLORS | {""}:
+        raise ValueError("Unknown admonition color.")
+
+    lines[0] = f'{opener.group("fence")}{{{directive_name}}}' + (
+        f" {title}" if title else ""
+    )
+    class_index = None
+    for index, line in enumerate(lines[1:], 1):
+        if line.startswith(":class:"):
+            class_index = index
+            break
+        if not line.strip() or not line.startswith(":"):
+            break
+    classes = []
+    if class_index is not None:
+        classes = lines[class_index].partition(":class:")[2].strip().split()
+    classes = [name for name in classes if name not in _ADMONITION_COLORS]
+    if color:
+        classes.append(color)
+    if classes:
+        class_line = ":class: " + " ".join(classes)
+        if class_index is None:
+            lines.insert(1, class_line)
+        else:
+            lines[class_index] = class_line
+    elif class_index is not None:
+        del lines[class_index]
+    return "\n".join(lines)
+
+
 def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
     """Return source spans that can safely round-trip from the visual editor."""
     lines = markdown.splitlines()
@@ -148,18 +206,19 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
         name = item["name"]
         start = item["start"]
         end = item["end"]
-        if not name.startswith("prf:"):
+        if name not in _ADMONITION_DIRECTIVES:
             protected.update(range(start + 1, end))
-        if name.startswith("prf:") or name in _ADMONITION_DIRECTIVES:
+        if name in _ADMONITION_DIRECTIVES:
             blocks.append(
                 EditableBlock(
                     "admonition",
                     start,
                     end + 1,
                     "\n".join(lines[start : end + 1]),
+                    metadata=_admonition_metadata(lines, item),
                 )
             )
-        if name.startswith("prf:") and name != "prf:proof":
+        if name == "admonition":
             prefix = (
                 item["opener"][: len(item["opener"]) - len(item["title"])]
                 if item["title"]
@@ -284,6 +343,23 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
     for block in blocks:
         block.index = counters.get(block.kind, 0)
         counters[block.kind] = block.index + 1
+
+    admonitions = [block for block in blocks if block.kind == "admonition"]
+    for block in blocks:
+        parents = [
+            parent
+            for parent in admonitions
+            if parent is not block
+            and parent.start <= block.start
+            and block.end <= parent.end
+        ]
+        parent = min(parents, key=lambda item: item.end - item.start, default=None)
+        metadata = dict(block.metadata or {})
+        metadata["nesting"] = {
+            "depth": len(parents),
+            "parent": parent.index if parent is not None else None,
+        }
+        block.metadata = metadata
     return blocks
 
 
@@ -318,7 +394,16 @@ def apply_visual_changes(markdown: str, changes: list[dict]) -> str:
             )
         selected_blocks.append(block)
         value = str(change.get("value", "")).strip()
-        if block.kind == "tikz_scale":
+        if block.kind == "admonition" and (
+            "admonition_title" in change or "admonition_color" in change
+        ):
+            value = _update_admonition(
+                value,
+                str(change.get("admonition_title", "")),
+                str(change.get("admonition_color", "")),
+            )
+            new_lines = value.splitlines()
+        elif block.kind == "tikz_scale":
             try:
                 numeric_scale = float(value)
             except ValueError as exc:

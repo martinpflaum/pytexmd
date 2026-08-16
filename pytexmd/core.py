@@ -10,7 +10,6 @@ from .filter import process_string
 from .file_loader import load_tex_file, convert_bbl_to_bib
 from .sphinx_doc import create_sphinx_documentation, make_html, create_config_file
 from .filter.splitting import split_rename
-from .filter.text import CUSTOM_THEOREM_TYPES
 
 def process_file(
     input_file: str,
@@ -75,9 +74,8 @@ def process_file(
                 print(f"Warning: could not copy {abs_path}: {exc}")
 
     process_string(source_folder, file_string, depth, output_suffix)
-    # Re-write conf.py now that custom theorem types are known.
+    # Re-write conf.py with discovered bibliography files and user macros.
     create_config_file(output_folder, project_name, author, version,
-                       custom_types=CUSTOM_THEOREM_TYPES,
                        bib_filenames=copied_bib_names,
                        mathjax_macros=mathjax_macros)
     #make_html(output_folder)

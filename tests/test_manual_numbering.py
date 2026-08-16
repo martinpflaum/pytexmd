@@ -24,7 +24,9 @@ class ManualNumberingTests(unittest.TestCase):
 
         output = theorem.to_string()
 
-        self.assertIn("{prf:theorem} 2.7\n:nonumber:", output)
+        self.assertIn("{admonition} Theorem 2.7", output)
+        self.assertIn(":class: pytexmd-admonition theorem", output)
+        self.assertNotIn("dropdown", output)
 
     def test_equation_uses_only_explicit_tag(self):
         searcher = DefaultEquationSearcher(r"\begin{equation}", r"\end{equation}")
@@ -100,7 +102,8 @@ class ManualNumberingTests(unittest.TestCase):
         theorem._finish_up()
         output = theorem.to_string()
 
-        self.assertIn("::::{prf:theorem} \n:nonumber:", output)
+        self.assertIn("::::{admonition} Theorem", output)
+        self.assertIn(":class: pytexmd-admonition theorem", output)
         self.assertIn(":::{math}\nx = 1\n:::", output)
         self.assertTrue(output.rstrip().endswith("::::"))
 

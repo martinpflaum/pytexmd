@@ -31,7 +31,6 @@ if _pytexmd_sys.platform == 'win32':
             break
 
 extensions = ['myst_parser',
-              "sphinx_proof",
               "sphinxcontrib.bibtex",
               "sphinxcontrib.tikz"]
 
@@ -109,25 +108,6 @@ myst_enable_extensions = [
     "substitution",
     "tasklist",
 ]
-
-
-prf_realtyp_to_countertyp = {
-    "axiom": "theorem",
-    "theorem": "theorem",
-    "lemma": "theorem",
-    "algorithm": "theorem",
-    "definition": "theorem",
-    "remark": "theorem",
-    "conjecture": "theorem",
-    "corollary": "theorem",
-    "criterion": "theorem",
-    "example": "theorem",
-    "property": "theorem",
-    "observation": "theorem",
-    "proposition": "theorem",
-    "assumption": "theorem",
-    "notation": "theorem",
-}
 
 
 math_number_all = False
