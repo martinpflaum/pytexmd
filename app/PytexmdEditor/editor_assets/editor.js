@@ -114,7 +114,13 @@ function resolveSourceElement(message) {
   );
   if (matchesByText) {
     const textMatches = candidates.filter(
-      (item) => comparableText(sourceDisplayText(item)) === rendered,
+      (item) => {
+        const sourceText = comparableText(sourceDisplayText(item));
+        return (
+          sourceText === rendered ||
+          (message.kind === "list" && sourceText.includes(rendered))
+        );
+      },
     );
     if (textMatches.length === 1) return textMatches[0];
     const nestedMatches = textMatches.filter(
@@ -371,7 +377,8 @@ function selectElement(message) {
   }
   $("admonitionEditor").classList.toggle("hidden", kind !== "admonition");
   if (kind === "admonition") {
-    $("admonitionTitle").value = source.metadata?.title || "";
+    $("admonitionTitle").value =
+      message.admonitionTitle ?? source.metadata?.title ?? "";
     $("admonitionColor").value = source.metadata?.color || "";
   }
   $("equationEditor").classList.toggle("hidden", kind !== "equation");
@@ -387,11 +394,17 @@ function selectElement(message) {
   $("generalUnavailable").classList.toggle("hidden", hasGeneral);
 
   const nesting = source.metadata?.nesting;
-  const nested = Boolean(nesting?.depth);
-  $("nestingContext").classList.toggle("hidden", !nested);
-  if (nested) {
-    $("nestingLabel").textContent = `Nested level ${nesting.depth}`;
-    $("selectParentButton").dataset.parentIndex = nesting.parent;
+  const hasParent = kind !== "page";
+  $("nestingContext").classList.toggle("hidden", !hasParent);
+  if (hasParent) {
+    const parentIndex = nesting?.parent;
+    $("selectParentButton").dataset.parentKind =
+      parentIndex === null || parentIndex === undefined ? "page" : "admonition";
+    $("selectParentButton").dataset.parentIndex = parentIndex ?? 0;
+    $("nestingLabel").textContent =
+      parentIndex === null || parentIndex === undefined
+        ? "Parent: whole page"
+        : `Nested level ${nesting.depth}`;
   }
   const defaultTab = hasGeneral ? "general" : "raw";
   setInspectorTab(defaultTab);
@@ -424,6 +437,7 @@ function addListItemRow(item = { label: "", content: "" }) {
   const custom = state.currentListStyle === "custom_enumeration";
   const row = document.createElement("div");
   row.className = `list-item-row${custom ? "" : " no-label"}`;
+  row.dataset.target = item.target || "";
   if (custom) {
     const label = document.createElement("input");
     label.className = "item-label";
@@ -431,10 +445,11 @@ function addListItemRow(item = { label: "", content: "" }) {
     label.value = item.label;
     row.append(label);
   }
-  const content = document.createElement("input");
+  const content = document.createElement(custom ? "textarea" : "input");
   content.className = "item-content";
   content.placeholder = "Item content";
   content.value = item.content;
+  if (custom) content.rows = 2;
   row.append(content);
   const remove = document.createElement("button");
   remove.className = "remove-item";
@@ -459,10 +474,14 @@ function serializeListEditor() {
       if (!content) throw new Error(`List item ${index + 1} cannot be empty.`);
       if (state.currentListStyle === "bullet") return `- ${content}`;
       if (state.currentListStyle === "ordered") return `${index + 1}. ${content}`;
-      if (state.currentListStyle === "enumeration") return `${index + 1}.\n: ${content}`;
+      const target = row.dataset.target ? `${row.dataset.target}\n` : "";
+      const definition = content.replace(/\n/g, "\n   ");
+      if (state.currentListStyle === "enumeration") {
+        return `${target}${index + 1}.\n: ${definition}`;
+      }
       const label = row.querySelector(".item-label").value.trim();
       if (!label) throw new Error(`Custom item ${index + 1} needs a label.`);
-      return `${label}\n: ${content}`;
+      return `${target}${label}\n: ${definition}`;
     })
     .join("\n");
 }
@@ -483,11 +502,19 @@ function editsOverlap(first, second) {
     first.change.kind === second.change.kind &&
     first.change.index === second.change.index
   ) return true;
+  const firstContainsSecond =
+    first.change.kind === "admonition" &&
+    second.ancestors.includes(first.change.index);
+  const secondContainsFirst =
+    second.change.kind === "admonition" &&
+    first.ancestors.includes(second.change.index);
+  const firstIsStructured =
+    "admonition_title" in first.change || "admonition_color" in first.change;
+  const secondIsStructured =
+    "admonition_title" in second.change || "admonition_color" in second.change;
   return (
-    (first.change.kind === "admonition" &&
-      second.ancestors.includes(first.change.index)) ||
-    (second.change.kind === "admonition" &&
-      first.ancestors.includes(second.change.index))
+    (firstContainsSecond && !firstIsStructured) ||
+    (secondContainsFirst && !secondIsStructured)
   );
 }
 
@@ -547,6 +574,10 @@ async function persistPending(rebuildAfter = false) {
       : await post("/api/build");
     state.pendingEdits.clear();
     setInspectorChanged(false);
+    $("preview").contentWindow?.postMessage(
+      { type: "pytexmd-mark-saved" },
+      location.origin,
+    );
     showLog(result.log);
     if (rebuildAfter) {
       if (state.page) await loadProject(state.page.path);
@@ -834,9 +865,10 @@ $("rawTabButton").onclick = () => {
 };
 $("rawHighlight").oninput = syncRawSource;
 $("selectParentButton").onclick = () => {
+  const kind = $("selectParentButton").dataset.parentKind;
   const index = Number($("selectParentButton").dataset.parentIndex);
   $("preview").contentWindow?.postMessage(
-    { type: "pytexmd-select-element", kind: "admonition", index },
+    { type: "pytexmd-select-element", kind, index },
     location.origin,
   );
 };

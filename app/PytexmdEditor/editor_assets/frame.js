@@ -111,7 +111,7 @@
   root.querySelectorAll('p').forEach((node) => {
     if (
       node.closest(
-        'nav,.sidebar,.math,.admonition-title,li,blockquote,figure,table,.topic',
+        'nav,.sidebar,.math,.admonition-title,li,dd,dt,blockquote,figure,table,.topic',
       ) || node.classList.contains('admonition-title')
     )
       return;
@@ -164,10 +164,19 @@
 
   window.addEventListener('message', (event) => {
     if (event.origin !== location.origin) return;
+    if (event.data?.type === 'pytexmd-mark-saved') {
+      root.querySelectorAll('[data-pytexmd-changed]').forEach((node) => {
+        node.dataset.pytexmdChanged = 'false';
+      });
+      return;
+    }
     if (event.data?.type === 'pytexmd-select-element') {
-      const selected = root.querySelector(
-        `[data-pytexmd-kind="${event.data.kind}"][data-pytexmd-index="${event.data.index}"]`,
-      );
+      const selector =
+        `[data-pytexmd-kind="${event.data.kind}"]` +
+        `[data-pytexmd-index="${event.data.index}"]`;
+      const selected = root.matches(selector)
+        ? root
+        : root.querySelector(selector);
       if (selected) select(selected);
       return;
     }

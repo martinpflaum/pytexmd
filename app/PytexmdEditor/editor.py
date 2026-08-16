@@ -28,6 +28,7 @@ _HEADING_RE = re.compile(r"^(?P<marks>#{1,6})\s+(?P<text>.*)$")
 _PLAIN_FENCE_RE = re.compile(r"^(?P<fence>`{3,}|~{3,})(?!\{)")
 _NON_PARAGRAPH_RE = re.compile(r"^(?:[-*+]\s|\d+[.)]\s|>|\||<|\s{4})")
 _LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)")
+_TARGET_RE = re.compile(r"^\([^)]+\)=$")
 _ADMONITION_DIRECTIVES = {
     "admonition",
     "attention",
@@ -87,6 +88,39 @@ def _directive_ranges(lines: list[str]) -> tuple[list[dict], set[int]]:
     return ranges, structural_lines
 
 
+def _definition_item_start(lines: list[str], index: int) -> int | None:
+    if index >= len(lines):
+        return None
+    term = index + 1 if _TARGET_RE.match(lines[index].strip()) else index
+    if (
+        term + 1 < len(lines)
+        and lines[term].strip()
+        and lines[term + 1].startswith(": ")
+    ):
+        return term
+    return None
+
+
+def _definition_list_end(lines: list[str], start: int) -> int:
+    """Return the end of a definition list, including separated labeled items."""
+    index = start
+    first_term = _definition_item_start(lines, start)
+    numeric = bool(
+        first_term is not None and re.fullmatch(r"\d+[.)]?", lines[first_term])
+    )
+    while (term := _definition_item_start(lines, index)) is not None:
+        if bool(re.fullmatch(r"\d+[.)]?", lines[term])) != numeric:
+            break
+        index = term + 2
+        while index < len(lines) and (
+            not lines[index].strip() or lines[index][:1].isspace()
+        ):
+            index += 1
+    while index > start and not lines[index - 1].strip():
+        index -= 1
+    return index
+
+
 def _list_metadata(value: str) -> dict:
     """Describe a MyST list for the editor's dedicated item controls."""
     lines = value.splitlines()
@@ -106,14 +140,28 @@ def _list_metadata(value: str) -> dict:
 
     definition_items = []
     index = 0
-    while index + 1 < len(lines):
-        if lines[index + 1].startswith(": "):
-            definition_items.append(
-                {"label": lines[index].strip(), "content": lines[index + 1][2:].strip()}
-            )
-            index += 2
-        else:
+    while index < len(lines):
+        while index < len(lines) and not lines[index].strip():
             index += 1
+        term = _definition_item_start(lines, index)
+        if term is None:
+            break
+        target = lines[index].strip() if term != index else ""
+        content = [lines[term + 1][2:]]
+        index = term + 2
+        while index < len(lines) and (
+            not lines[index].strip() or lines[index][:1].isspace()
+        ):
+            line = lines[index]
+            content.append(line[3:] if line.startswith("   ") else line)
+            index += 1
+        definition_items.append(
+            {
+                "label": lines[term].strip(),
+                "content": "\n".join(content).strip(),
+                "target": target,
+            }
+        )
     if definition_items:
         numeric = all(
             re.fullmatch(r"\d+[.)]?", item["label"]) for item in definition_items
@@ -292,22 +340,21 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
         if lines[index].startswith(":"):
             index += 1
             continue
-        is_definition_list = (
-            index + 1 < len(lines)
-            and bool(lines[index].strip())
-            and lines[index + 1].startswith(": ")
-        )
+        is_definition_list = _definition_item_start(lines, index) is not None
         if _LIST_ITEM_RE.match(lines[index]) or is_definition_list:
             start = index
-            while index < len(lines):
-                if (
-                    not lines[index].strip()
-                    or index in structural
-                    or index in protected
-                    or _HEADING_RE.match(lines[index])
-                ):
-                    break
-                index += 1
+            if is_definition_list:
+                index = _definition_list_end(lines, index)
+            else:
+                while index < len(lines):
+                    if (
+                        not lines[index].strip()
+                        or index in structural
+                        or index in protected
+                        or _HEADING_RE.match(lines[index])
+                    ):
+                        break
+                    index += 1
             blocks.append(
                 EditableBlock(
                     "list",
@@ -373,6 +420,19 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
 
 def apply_visual_changes(markdown: str, changes: list[dict]) -> str:
     """Apply structured visual changes to MyST without disturbing directives."""
+    structured_admonitions = [
+        change
+        for change in changes
+        if change.get("kind") == "admonition"
+        and ("admonition_title" in change or "admonition_color" in change)
+    ]
+    remaining = [change for change in changes if change not in structured_admonitions]
+    if structured_admonitions and (remaining or len(structured_admonitions) > 1):
+        updated = markdown
+        for change in structured_admonitions:
+            updated = apply_visual_changes(updated, [change])
+        return apply_visual_changes(updated, remaining) if remaining else updated
+
     blocks = parse_editable_blocks(markdown)
     lookup = {(block.kind, block.index): block for block in blocks}
     replacements: list[tuple[int, int, list[str]]] = []
@@ -406,7 +466,7 @@ def apply_visual_changes(markdown: str, changes: list[dict]) -> str:
             "admonition_title" in change or "admonition_color" in change
         ):
             value = _update_admonition(
-                value,
+                block.value,
                 str(change.get("admonition_title", "")),
                 str(change.get("admonition_color", "")),
             )

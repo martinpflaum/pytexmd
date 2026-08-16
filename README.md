@@ -183,29 +183,29 @@ opens an in-app menu for copy, cut, positional paste, and deletion; paste remain
 disabled until a page is in the editor clipboard. The index and references pages
 are protected. Navigation changes create backups and trigger a Sphinx rebuild.
 
-Inspector changes write directly back to Markdown and rebuild the site; there is
-no staging step. Direct heading, paragraph, and admonition-title edits save when
-the edited element loses focus. `Ctrl+S` saves the current inspector element, and
-**Rebuild** saves pending inspector changes before rebuilding.
+Inspector and direct preview edits are staged by their associated Markdown page.
+The toolbar's **Save** button and `Ctrl+S` write all staged pages, while
+**Rebuild** saves all staged pages and then rebuilds the site once.
 
 Lists use dedicated controls rather than a single raw-text field. Bullet and
 normal enumeration items can be added, removed, and edited, while custom
-enumerations additionally expose each editable item label. Whole admonitions
+enumerations expose every item label and multiline body. Whole admonitions
 offer an **Add child element** control for nested paragraphs, lists, custom
 enumerations, equations, proofs, theorems, and custom admonitions. Nested
 objects can also be selected and edited independently in the preview; the
-inspector shows their nesting depth and provides a shortcut to the parent block.
+inspector shows their nesting depth and provides a shortcut through parent
+elements up to the whole-page source.
 The inspector exposes the admonition title and a persistent theme-color preset
 (default, blue, green, amber, red, or purple) as structured fields.
 Clicking an admonition body selects the complete block and its structured title
 and color controls. Clicking the rendered title instead makes the title
-directly editable in place; the change saves when the title loses focus.
+directly editable in place; use Save, Rebuild, or `Ctrl+S` to persist the edit.
 
 Generated HTML remains a build artifact: the editor writes changes to the
-corresponding file under `source/` and rebuilds Sphinx rather than leaving edits
-in HTML that the next build would overwrite. Each save creates an automatic
-timestamped backup under `.pytexmd-editor/backups/`. Use the inspector's Raw tab
-for complex inline markup or directive-level edits.
+corresponding file under `source/`; Rebuild regenerates the HTML rather than
+leaving edits there for the next build to overwrite. Each save creates an
+automatic timestamped backup under `.pytexmd-editor/backups/`. Use the
+inspector's Raw tab for complex inline markup or directive-level edits.
 
 The repository keeps the reusable conversion library in `pytexmd/`. The two
 applications are separated into `app/PytexmdConverter/` and

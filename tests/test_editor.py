@@ -119,6 +119,44 @@ Custom B
         self.assertIn(":name: revised-proof", updated)
         self.assertIn("- One\n- Two", updated)
 
+    def test_custom_enumeration_is_parsed_as_one_list_with_all_items(self):
+        markdown = """:::{admonition} Proposition
+:class: pytexmd-admonition proposition
+
+(item:first)=
+(i)
+: First item.
+
+(item:second)=
+(ii)
+: Second item with
+   multiline content.
+
+(item:third)=
+(iii)
+: Third item.
+:::
+"""
+
+        lists = [
+            block for block in parse_editable_blocks(markdown) if block.kind == "list"
+        ]
+
+        self.assertEqual(len(lists), 1)
+        self.assertEqual(lists[0].metadata["style"], "custom_enumeration")
+        self.assertEqual(
+            [item["label"] for item in lists[0].metadata["items"]],
+            ["(i)", "(ii)", "(iii)"],
+        )
+        self.assertEqual(
+            [item["target"] for item in lists[0].metadata["items"]],
+            ["(item:first)=", "(item:second)=", "(item:third)="],
+        )
+        self.assertEqual(
+            lists[0].metadata["items"][1]["content"],
+            "Second item with\nmultiline content.",
+        )
+
     def test_admonition_title_and_color_are_structured_fields(self):
         markdown = """:::{admonition} Original title
 :class: pytexmd-admonition theorem warning
@@ -168,6 +206,25 @@ Statement.
                     {"kind": "directive_title", "index": 0, "value": "Title"},
                 ],
             )
+
+    def test_structured_admonition_and_child_edits_are_combined(self):
+        updated = apply_visual_changes(
+            SAMPLE_MARKDOWN,
+            [
+                {
+                    "kind": "admonition",
+                    "index": 0,
+                    "value": "stale whole block",
+                    "admonition_title": "Revised theorem",
+                    "admonition_color": "warning",
+                },
+                {"kind": "paragraph", "index": 1, "value": "Revised theorem body."},
+            ],
+        )
+
+        self.assertIn(":::{admonition} Revised theorem", updated)
+        self.assertIn("pytexmd-admonition theorem warning", updated)
+        self.assertIn("Revised theorem body.", updated)
 
     def test_nested_admonition_children_are_independently_editable(self):
         markdown = """::::{admonition} Outer theorem
