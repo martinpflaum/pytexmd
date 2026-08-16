@@ -434,6 +434,7 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                 or index in protected
                 or _HEADING_RE.match(lines[index])
                 or lines[index].startswith(":")
+                or lines[index].lstrip().startswith("<!--")
             ):
                 break
             index += 1

@@ -365,6 +365,29 @@ The main author of this work is \\textsc{Markus J. Pflaum}.
         self.assertEqual(len(paragraphs), 1)
         self.assertIn("The main author of this work", paragraphs[0].value)
 
+    def test_generated_comment_after_paragraph_is_preserved_outside_edit(self):
+        markdown = """\\tableofcontents
+\\addcontentslinetocsectionContents
+<!-- XXSEC_PREFIX_ENDXX\\chapter*Copyright -->
+"""
+        paragraph = next(
+            block
+            for block in parse_editable_blocks(markdown)
+            if block.kind == "paragraph"
+        )
+
+        self.assertEqual(
+            paragraph.value,
+            "\\tableofcontents\n\\addcontentslinetocsectionContents",
+        )
+        updated = apply_visual_changes(
+            markdown,
+            [{"kind": "paragraph", "index": 0, "value": "Revised contents text"}],
+        )
+
+        self.assertIn("Revised contents text", updated)
+        self.assertIn("<!-- XXSEC_PREFIX_ENDXX\\chapter*Copyright -->", updated)
+
     def test_whole_page_source_is_editable(self):
         page = next(
             block for block in parse_editable_blocks(SAMPLE_MARKDOWN) if block.kind == "page"
