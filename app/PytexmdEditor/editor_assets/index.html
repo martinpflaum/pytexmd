@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PytexmdEditor</title>
+  <link rel="stylesheet" href="/assets/editor.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">P</span><div><strong>PytexmdEditor</strong><small>Sphinx project workspace</small></div></div>
+    <div id="projectPath" class="project-path"></div>
+    <div class="toolbar">
+      <button id="buildButton" class="button ghost">Rebuild</button>
+      <button id="saveSourceButton" class="button ghost" title="Write the MyST source panel to the current .md file and rebuild Sphinx">Save MyST source</button>
+    </div>
+  </header>
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="panel-heading"><span>Pages <span id="pageCount" class="count"></span></span><button id="newPageButton" class="mini-button">+ New</button></div>
+      <input id="pageSearch" class="search" type="search" placeholder="Filter pages...">
+      <div class="page-actions">
+        <button id="moveUpButton" class="mini-button" title="Move page up in its Sphinx toctree">Up</button>
+        <button id="moveDownButton" class="mini-button" title="Move page down in its Sphinx toctree">Down</button>
+        <button id="deletePageButton" class="mini-button danger" title="Delete the selected page">Delete</button>
+      </div>
+      <nav id="pageList" class="page-list"></nav>
+      <div class="safety"><strong>Safe round-trip</strong><span>Every save creates a timestamped source backup.</span></div>
+    </aside>
+    <section class="canvas-panel">
+      <div class="canvas-bar"><div><strong id="pageTitle">Select a page</strong><span id="status">Ready</span></div><button id="reloadButton" class="icon-button" title="Reload preview">Reload</button></div>
+      <div class="canvas"><iframe id="preview" title="Editable Sphinx preview"></iframe></div>
+      <pre id="buildLog" class="build-log"></pre>
+    </section>
+    <aside class="inspector">
+      <div class="panel-heading">Inspector</div>
+      <div id="emptyInspector" class="empty-state"><strong>Select content in the preview</strong><span>Edit headings and paragraphs directly. Whole theorem/proof admonitions, equations, lists, and TikZ images have structured source controls.</span></div>
+      <form id="inspectorForm" class="inspector-form hidden">
+        <label>Element <input id="elementType" disabled></label>
+        <label id="valueLabel">Content <textarea id="elementValue" rows="10"></textarea></label>
+        <div id="listEditor" class="list-editor hidden">
+          <div class="list-editor-heading"><strong id="listStyleLabel">List items</strong><button id="addListItemButton" class="mini-button" type="button">+ Add item</button></div>
+          <div id="listItems"></div>
+        </div>
+        <div id="childTools" class="child-tools hidden">
+          <label>Add child element<select id="childKind"><option value="paragraph">Paragraph</option><option value="bullet_list">Bullet list</option><option value="numbered_list">Enumeration</option><option value="custom_enumeration">Custom enumeration</option><option value="equation">Equation</option><option value="proof">Nested proof</option><option value="theorem">Nested theorem</option><option value="admonition">Custom admonition</option></select></label>
+          <button id="addChildButton" class="mini-button" type="button">Add child before closing fence</button>
+        </div>
+        <p id="fieldHelp" class="field-help"></p>
+        <button id="updateElement" class="button primary" type="submit">Save change now</button>
+      </form>
+      <section class="advanced-panel">
+        <div class="panel-heading">Add Structure</div>
+        <p class="field-help">Insert semantic MyST at the current source cursor, including labels and cross-references.</p>
+        <select id="insertKind">
+          <option value="section">Section</option>
+          <option value="subsection">Subsection</option>
+          <option value="paragraph">Paragraph admonition</option>
+          <option value="proof">Proof admonition</option>
+          <option value="theorem">Theorem admonition</option>
+          <option value="admonition">Custom admonition</option>
+          <option value="bullet_list">Bullet list</option>
+          <option value="numbered_list">Numbered list</option>
+          <option value="custom_enumeration">Custom enumeration</option>
+          <option value="equation">Equation</option>
+          <option value="link">Web/HTML link</option>
+          <option value="citation">Citation</option>
+          <option value="reference">Section/reference link</option>
+          <option value="proof_reference">Theorem/proof reference</option>
+          <option value="label">Label</option>
+        </select>
+        <button id="openInsertButton" class="button ghost" type="button">Configure and insert...</button>
+      </section>
+      <details class="source-panel">
+        <summary>MyST source</summary>
+        <p class="field-help">Advanced mode: edit the current Markdown file directly, then select <strong>Save MyST source</strong>. Inspector changes save immediately.</p>
+        <textarea id="sourceEditor" spellcheck="false"></textarea>
+      </details>
+    </aside>
+  </main>
+  <dialog id="newPageDialog" class="dialog">
+    <form id="newPageForm" method="dialog">
+      <div class="dialog-heading"><strong>Create page</strong><button type="button" class="dialog-close" data-close="newPageDialog">Close</button></div>
+      <label>Page title<input id="newPageTitle" required maxlength="200" placeholder="Further results"></label>
+      <label>Filename <div class="filename-field"><input id="newPageSlug" pattern="[A-Za-z0-9_-]+" placeholder="further_results"><span>.md</span></div></label>
+      <p class="field-help">The page is added to the root Sphinx navigation before References.</p>
+      <div class="dialog-actions"><button type="button" class="button ghost" data-close="newPageDialog">Cancel</button><button class="button primary" type="submit">Create and rebuild</button></div>
+    </form>
+  </dialog>
+  <dialog id="insertDialog" class="dialog">
+    <form id="insertForm" method="dialog">
+      <div class="dialog-heading"><strong id="insertDialogTitle">Insert structure</strong><button type="button" class="dialog-close" data-close="insertDialog">Close</button></div>
+      <label id="insertTitleLabel">Title or display text<input id="insertTitle" placeholder="Title"></label>
+      <label id="insertTargetLabel">Label, citation key, or URL<input id="insertTarget" placeholder="target-label"></label>
+      <label id="insertContentLabel">Content<textarea id="insertContent" rows="8" placeholder="Content"></textarea></label>
+      <p id="insertHelp" class="field-help"></p>
+      <div class="dialog-actions"><button type="button" class="button ghost" data-close="insertDialog">Cancel</button><button class="button primary" type="submit">Insert into MyST source</button></div>
+    </form>
+  </dialog>
+  <dialog id="rebuildDialog" class="dialog">
+    <div class="dialog-heading"><strong id="rebuildDialogTitle">Unsaved MyST source</strong><button type="button" class="dialog-close" data-close="rebuildDialog">Close</button></div>
+    <p id="rebuildDialogText">You have changes that have not been written back to Markdown. Rebuilding without saving will discard them permanently.</p>
+    <div class="warning-box">If you continue without saving, these edits will not be saved.</div>
+    <div class="dialog-actions vertical"><button id="saveAndRebuildButton" class="button primary">Save edits and rebuild</button><button id="discardAndRebuildButton" class="button danger-button">Rebuild without saving</button><button type="button" class="button ghost" data-close="rebuildDialog">Cancel</button></div>
+  </dialog>
+  <div id="toast" class="toast"></div>
+  <script src="/assets/editor.js"></script>
+</body>
+</html>

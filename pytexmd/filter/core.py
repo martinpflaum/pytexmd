@@ -28,6 +28,9 @@ __all__ = [
 ]
 
 from enum import Enum
+import os
+
+
 
 class LabelType(Enum):
     REF = "ref"
@@ -43,7 +46,9 @@ LABEL_TYPE_TO_STR_FUNCS = {
     LabelType.NUMREF: lambda label_name,rename: "{numref}"+f"`{label_name}`",
     LabelType.SECTION_LIKE: lambda label_name,rename: "{ref}"+f"`{label_name}`",
     LabelType.DOC: lambda label_name,rename: "{doc}"+f"`{label_name}`",
-    LabelType.EQ: lambda label_name,rename: "{eq}"+f"`{label_name}`",
+    LabelType.EQ: lambda label_name,rename: (
+        f"[({rename})](#{label_name})" if rename else f"[equation](#{label_name})"
+    ),
     LabelType.PRF_REF: lambda label_name,rename: "{prf:ref}"+f"`{label_name}`",
     LabelType.NUMREF: lambda label_name,rename: "{numref}"+f"`{label_name}`",
     LabelType.ENUMERATION_ITEM:  lambda label_name,rename: "{ref}"+f"`{label_name}`",#lambda label_name,rename: f"[{rename}](#{label_name})",
@@ -64,23 +69,39 @@ SECTION_LIKE_COMMANDS = [
     "\\subparagraph"
 ]
 
-SECTION_LIKE_COMMANDS_TO_HASHTAGS = {
+SECTION_LIKE_COMMANDS_TO_BEGIN = {
     "\\part": "# ",
     "\\chapter": "# ",
-    "\\section": "# ",
-    "\\subsection": "## ",
-    "\\subsubsection": "### ",
-    "\\paragraph": "#### ",
-    "\\subparagraph": "#### ",
-    "\\part*": "# ",
-    "\\chapter*": "# ",
-    "\\section*": "# ",
-    "\\subsection*": "## ",
-    "\\subsubsection*": "### ",
-    "\\paragraph*": "#### ",
-    "\\subparagraph*": "#### ",
+    "\\section": "## ",
+    "\\subsection": "### ",
+    "\\subsubsection": "#### ",
+    "\\paragraph": "##### ",
+    "\\subparagraph": "###### ",
+    "\\part*": "```{rubric} ",
+    "\\chapter*": "```{rubric} ",
+    "\\section*": "```{rubric} ",
+    "\\subsection*": "```{rubric} ",
+    "\\subsubsection*": "```{rubric} ",
+    "\\paragraph*": "```{rubric} ",
+    "\\subparagraph*": "```{rubric} ",
 }
 
+SECTION_LIKE_COMMANDS_TO_END = {
+    "\\part": "",
+    "\\chapter": "",
+    "\\section": "",
+    "\\subsection": "",
+    "\\subsubsection": "",
+    "\\paragraph": "",
+    "\\subparagraph": "",
+    "\\part*": "\n```",
+    "\\chapter*": "\n```",
+    "\\section*": "\n```",
+    "\\subsection*": "\n```",
+    "\\subsubsection*": "\n```",
+    "\\paragraph*": "\n```",
+    "\\subparagraph*": "\n```",
+}
 SEC_DEF_SPLITTER = "XXSEC_DEF_SPLITTERXX"
 SEC_PREFIX_BEGIN = "XXSEC_PREFIX_BEGINXX"
 SEC_PREFIX_END = "XXSEC_PREFIX_ENDXX"
@@ -169,6 +190,7 @@ class Element():
         self.parent:Element|None = None
         self._modifiable_content = modifiable_content
         self.parent = parent
+        self._max_child_colon_count: int = 0
 
     def hasattr(self, string: str) -> bool:
         """Check if the element has a given attribute.
@@ -343,6 +365,32 @@ class Element():
             #raise AttributeError("No parent in the latex tree has the attribute " + name)
         else:
             return self.parent.__getattr__(name)
+
+    def _propagate_colon_count(self, count: int) -> None:
+        """Propagate a directive colon-depth upward through the tree.
+
+        Called by child elements after _finish_up so every ancestor knows the
+        maximum colon count used by any descendant directive.  Nodes that
+        produce their own fenced directives (e.g. ParaElement) read
+        ``_max_child_colon_count`` in ``to_string`` to decide how many colons
+        to use for their own fence.
+
+        Args:
+            count (int): Colon count reported by the calling child.
+        """
+        if count > self._max_child_colon_count:
+            self._max_child_colon_count = count
+        if self.parent is not None:
+            self.parent._propagate_colon_count(count)
+
+    def _after_finish_up(self) -> None:
+        """Hook called at the end of ``_finish_up`` once all children are done.
+
+        Override in subclasses that produce fenced directives (``:::``) to
+        report their colon count to their parent via
+        ``self.parent._propagate_colon_count(n)``.
+        """
+        pass
     
     def _finish_up(self) -> None:
         """Finalize the element by wrapping modifiable content in RawText.
@@ -366,6 +414,7 @@ class Element():
         else:
             for child in self.children:
                 child._finish_up()
+        self._after_finish_up()
 
     def expand(self, all_classes: List["Element"]) -> None:
         """Expand the element tree by processing children.
@@ -641,17 +690,30 @@ class SectionLike(StructureMaker):
         self.command_name = command_name
         self.current_number = 0
 
-    
+    def is_numbered(self):
+        return not "*" in self.command_name
 
+    def get_file_name(self):
+        if self.is_numbered():
+            return self.command_name.replace("\\","") + "_" + self.name.strip().replace(" ","_")
+        else:
+            return self.command_name.replace("\\","") + "_" + self.name.strip().replace(" ","_") + "_unnumbered"
+
+    def get_begin_comment(self):
+        return make_myst_comment(f"{SEC_PREFIX_BEGIN}{self.command_name}{self.name}")
+
+    def get_end_comment(self):
+        return make_myst_comment(f"{SEC_PREFIX_END}{self.command_name}{self.name}")
+    
     def to_string(self) -> str:
         comment = make_myst_comment(f"{SEC_DEF_SPLITTER}{self.command_name}{SEC_DEF_SPLITTER}{self.name}{SEC_DEF_SPLITTER}")
-        begin_comment = make_myst_comment(f"{SEC_PREFIX_BEGIN}{self.command_name}{self.name}")
-        end_comment = make_myst_comment(f"{SEC_PREFIX_END}{self.command_name}{self.name}")
+        begin_comment = self.get_begin_comment()
+        end_comment = self.get_end_comment()
 
         if self.label is not None:
-            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
         else:
-            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
         out = ""
         for child in self.children:
             out += child.to_string()
@@ -663,9 +725,9 @@ class SectionLike(StructureMaker):
     def get_content(self)->str:
         
         if self.label is not None:
-            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+            pre = "\n("+self.label+")=\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
         else:
-            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_HASHTAGS[self.command_name] + self.name + "\n"
+            pre = "\n"+ SECTION_LIKE_COMMANDS_TO_BEGIN[self.command_name] + self.name.strip() + SECTION_LIKE_COMMANDS_TO_END[self.command_name] + "\n"
     
         out = ""
         for child in self.children:
@@ -686,8 +748,8 @@ class SectionLike(StructureMaker):
         
         out.append(SectionStructure(self.name,self.get_content(),child_structures))
         return out
-    
-        
+
+  
 class SectionLikeSearcher(Searcher):
     """Searcher for LaTeX commands.
 
@@ -706,16 +768,32 @@ class SectionLikeSearcher(Searcher):
         
     
     def position(self, string: str) -> int:
-        return splitting.position_of(string,self.command_name+"{",False)
+        pos_brace = splitting.position_of(string, self.command_name + "{" , False)
+        pos_opt   = splitting.position_of(string, self.command_name + "[", False)
+        positions = [p for p in (pos_brace, pos_opt) if p != -1]
+        return min(positions) if positions else -1
     
     def split_and_create(self,input: str, parent: Element) -> Tuple[str, Element, str]:
         #TODO HANDLE NESTED SECTIONS AKA LEVEL DEPENDENCIES!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         
         pre,content = splitting.split_on_next(input,self.command_name)
+        # Discard optional short-title argument, e.g. \section[short]{long title}
+        opt = splitting.split_rename(content)
+        if opt is not None:
+            _, content = opt
         name,content = splitting.split_on_first_brace(content)
-        if self.command_name + "{" in content:
-            content_default,post_default = splitting.split_on_next(content,self.command_name + "{",False)
-            post_default = self.command_name + "{" + post_default
+        if self.command_name + "{" in content or self.command_name + "[" in content:
+            # Find whichever form of the next same-level section comes first
+            pos_brace = content.find(self.command_name + "{")
+            pos_opt   = content.find(self.command_name + "[")
+            positions = [p for p in (pos_brace, pos_opt) if p != -1]
+            split_at  = min(positions) if positions else -1
+            if split_at != -1:
+                content_default = content[:split_at]
+                post_default    = content[split_at:]
+            else:
+                content_default = content
+                post_default    = ""
         else:
             content_default = content
             post_default = ""

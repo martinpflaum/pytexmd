@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,18 +10,20 @@ authors = [
     { name = "Martin Pflaum", email = "contact@martinpflaum.com" }
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+license = "MIT"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "sphinx",
-    "myst-parser",
-    "sphinx-proof",
-    "furo",
-    "regex"
+    "sphinx>=8.2,<10",
+    "myst-parser>=4.0,<6",
+    "sphinx-proof>=0.4,<0.5",
+    "furo>=2024.8.6",
+    "regex>=2024.7.24",
+    "sphinxcontrib-tikz>=0.4.20,<0.5",
+    "sphinxcontrib-bibtex>=2.6,<3"
 ]
 [project.urls]
 Homepage = "https://github.com/yourusername/pytexmd"
@@ -29,3 +31,13 @@ Repository = "https://github.com/yourusername/pytexmd"
 
 [project.scripts]
 pytexmd = "pytexmd.cli:main"
+pytexmd-html = "app.PytexmdConverter.cli:main"
+pytexmd-gui = "app.PytexmdConverter.gui:main"
+pytexmd-editor = "app.PytexmdEditor.editor:main"
+
+[tool.setuptools.packages.find]
+include = ["pytexmd*", "app*"]
+
+[tool.setuptools.package-data]
+pytexmd = ["templates/*.txt"]
+"app.PytexmdEditor" = ["editor_assets/*"]

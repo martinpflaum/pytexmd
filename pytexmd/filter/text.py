@@ -10,13 +10,18 @@ __all__ = [
     "Proof",
     "Textbf",
     "Emph",
-    "Para",
+    "ParaElement",
+    "ParaSearcher",
     "Cite",
     "get_all_filters",
     "get_number_within_equation",
     "get_theoremSearchers",
     "Textit",
     "ProofLabel",
+    "CUSTOM_THEOREM_TYPES",
+    "TikzElement",
+    "TikzSearcher",
+    "InlineTikz",
 ]
 from typing import List, Tuple
 from .core import *
@@ -49,6 +54,31 @@ proof_theorem_types = [
 """
 for key in list(PRF_TYPES.keys()):
     PRF_TYPES[key+"s"] = PRF_TYPES[key]
+
+# Global registry of custom theorem types discovered during processing.
+# Maps type_name (str) -> display_name (str).
+CUSTOM_THEOREM_TYPES: dict = {}
+
+# Per-part suffix tracking: maps id(SectionLike_part) -> sequential int (1, 2, ...).
+_PART_SUFFIXES: dict = {}
+_PART_COUNTER: list = [0]  # single-element list so it is mutable inside functions
+
+
+def _get_part_suffix(element) -> int | None:
+    """Walk the parent chain to find the enclosing \\part and return its 1-based index.
+
+    Returns None when the theorem is not inside any \\part.
+    """
+    current = element
+    while current is not None:
+        if isinstance(current, SectionLike) and getattr(current, 'command_name', '') == "\\part":
+            part_id = id(current)
+            if part_id not in _PART_SUFFIXES:
+                _PART_COUNTER[0] += 1
+                _PART_SUFFIXES[part_id] = _PART_COUNTER[0]
+            return _PART_SUFFIXES[part_id]
+        current = current.parent
+    return None
     
 class ProofLabel(Element):
     """Element for MyST label.
@@ -80,6 +110,38 @@ class ProofLabel(Element):
 
     def to_string(self) -> str:
         return "\n:label: "+self.label_ref.strip()
+
+class Cref(Element):
+    """Element for LaTeX \\cref and \\Cref references (cleveref package)."""
+
+    def __init__(self, modifiable_content: str, parent: Element, label_ref: str):
+        super().__init__(modifiable_content, parent)
+        self.label_ref = label_ref
+
+    @staticmethod
+    def position(input: str) -> int:
+        pos_lower = position_of(input, "\\cref")
+        pos_upper = position_of(input, "\\Cref")
+        if pos_lower == -1:
+            return pos_upper
+        if pos_upper == -1:
+            return pos_lower
+        return min(pos_lower, pos_upper)
+
+    @staticmethod
+    def split_and_create(input: str, parent: Element) -> Tuple[str, 'Cref', str]:
+        pos_lower = position_of(input, "\\cref")
+        pos_upper = position_of(input, "\\Cref")
+        if pos_upper != -1 and (pos_lower == -1 or pos_upper < pos_lower):
+            pre, post = split_on_next(input, "\\Cref")
+        else:
+            pre, post = split_on_next(input, "\\cref")
+        label_ref, post = split_on_first_brace(post)
+        return pre, Cref("", parent, label_ref), post
+
+    def to_string(self) -> str:
+        return ref_call(self.label_ref)
+
 
 class Ref(Element):
     """Element for LaTeX \\ref reference.
@@ -187,13 +249,19 @@ class Proof(Element):
         return pre,out,post
 
     def to_string(self) -> str:
-        pre = f"\n:::{{prf:proof}}\n"
+        colons = ":" * max(3, self._max_child_colon_count + 1)
+        pre = "\n" + colons + "{prf:proof}\n"
         out = ""
         for child in self.children:
             out += child.to_string()
         out = out.rstrip()
-        out = pre +out+ "\n:::\n"
+        out = pre + out + "\n" + colons + "\n"
         return out
+
+    def _after_finish_up(self) -> None:
+        own_count = max(3, self._max_child_colon_count + 1)
+        if self.parent is not None:
+            self.parent._propagate_colon_count(own_count)
 
     
 class Textbf(Element):
@@ -259,15 +327,10 @@ class Cite(Element):
         return pre,Cite("",parent,citations,rename),post
 
     def to_string(self) -> str:
-        out = "["
-        for elem in self.citations:
-            out += f"@{elem.strip()}; "
-        out = out[:-2]
-        if self.rename != "":
-            out += f", {self.rename.strip()}"
-        out += "]"
-        
-        return out
+        keys = ",".join(elem.strip() for elem in self.citations)
+        if self.rename:
+            return f"{{cite}}`{self.rename.strip()} <{keys}>`"
+        return f"{{cite}}`{keys}`"
 
 
 class Emph(Element):
@@ -328,6 +391,115 @@ class Textit(Element):
         return out
     
     
+class ParaElement(Element):
+    """Element for LaTeX \\para command.
+
+    Renders as a MyST prf:paragraph block, handled like TheoremElement types.
+
+    Example:
+        >>> para = ParaElement(None)
+        >>> isinstance(para, ParaElement)
+        True
+    """
+    def __init__(self, parent: Element):
+        super().__init__("", parent)
+        part_suffix = _get_part_suffix(parent)
+        if part_suffix is not None:
+            type_name = "paragraph" + str(part_suffix)
+            CUSTOM_THEOREM_TYPES[type_name] = "Paragraph"
+        else:
+            type_name = "paragraph"
+            CUSTOM_THEOREM_TYPES[type_name] = "Paragraph"
+        self.theorem_type = "prf:" + type_name
+
+    def to_string(self) -> str:
+        """Convert to MyST prf:paragraph block.
+
+        Uses as many colons as needed so that any nested directives (e.g.
+        :::{math}) are properly fenced inside the outer directive.
+
+        Returns:
+            str: MyST paragraph block.
+        """
+        colons = ":" * max(3, self._max_child_colon_count + 1)
+        pre = "\n" + colons + "{" + self.theorem_type + "} \n:nonumber:\n"
+        out = ""
+        for child in self.children:
+            out += child.to_string()
+        out = out.rstrip()
+        out = pre + out
+        out += "\n" + colons + "\n"
+        return out
+
+    def _after_finish_up(self) -> None:
+        own_count = max(3, self._max_child_colon_count + 1)
+        if self.parent is not None:
+            self.parent._propagate_colon_count(own_count)
+
+
+class ParaSearcher(Searcher):
+    """Searcher for LaTeX \\para command.
+
+    Finds \\para and creates ParaElement blocks, handled like TheoremElement types.
+    Content is captured until the next \\para or any theorem environment.
+
+    Args:
+        extra_env_names (list[str] | None): Additional theorem environment names
+            (e.g. from custom \\newtheorem declarations) that also stop content capture.
+
+    Example:
+        >>> searcher = ParaSearcher()
+        >>> isinstance(searcher, ParaSearcher)
+        True
+    """
+
+    def __init__(self, extra_env_names: list = None):
+        super().__init__()
+        self._stop_envs: list[str] = list(PRF_TYPES.keys())
+        if extra_env_names:
+            for name in extra_env_names:
+                if name not in self._stop_envs:
+                    self._stop_envs.append(name)
+
+    def position(self, input: str) -> int:
+        return position_of(input, "\\para")
+
+    def split_and_create(self, input: str, parent: Element) -> Tuple[str, 'ParaElement', str]:
+        pre, post = split_on_next(input, "\\para")
+
+        # Find the earliest stop point: next \para or any theorem \begin{...}
+        stop_pos = position_of(post, "\\para")
+        for env_name in self._stop_envs:
+            p = position_of(post, "\\begin{" + env_name + "}")
+            if p != -1 and (stop_pos == -1 or p < stop_pos):
+                stop_pos = p
+
+        if stop_pos != -1:
+            content = post[:stop_pos]
+            remaining = post[stop_pos:]
+        else:
+            content = post
+            remaining = ""
+
+        content = content.strip()
+        if content == "":
+            return pre, Undefined("", parent), remaining
+
+        out = ParaElement(parent)
+        out.children = []
+        out.children.append(Undefined("", out))  # empty title placeholder
+
+        if content.startswith("\\label"):
+            label_ref, content = split_on_first_brace(content[len("\\label"):])
+            content = content.strip()
+            label = ProofLabel("", out, label_ref.strip())
+            out.children.append(label)
+
+        out.children.append(Undefined("\n" + content, out))
+
+        return pre, out, remaining
+
+
 class TheoremElement(Element):
     """Element for LaTeX theorem environments.
 
@@ -339,9 +511,20 @@ class TheoremElement(Element):
     def __init__(self, parent: Element, display_name: str, theorem_env_name: str, enum_parent_class):
         super().__init__("",parent)
         self.display_name = display_name
-        theorem_type = "prf:theorem"#"admonition"
-        if display_name.lower() in PRF_TYPES.keys():
-            theorem_type = PRF_TYPES[display_name.lower()]
+        display_lower = display_name.lower()
+        part_suffix = _get_part_suffix(parent)
+        if part_suffix is not None:
+            # Per-part custom type: definition1, definition2, …
+            type_name = display_lower.replace(" ", "_") + str(part_suffix)
+            theorem_type = "prf:" + type_name
+            CUSTOM_THEOREM_TYPES[type_name] = display_name
+        elif display_lower in PRF_TYPES:
+            theorem_type = PRF_TYPES[display_lower]
+        else:
+            # Unknown type without an enclosing part: register as global custom type.
+            type_name = display_lower.replace(" ", "_")
+            theorem_type = "prf:" + type_name
+            CUSTOM_THEOREM_TYPES[type_name] = display_name
         self.theorem_type = theorem_type
         
     def to_string(self) -> str:
@@ -350,24 +533,23 @@ class TheoremElement(Element):
         Returns:
             str: Markdown theorem block.
         """
-        
-
-        pre = "\n:::{"+self.theorem_type+"} "
+        colons = ":" * max(3, self._max_child_colon_count + 1)
+        pre = "\n" + colons + "{" + self.theorem_type + "} "
         out = ""
         for child in self.children:
             out += child.to_string()
         out = out.rstrip()
-        
-        """
-        if out.startswith("["):
-            _,middle,out = begin_end_split(out,"[","]")
-            out = middle.strip()+"\n" + out.lstrip()
-        else:
-            out = "\n"+out.lstrip()
-        """
-        out = pre + out
-        out += "\n:::\n"
+        title, separator, content = out.partition("\n")
+        out = pre + title + "\n:nonumber:\n"
+        if separator:
+            out += content
+        out += "\n" + colons + "\n"
         return out
+
+    def _after_finish_up(self) -> None:
+        own_count = max(3, self._max_child_colon_count + 1)
+        if self.parent is not None:
+            self.parent._propagate_colon_count(own_count)
 
 
 class TheoremSearcher(Searcher):
@@ -436,6 +618,9 @@ def get_theoremSearchers(input: str) -> list:
         pre,post = split_on_next(input,"\\newtheorem")
         if input == pre:
             break
+        post = post.lstrip()
+        if post.startswith("*"):
+            post = post[1:].lstrip()
         theorem_env_name,post = split_on_first_brace(post)
         display_name = ""
         if first_char_brace(post):
@@ -484,6 +669,132 @@ def get_number_within_equation(input: str) -> str:
     out,_ = split_on_first_brace(input[1])
     return out
 
+# Basic TikZ libraries loaded globally via tikz_tikzlibraries in conf.py.
+# "cd" is intentionally excluded — it is part of the tikz-cd *package*,
+# not a TikZ library, and is loaded via tikz_latex_preamble instead.
+_ALL_TIKZ_LIBS: list = [
+    "arrows",
+    "arrows.meta",
+    "calc",
+    "positioning",
+    "matrix",
+    "fit",
+    "quotes",
+]
+
+class TikzElement(Element):
+    """Element for LaTeX tikzpicture environment.
+
+    Converts to a ``{tikz}`` MyST directive for use with sphinxcontrib-tikz.
+
+    Example:
+        >>> tikz = TikzElement(None, "\\draw (0,0) -- (1,1);", "", [])
+        >>> isinstance(tikz, TikzElement)
+        True
+    """
+
+    def __init__(self, parent: Element, content: str, caption: str, libs: list, label: str = ""):
+        super().__init__("", parent)
+        self._tikz_content = content
+        self._caption = caption
+        self._libs = libs
+        self._label = label
+
+    def to_string(self) -> str:
+        # Emit a MyST target label above the directive when a label is set.
+        # sphinxcontrib-tikz does not support the :name: option, so we use
+        # the standard MyST (label)= syntax instead.
+        out = ""
+        if self._label:
+            out += "\n(" + self._label + ")="
+        fence = "```"
+        directive = fence + "{tikz}"
+        if self._caption:
+            directive += " " + self._caption
+        out += "\n" + directive + "\n"
+        if self._libs:
+            out += ":libs: " + ", ".join(self._libs) + "\n"
+        out += "\n" + self._tikz_content.strip() + "\n"
+        out += fence + "\n"
+        return out
+
+
+class TikzSearcher(Searcher):
+    """Searcher for LaTeX tikzpicture environments.
+
+    Finds ``\\begin{tikzpicture}...\\end{tikzpicture}`` blocks and converts
+    them to ``{tikz}`` MyST directives (sphinxcontrib-tikz).
+
+    Example:
+        >>> searcher = TikzSearcher()
+        >>> isinstance(searcher, TikzSearcher)
+        True
+    """
+
+    def position(self, input: str) -> int:
+        return position_of(input, "\\begin{tikzpicture}")
+
+    def split_and_create(self, input: str, parent: Element) -> Tuple[str, Element, str]:
+        pre, content, post = begin_end_split(
+            input, "\\begin{tikzpicture}", "\\end{tikzpicture}"
+        )
+
+        caption = ""
+
+        content = content.strip()
+        if not content:
+            return pre, Undefined("", parent), post
+
+        return pre, TikzElement(parent, content, caption, _ALL_TIKZ_LIBS), post
+
+
+class InlineTikz(Element):
+    """Element for LaTeX ``\\tikz{...}`` inline command.
+
+    Converts to an inline ``{tikz}`` role for sphinxcontrib-tikz.
+
+    Example:
+        >>> t = InlineTikz("", None)
+        >>> isinstance(t, InlineTikz)
+        True
+    """
+
+    def __init__(self, modifiable_content: str, parent: Element):
+        super().__init__(modifiable_content, parent)
+
+    @staticmethod
+    def position(input: str) -> int:
+        return position_of(input, "\\tikz")
+
+    @staticmethod
+    def split_and_create(input: str, parent: Element) -> Tuple[str, Element, str]:
+        pre, post = split_on_next(input, "\\tikz")
+        # \tikz may be followed by optional [options] then {content} or ; terminated
+        post = post.lstrip()
+        options = ""
+        if post.startswith("["):
+            options, post = split_on_first_brace(post, "[", "]")
+        if post.lstrip().startswith("{"):
+            content, post = split_on_first_brace(post.lstrip())
+        else:
+            # Semicolon-terminated single command: \tikz \draw ...;
+            idx = post.find(";")
+            if idx != -1:
+                content = post[: idx + 1]
+                post = post[idx + 1 :]
+            else:
+                content = post
+                post = ""
+        return pre, InlineTikz(content, parent), post
+
+    def to_string(self) -> str:
+        out = ""
+        for child in self.children:
+            out += child.to_string()
+        # Emit as an inline tikz role
+        return "{tikz}`" + out.strip() + "`"
+
+
 def get_all_filters() -> list:
     """Returns all section-related filter classes/searchers.
 
@@ -495,4 +806,4 @@ def get_all_filters() -> list:
         >>> isinstance(filters, list)
         True
     """
-    return [Emph,Textbf,Textit,Ref,EqRef,Cite]
+    return [TikzSearcher(), Emph, Textbf, Textit, Ref, EqRef, Cite]

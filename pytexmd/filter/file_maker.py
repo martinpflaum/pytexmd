@@ -17,6 +17,15 @@ import re
 
 NUM_FILES = 0
 
+WINDOWS_RESERVED_FILENAMES = {
+    "con",
+    "prn",
+    "aux",
+    "nul",
+    *(f"com{number}" for number in range(1, 10)),
+    *(f"lpt{number}" for number in range(1, 10)),
+}
+
 # Section hierarchy mapping for splitting
 SECTION_HIERARCHY = {
     "\\part": 0,
@@ -60,11 +69,13 @@ def string_to_tree(string:str)->core.Document:
     #basic_expands += junkSearcher+replaceSearcher
     #all_expands += [[core.BackMatter()]]  #backmatter and appendix splitter
     all_expands += core.get_section_like_filters_top_lvl()
-    all_expands += [text.get_theoremSearchers(string)]+[[text.Proof]]+ [enumitem.get_all_filters()]
+    theorem_searchers = text.get_theoremSearchers(string)
+    para_searcher = text.ParaSearcher([s.theorem_env_name for s in theorem_searchers])
+    all_expands += [theorem_searchers + [para_searcher]]+[[text.Proof]]+ [enumitem.get_all_filters()]
     all_expands += [equations.get_all_filters()]
     all_expands += [text.get_all_filters()] 
     all_expands += [[core.OneArgumentJunkSearcher(r"\hspace")]]
-    junk_commands = ["\\sffamily","\\itshape","\\nonumber","\\noindent","\\indent","\\newpage"]
+    junk_commands = ["\\sffamily","\\itshape","\\nonumber","\\noindent","\\indent","\\newpage","\\em"]
     #replace_mentdict = {"\\noindent":""}#"\\prerequisites ":"</p><h1 style=\"font-size:20px\">Prerequisites</h1><p>","\\N ":"\\mathbb{N}","\\id ":"id","\\GL ":"GL","\\Mat ":"\mathfrak{M}"}
     all_expands += [[core.JunkSearcher(elem) for elem in junk_commands]]
 
@@ -72,7 +83,7 @@ def string_to_tree(string:str)->core.Document:
     
     #all_expands = [basic_expands]
     #all_expands.append([section.Label])
-    all_expands.append([text.EqRef,text.Ref,text.Cite])
+    all_expands.append([text.EqRef, text.Cref, text.Ref, text.Cite])
 
     
     number_within_equation = text.get_number_within_equation(string)
@@ -179,7 +190,10 @@ def string_to_filename(name):
     # Remove special characters and replace spaces with underscores
     filename = re.sub(r'[^\w\s-]', '', name.lower())
     filename = re.sub(r'[-\s]+', '_', filename)
-    return filename.strip('_') or 'section'
+    filename = filename.strip('_') or 'section'
+    if filename.casefold() in WINDOWS_RESERVED_FILENAMES:
+        filename = "section_" + filename
+    return filename[:120].rstrip(" .") or "section"
 
 def split_by_sections(content_string, max_depth=2):
     """
@@ -200,6 +214,12 @@ def split_by_sections(content_string, max_depth=2):
     for match in re.finditer(def_pattern, content_string):
         command = match.group(1).strip()
         name = match.group(2).strip()
+
+        # Unnumbered sections are never split into their own file; their
+        # content stays inside the preceding/parent numbered section.
+        if command.endswith('*'):
+            continue
+
         level = SECTION_HIERARCHY.get(command, 999)
         
         # Debug: warn if command not found in hierarchy
@@ -252,68 +272,83 @@ def split_by_sections(content_string, max_depth=2):
         stack[-1]['children'].append(section)
         stack.append(section)
     
-    # Collect content chunks - only include TOP-LEVEL sections
-    content_chunks = []
     top_level_sections = root['children']
-    
+
     if not top_level_sections:
         root['content'] = content_string
         return root
-    
-    # Preamble
+
+    # Preamble (content before first numbered top-level section, which may
+    # include unnumbered sections like \chapter*{Authors}) goes to the
+    # root/index file via root['content'].
     if top_level_sections[0]['start_pos'] > 0:
-        preamble = content_string[:top_level_sections[0]['start_pos']]
-        content_chunks.append(('preamble', preamble))
-    
-    # Add top-level sections and inter-section content
+        root['content'] = content_string[:top_level_sections[0]['start_pos']]
+
+    # Attach inter-section and epilogue content to the preceding numbered
+    # section so it appears in that section's file rather than being lost.
     for i, section in enumerate(top_level_sections):
+        if i + 1 < len(top_level_sections):
+            inter = content_string[section['end_pos']:top_level_sections[i + 1]['start_pos']]
+            if inter.strip():
+                section['content'] += inter
+
+    epilogue = content_string[top_level_sections[-1]['end_pos']:]
+    if epilogue.strip():
+        top_level_sections[-1]['content'] += epilogue
+
+    # content_chunks used only by verify_content_integrity
+    content_chunks = [('preamble', root['content'])] if root['content'] else []
+    for section in top_level_sections:
         content_chunks.append(('section', section))
-        
-        if i < len(top_level_sections) - 1:
-            inter_content = content_string[section['end_pos']:top_level_sections[i + 1]['start_pos']]
-            if inter_content:
-                content_chunks.append(('inter', inter_content))
-    
-    # Epilogue
-    if top_level_sections[-1]['end_pos'] < len(content_string):
-        epilogue = content_string[top_level_sections[-1]['end_pos']:]
-        if epilogue:
-            content_chunks.append(('epilogue', epilogue))
-    
     root['content_chunks'] = content_chunks
     return root
 
-def extract_section_content(section):
-    """Extract section's own content (before children).
-    
-    Args:
-        section (dict): Section structure
-        
-    Returns:
-        tuple: (own_content, remaining_content)
-    """
+def _get_section_own_content(section):
+    """Return content before the first child's DEF marker."""
     content = section['content']
-    
-    if not section['children']:
-        return content, ''
-    
-    begin_marker = f"<!-- {core.SEC_PREFIX_BEGIN}"
-    begin_pos = content.find(begin_marker)
-    
-    if begin_pos == -1:
-        return content, ''
-    
-    search_from = begin_pos + len(begin_marker)
-    child_begin_pos = content.find(begin_marker, search_from)
-    
-    if child_begin_pos != -1:
-        own_content = content[:child_begin_pos]
-        remaining = content[child_begin_pos:]
-        return own_content, remaining
-    
-    return content, ''
+    children = section.get('children', [])
+    if not children:
+        return content
+    first_child = children[0]
+    def_marker = (f"<!-- {core.SEC_DEF_SPLITTER}{first_child['command']}"
+                  f"{core.SEC_DEF_SPLITTER}{first_child['name']}{core.SEC_DEF_SPLITTER} -->")
+    pos = content.find(def_marker)
+    return content[:pos] if pos != -1 else content
 
-def write_section_files(section, output_folder, max_depth, current_depth=0, output_suffix=".md"):
+
+def _get_inter_and_trailing_content(section):
+    """Return content between/after children: unnumbered sections, post-child text."""
+    content = section['content']
+    children = section.get('children', [])
+    if not children:
+        return ''
+    own_end = (f"<!-- {core.SEC_PREFIX_END}{section['command']}{section['name']} -->"
+               if section.get('command') not in (None, 'document') else '')
+    parts = []
+    for i, child in enumerate(children):
+        end_marker = f"<!-- {core.SEC_PREFIX_END}{child['command']}{child['name']} -->"
+        end_pos = content.rfind(end_marker)
+        if end_pos == -1:
+            continue
+        start = end_pos + len(end_marker)
+        if i + 1 < len(children):
+            next_child = children[i + 1]
+            next_def = (f"<!-- {core.SEC_DEF_SPLITTER}{next_child['command']}"
+                        f"{core.SEC_DEF_SPLITTER}{next_child['name']}{core.SEC_DEF_SPLITTER} -->")
+            end = content.find(next_def, start)
+            if end == -1:
+                end = len(content)
+        else:
+            end = len(content)
+        chunk = content[start:end]
+        if own_end:
+            chunk = chunk.replace(own_end, '')
+        chunk = chunk.strip()
+        if chunk:
+            parts.append(chunk)
+    return '\n\n'.join(parts)
+
+def write_section_files(section, output_folder, max_depth, current_depth=0, output_suffix=".md", append_toc=None):
     """
     Recursively write section and its children to files.
     
@@ -323,6 +358,7 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
         max_depth (int): Maximum splitting depth
         current_depth (int): Current recursion depth
         output_suffix (str): File extension
+        append_toc (list): Extra filenames to append to this section's toctree
         
     Returns:
         str: Filename of created file (without extension)
@@ -333,37 +369,52 @@ def write_section_files(section, output_folder, max_depth, current_depth=0, outp
     filepath = os.path.join(output_folder, filename + output_suffix)
     
     should_split = current_depth < max_depth and len(section['children']) > 1
-    
+    extra_toc = append_toc or []
+
     with open(filepath, 'w', encoding='utf-8') as f:
-        if should_split:
-            # Extract only this section's own content
-            own_content, remaining = extract_section_content(section)
-            f.write(own_content.strip() + "\n\n")
-            
-            # Create toctree for children
+        if should_split or extra_toc:
+            # Own content: for root use its content (preamble); for sections
+            # use content before the first child's DEF marker.
+            if section.get('command') == 'document':
+                own_content = section.get('content', '')
+            else:
+                own_content = _get_section_own_content(section)
+            if own_content.strip():
+                f.write(own_content.strip() + "\n\n")
+
+            # Toctree navigation must not add implicit section numbers.
             f.write("```{toctree}\n")
-            f.write(":maxdepth: 2\n\n")
-            
+            f.write(":maxdepth: 2\n")
+            f.write("\n")
+
             child_files = []
             for child in section['children']:
                 child_filename = write_section_files(
-                    child, 
-                    output_folder, 
-                    max_depth, 
+                    child,
+                    output_folder,
+                    max_depth,
                     current_depth + 1,
                     output_suffix
                 )
                 child_files.append(child_filename)
-            
-            # Store child filenames in section structure
+
             section['child_files'] = child_files
-            
+
             for child_file in child_files:
                 f.write(f"{child_file}\n")
-            
+            for extra in extra_toc:
+                f.write(f"{extra}\n")
             f.write("```\n")
+
+            # Write content that lives between/after numbered children:
+            # unnumbered sections (\section*), trailing text, appended
+            # inter-section content from split_by_sections.
+            if section.get('command') != 'document':
+                trailing = _get_inter_and_trailing_content(section)
+                if trailing.strip():
+                    f.write("\n" + trailing.strip() + "\n")
         else:
-            # Include all content
+            # Leaf section — write full content.
             f.write(section['content'].strip() + "\n")
     
     print(f"Created: {filepath}")
@@ -411,10 +462,10 @@ def verify_content_integrity(original_content, structure):
     }
     
     if stats['match']:
-        message = "✓ Content integrity verified: All content preserved!"
+        message = "Content integrity verified: All content preserved!"
         is_valid = True
     else:
-        message = f"✗ Content mismatch: {stats['difference']} character difference"
+        message = f"Content mismatch: {stats['difference']} character difference"
         is_valid = False
         
         # Find where they differ
@@ -466,12 +517,23 @@ def split_document_to_files(document_md, output_folder, depth=2, output_suffix="
         print(f"  Original: {stats['original_length']:,} chars")
         print(f"  Reconstructed: {stats['reconstructed_length']:,} chars")
         if not is_valid:
-            print("\n⚠ Warning: Proceeding with file creation despite content mismatch")
+            print("\nWarning: Proceeding with file creation despite content mismatch")
     
     # Write files
-    write_section_files(root, output_folder, depth, 0, output_suffix)
-    
-    print(f"\n✓ Document split into files in: {output_folder}")
+    write_section_files(root, output_folder, depth, 0, output_suffix,
+                        append_toc=["references"])
+
+    # Create a dedicated references page so sphinxcontrib.bibtex renders the
+    # bibliography list.
+    refs_path = os.path.join(output_folder, "references" + output_suffix)
+    with open(refs_path, 'w', encoding='utf-8') as f:
+        f.write("# References\n\n")
+        f.write("```{bibliography}\n")
+        f.write(":style: unsrt\n")
+        f.write("```\n")
+    print(f"Created: {refs_path}")
+
+    print(f"\nDocument split into files in: {output_folder}")
     return root
 
 def process_string(output_folder:str, string:str, depth=2, output_suffix:str=".md", verify=True):

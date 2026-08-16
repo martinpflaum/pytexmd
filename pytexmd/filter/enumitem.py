@@ -1,5 +1,7 @@
 __all__ = ["Itemize","ItemizeItem","Enumeration","EnumerationItem"]
 
+import re
+
 from .core import *
 from .splitting import * 
 
@@ -209,6 +211,9 @@ def parse_label_pattern(pattern: str, counter_value: int) -> str:
         'SF1'
     """
     result = pattern
+    
+    # Remove spacing commands with their arguments first
+    result = re.sub(r'\\[hv]space\*?\{[^}]*\}', '', result)
     
     # Remove common LaTeX formatting commands
     formatting_commands = [
@@ -450,17 +455,32 @@ class Enumeration(Element):
         if content.startswith("["):
             _pre,_content,_post = begin_end_split(content,"[","]")
             content = _post.lstrip().rstrip()
-            if "label" in _content:
-                label_part = _content.split("label")[1].split("=")[1].strip().split(",")[0].strip()
-                # Here you could implement parsing of label_str to set style_func, left, right
-                
-                
+            label_match = re.search(r'(?:^|,)\s*label\s*=\s*', _content)
+            if label_match:
+                label_str = _content[label_match.end():]
+                if label_str.startswith('{'):
+                    # Collect all consecutive {}-groups (e.g. label={\itshape ad }{\textup{(}}{...})
+                    combined = ""
+                    remaining_label = label_str
+                    while remaining_label.startswith('{'):
+                        group, remaining_label = split_on_first_brace(remaining_label)
+                        combined += group
+                    label_part = combined
+                else:
+                    label_part = label_str.split(',')[0].strip()
+
             if "start" in _content:
                 start_str = _content.split("start")[1].split("=")[1].strip().split(",")[0].strip()
                 try:
                     start = int(start_str)
                 except:
                     start = 1
+
+        setcounter_match = re.search(r'\\setcounter\{enumi\}\{(-?\d+)\}', content)
+        if setcounter_match:
+            start = int(setcounter_match.group(1)) + 1
+            content = content[:setcounter_match.start()] + content[setcounter_match.end():]
+            content = content.strip()
 
         elem_out = Enumeration(content,parent,start,label_part)
         elem_out.expand([EnumerationItem])
