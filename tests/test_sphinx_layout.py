@@ -87,6 +87,10 @@ Proof content.
 :::
 
 ```{tikz}
+\\draw[->] (0,0) -- (1,1);
+```
+
+```{tikz}
 \\thiscommanddoesnotexist
 ```
 
@@ -110,6 +114,10 @@ Content after a failed TikZ render.
         self.assertIn("Block containing display math.", html)
         self.assertIn("Second custom block.", html)
         self.assertIn("Content after a failed TikZ render.", html)
+        self.assertIn("TikZ diagram source", html)
+        self.assertIn("thiscommanddoesnotexist", html)
+        if r"\draw[-&gt;]" not in html:
+            self.assertRegex(html, r'<img [^>]*src="[^"]*tikz-[^"]+\.(?:png|svg)"')
 
 
 if __name__ == "__main__":

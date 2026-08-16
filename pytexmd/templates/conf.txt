@@ -3,6 +3,24 @@ copyright = '2025, XXAUTHORSXX'
 author = 'XXAUTHORSXX'
 release = 'XXRELEASEXX'
 
+import os as _pytexmd_os
+import shutil as _pytexmd_shutil
+from pathlib import Path as _PytexmdPath
+
+# A running notebook does not see PATH updates made by a MiKTeX installer.
+# Discover its standard per-user installation so sphinxcontrib-tikz can invoke
+# pdflatex and MiKTeX's Ghostscript-compatible mgs executable immediately.
+_pytexmd_miktex_bin = (
+    _PytexmdPath(_pytexmd_os.environ.get('LOCALAPPDATA', ''))
+    / 'Programs' / 'MiKTeX' / 'miktex' / 'bin' / 'x64'
+)
+if _pytexmd_miktex_bin.is_dir():
+    _pytexmd_os.environ['PATH'] = (
+        str(_pytexmd_miktex_bin)
+        + _pytexmd_os.pathsep
+        + _pytexmd_os.environ.get('PATH', '')
+    )
+
 extensions = ['myst_parser',
               "sphinx_proof",
               "sphinxcontrib.bibtex",
@@ -44,7 +62,20 @@ tikz_latex_preamble = r"""
 
 
 tikz_tikzlibraries = "arrows, arrows.meta, calc, positioning, matrix, fit, quotes, shapes, decorations.pathmorphing, decorations.markings"
-tikz_proc_suite = 'GhostScript'
+# Select a converter supported by sphinxcontrib-tikz. The extension still
+# requires a TeX engine (normally pdflatex) to compile the generated source.
+if _pytexmd_shutil.which('pdf2svg'):
+    tikz_proc_suite = 'pdf2svg'
+elif any(_pytexmd_shutil.which(name) for name in
+         ('ghostscript', 'gs', 'gswin64', 'gswin64c', 'mgs')):
+    tikz_proc_suite = 'GhostScript'
+elif (_pytexmd_shutil.which('pdftoppm') and
+      _pytexmd_shutil.which('pnmtopng')):
+    tikz_proc_suite = 'Netpbm'
+else:
+    # This produces a clear build diagnostic and activates the HTML fallback
+    # below instead of selecting Windows' unrelated system32/convert.exe.
+    tikz_proc_suite = 'pdf2svg'
 tikz_resolution = 400   # default is 150; use 300–600 for sharp output
 
 mathjax3_config = {
@@ -120,6 +151,20 @@ html_static_path = ['_static']
 # columns. Only run the departure callback after a successful HTML visit.
 import sphinxcontrib.tikz as _pytexmd_tikz
 
+# sphinxcontrib-tikz does not recognize Ghostscript's usual Windows command.
+_pytexmd_tikz_which = _pytexmd_tikz.which
+
+
+def _pytexmd_which(program):
+    found = _pytexmd_tikz_which(program)
+    if found is None and program in ('ghostscript', 'gs', 'gswin64'):
+        return (_pytexmd_tikz_which('gswin64c') or
+                _pytexmd_tikz_which('mgs'))
+    return found
+
+
+_pytexmd_tikz.which = _pytexmd_which
+
 if not hasattr(_pytexmd_tikz, "_pytexmd_original_html_visit_tikz"):
     _pytexmd_tikz._pytexmd_original_html_visit_tikz = _pytexmd_tikz.html_visit_tikz
     _pytexmd_tikz._pytexmd_original_html_depart_tikz = _pytexmd_tikz.html_depart_tikz
@@ -130,11 +175,31 @@ _pytexmd_tikz_html_depart = _pytexmd_tikz._pytexmd_original_html_depart_tikz
 
 def _pytexmd_html_visit_tikz(translator, node):
     body_start = len(translator.body)
-    _pytexmd_tikz_html_visit(translator, node)
-    node["_pytexmd_html_container_opened"] = any(
+    latex_engine = translator.builder.config.latex_engine
+    if _pytexmd_shutil.which(latex_engine):
+        _pytexmd_tikz_html_visit(translator, node)
+    rendered = translator.body[body_start:]
+    opened = any(
         fragment.lstrip().startswith("<div")
-        for fragment in translator.body[body_start:]
+        for fragment in rendered
     )
+    if any('src="None"' in fragment for fragment in rendered):
+        del translator.body[body_start:]
+        opened = False
+    if not opened:
+        # Keep the document useful when TeX or the configured converter is
+        # unavailable. The original extension otherwise emits no content and
+        # an unmatched closing div.
+        source = translator.encode(node.get("tikz", "")).strip()
+        translator.body.append(
+            translator.starttag(node, "div", CLASS="admonition warning tikz-fallback")
+        )
+        translator.body.append(
+            '<p class="admonition-title">TikZ diagram source</p>'
+        )
+        translator.body.append("<pre><code>" + source + "</code></pre>")
+        opened = True
+    node["_pytexmd_html_container_opened"] = opened
 
 
 def _pytexmd_html_depart_tikz(translator, node):
