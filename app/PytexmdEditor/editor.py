@@ -22,7 +22,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 from pytexmd.sphinx_doc import make_html
 
 _DIRECTIVE_RE = re.compile(
-    r"^(?P<fence>:{3,}|`{3,})\{(?P<name>[^}]+)\}(?:\s+(?P<title>.*))?$"
+    r"^(?P<indent>[ \t]*)(?P<fence>:{3,}|`{3,})"
+    r"\{(?P<name>[^}]+)\}(?:\s+(?P<title>.*))?$"
 )
 _HEADING_RE = re.compile(r"^(?P<marks>#{1,6})\s+(?P<text>.*)$")
 _PLAIN_FENCE_RE = re.compile(r"^(?P<fence>`{3,}|~{3,})(?!\{)")
@@ -73,6 +74,7 @@ def _directive_ranges(lines: list[str]) -> tuple[list[dict], set[int]]:
             frame = {
                 "start": index,
                 "fence": match.group("fence"),
+                "indent": match.group("indent"),
                 "name": match.group("name"),
                 "title": match.group("title") or "",
                 "opener": line,
@@ -176,10 +178,11 @@ def _list_metadata(value: str) -> dict:
 def _admonition_metadata(lines: list[str], item: dict) -> dict:
     classes = []
     for line in lines[item["start"] + 1 : item["end"]]:
-        if line.startswith(":class:"):
-            classes = line.partition(":class:")[2].strip().split()
+        stripped = line.removeprefix(item["indent"])
+        if stripped.startswith(":class:"):
+            classes = stripped.partition(":class:")[2].strip().split()
             break
-        if line.strip() and not line.startswith(":"):
+        if stripped.strip() and not stripped.startswith(":"):
             break
     return {
         "directive": item["name"],
@@ -198,20 +201,22 @@ def _update_admonition(value: str, title: str, color: str) -> str:
         raise ValueError("The edited source is not a supported MyST admonition.")
     title = title.strip()
     directive_name = opener.group("name")
+    indent = opener.group("indent")
     if not title and directive_name == "admonition":
         raise ValueError("Admonition title cannot be empty.")
     if color not in _ADMONITION_COLORS | {""}:
         raise ValueError("Unknown admonition color.")
 
-    lines[0] = f'{opener.group("fence")}{{{directive_name}}}' + (
+    lines[0] = f'{indent}{opener.group("fence")}{{{directive_name}}}' + (
         f" {title}" if title else ""
     )
     class_index = None
     for index, line in enumerate(lines[1:], 1):
-        if line.startswith(":class:"):
+        stripped = line.removeprefix(indent)
+        if stripped.startswith(":class:"):
             class_index = index
             break
-        if not line.strip() or not line.startswith(":"):
+        if not stripped.strip() or not stripped.startswith(":"):
             break
     classes = []
     if class_index is not None:
@@ -220,7 +225,7 @@ def _update_admonition(value: str, title: str, color: str) -> str:
     if color:
         classes.append(color)
     if classes:
-        class_line = ":class: " + " ".join(classes)
+        class_line = indent + ":class: " + " ".join(classes)
         if class_index is None:
             lines.insert(1, class_line)
         else:
@@ -257,28 +262,36 @@ def _update_tikz(value: str, content: str, scale: str) -> str:
     opener = _DIRECTIVE_RE.match(lines[0]) if lines else None
     if not opener or opener.group("name") != "tikz" or len(lines) < 2:
         raise ValueError("The edited source is not a TikZ directive.")
+    indent = opener.group("indent")
     content = content.strip()
     if not content:
         raise ValueError("TikZ content cannot be empty.")
     scale = _normalize_tikz_scale(scale)
 
     content_start = 1
-    while content_start < len(lines) - 1 and lines[content_start].startswith(":"):
+    while content_start < len(lines) - 1 and lines[content_start].removeprefix(
+        indent
+    ).startswith(":"):
         content_start += 1
     if content_start < len(lines) - 1 and not lines[content_start].strip():
         content_start += 1
     header = lines[:content_start]
     scale_line = next(
-        (index for index, line in enumerate(header) if line.startswith(":xscale:")),
+        (
+            index
+            for index, line in enumerate(header)
+            if line.removeprefix(indent).startswith(":xscale:")
+        ),
         None,
     )
     if scale_line is None:
-        header.insert(1, f":xscale: {scale}")
+        header.insert(1, f"{indent}:xscale: {scale}")
     else:
-        header[scale_line] = f":xscale: {scale}"
+        header[scale_line] = f"{indent}:xscale: {scale}"
     if header[-1].strip():
         header.append("")
-    return "\n".join([*header, *content.splitlines(), lines[-1]])
+    content_lines = [indent + line if line else line for line in content.splitlines()]
+    return "\n".join([*header, *content_lines, lines[-1]])
 
 
 def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
@@ -340,19 +353,24 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                 EditableBlock("rubric", start, start + 1, item["title"], prefix)
             )
         if name in {"math", "tikz"}:
+            indent = item["indent"]
             content_start = start + 1
-            while content_start < end and lines[content_start].startswith(":"):
+            while content_start < end and lines[content_start].removeprefix(
+                indent
+            ).startswith(":"):
                 content_start += 1
             if content_start < end and not lines[content_start].strip():
                 content_start += 1
             protected.update(range(start + 1, end))
             if name == "math":
+                content = [line.removeprefix(indent) for line in lines[content_start:end]]
                 blocks.append(
                     EditableBlock(
                         "equation",
                         content_start,
                         end,
-                        "\n".join(lines[content_start:end]).strip(),
+                        "\n".join(content).strip(),
+                        metadata={"indent": indent},
                     )
                 )
             else:
@@ -360,7 +378,7 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                     (
                         i
                         for i in range(start + 1, end)
-                        if lines[i].startswith(":xscale:")
+                        if lines[i].removeprefix(indent).startswith(":xscale:")
                     ),
                     None,
                 )
@@ -376,7 +394,10 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                         end + 1,
                         "\n".join(lines[start : end + 1]),
                         metadata={
-                            "content": "\n".join(lines[content_start:end]).strip(),
+                            "content": "\n".join(
+                                line.removeprefix(indent)
+                                for line in lines[content_start:end]
+                            ).strip(),
                             "scale": _tikz_editor_scale(value),
                         },
                     )
@@ -559,6 +580,9 @@ def apply_visual_changes(markdown: str, changes: list[dict]) -> str:
             if not heading:
                 raise ValueError("Raw heading source must start with # followed by a space.")
             new_lines = [value]
+        elif block.kind == "equation":
+            indent = block.metadata.get("indent", "")
+            new_lines = [indent + line if line else line for line in value.splitlines()]
         elif block.kind in {"heading", "directive_title", "rubric"}:
             if not value:
                 raise ValueError(

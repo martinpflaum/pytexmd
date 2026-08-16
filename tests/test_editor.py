@@ -349,6 +349,63 @@ Outer conclusion.
         self.assertIn("Outer introduction.", updated)
         self.assertIn("Outer conclusion.", updated)
 
+    def test_indented_definition_list_math_maps_and_preserves_indentation(self):
+        markdown = r"""::::{admonition} Definition
+:class: pytexmd-admonition definition
+
+Let $R$ be a division ring.
+
+(axiom:multiplicativity)=
+(VDR1)
+: The function $|\cdot|$ is multiplicative, that is
+
+   :::{math}
+   |xy| = |x|\,|y| \quad \text{for all } x,y\in R.
+   :::
+
+(axiom:subadditivity)=
+(VDR2)
+: The triangle inequality is satisfied, which means
+
+   :::{math}
+   |x+y| \leq |x|+|y| \quad \text{for all } x,y\in R.
+   :::
+::::
+"""
+        blocks = parse_editable_blocks(markdown)
+        equations = [block for block in blocks if block.kind == "equation"]
+
+        self.assertEqual(len(equations), 2)
+        self.assertEqual(equations[0].metadata["indent"], "   ")
+        self.assertEqual(
+            equations[0].value,
+            r"|xy| = |x|\,|y| \quad \text{for all } x,y\in R.",
+        )
+        self.assertEqual(equations[0].metadata["nesting"]["parent"], 0)
+
+        updated = apply_visual_changes(
+            markdown,
+            [
+                {
+                    "kind": "equation",
+                    "index": 0,
+                    "value": r"|xy| = |x| |y|",
+                }
+            ],
+        )
+
+        self.assertIn("   |xy| = |x| |y|\n   :::", updated)
+        self.assertEqual(
+            len(
+                [
+                    block
+                    for block in parse_editable_blocks(updated)
+                    if block.kind == "equation"
+                ]
+            ),
+            2,
+        )
+
     def test_non_admonition_directive_body_is_not_exposed_as_paragraph(self):
         markdown = """:::{toctree}
 :maxdepth: 2
