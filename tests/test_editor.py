@@ -49,7 +49,11 @@ class EditorRoundTripTests(unittest.TestCase):
         self.assertEqual(elements[("directive_title", 0)], "Theorem Original title")
         self.assertIn("{admonition} Theorem", elements[("admonition", 0)])
         self.assertEqual(elements[("equation", 0)], r"x = 1 \tag{1}")
-        self.assertEqual(elements[("tikz_scale", 0)], "1")
+        tikz = next(
+            block for block in parse_editable_blocks(SAMPLE_MARKDOWN) if block.kind == "tikz"
+        )
+        self.assertEqual(tikz.metadata["content"], r"\draw (0,0) -- (1,1);")
+        self.assertEqual(tikz.metadata["scale"], "1")
 
     def test_visual_changes_round_trip_to_myst(self):
         updated = apply_visual_changes(
@@ -59,7 +63,13 @@ class EditorRoundTripTests(unittest.TestCase):
                 {"kind": "paragraph", "index": 0, "value": "Edited paragraph."},
                 {"kind": "directive_title", "index": 0, "value": "Edited title"},
                 {"kind": "equation", "index": 0, "value": r"y = 2 \tag{2}"},
-                {"kind": "tikz_scale", "index": 0, "value": "0.65"},
+                {
+                    "kind": "tikz",
+                    "index": 0,
+                    "value": "",
+                    "tikz_content": r"\draw (0,0) circle (1);",
+                    "tikz_scale": "0.65",
+                },
             ],
         )
 
@@ -69,7 +79,47 @@ class EditorRoundTripTests(unittest.TestCase):
         self.assertIn(r"y = 2 \tag{2}", updated)
         self.assertIn(":label: equation-one", updated)
         self.assertIn(":xscale: 0.65", updated)
-        self.assertIn(r"\draw (0,0) -- (1,1);", updated)
+        self.assertIn(r"\draw (0,0) circle (1);", updated)
+        self.assertNotIn(r"\draw (0,0) -- (1,1);", updated)
+
+    def test_tikz_general_fields_preserve_other_directive_options(self):
+        markdown = """```{tikz}
+:libs: arrows.meta,calc
+:xscale: 1.2
+
+\\draw (0,0) -- (1,1);
+```
+"""
+
+        updated = apply_visual_changes(
+            markdown,
+            [
+                {
+                    "kind": "tikz",
+                    "index": 0,
+                    "value": markdown,
+                    "tikz_content": r"\draw (0,0) rectangle (2,1);",
+                    "tikz_scale": "0.8",
+                }
+            ],
+        )
+
+        self.assertIn(":libs: arrows.meta,calc", updated)
+        self.assertIn(":xscale: 0.8", updated)
+        self.assertIn(r"\draw (0,0) rectangle (2,1);", updated)
+        with self.assertRaisesRegex(ValueError, "between 0.1 and 4"):
+            apply_visual_changes(
+                markdown,
+                [
+                    {
+                        "kind": "tikz",
+                        "index": 0,
+                        "value": markdown,
+                        "tikz_content": r"\draw (0,0);",
+                        "tikz_scale": "5",
+                    }
+                ],
+            )
 
     def test_whole_admonitions_and_lists_are_editable(self):
         markdown = """# Page
@@ -280,6 +330,40 @@ chapter-two
         blocks = parse_editable_blocks(markdown)
 
         self.assertFalse(any(block.kind == "paragraph" for block in blocks))
+
+    def test_rubric_title_is_editable_and_preserves_the_directive(self):
+        markdown = """```{rubric} Something
+```
+"""
+        rubric = next(
+            block for block in parse_editable_blocks(markdown) if block.kind == "rubric"
+        )
+
+        self.assertEqual(rubric.value, "Something")
+        updated = apply_visual_changes(
+            markdown,
+            [{"kind": "rubric", "index": 0, "value": "Revised rubric"}],
+        )
+
+        self.assertEqual(updated, "```{rubric} Revised rubric\n```\n")
+
+    def test_text_after_generated_metadata_and_rubric_is_editable(self):
+        markdown = """<!-- generated section -->
+(section-attribution)=
+```{rubric} Attribution
+```
+\\addcontentslinetocsectionAttribution
+The main author of this work is \\textsc{Markus J. Pflaum}.
+"""
+
+        paragraphs = [
+            block
+            for block in parse_editable_blocks(markdown)
+            if block.kind == "paragraph"
+        ]
+
+        self.assertEqual(len(paragraphs), 1)
+        self.assertIn("The main author of this work", paragraphs[0].value)
 
     def test_whole_page_source_is_editable(self):
         page = next(

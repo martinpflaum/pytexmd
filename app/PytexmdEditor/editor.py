@@ -230,6 +230,46 @@ def _update_admonition(value: str, title: str, color: str) -> str:
     return "\n".join(lines)
 
 
+def _normalize_tikz_scale(value: str) -> str:
+    try:
+        scale = float(value)
+    except ValueError as exc:
+        raise ValueError("TikZ scale must be a number.") from exc
+    if not 0.1 <= scale <= 4:
+        raise ValueError("TikZ scale must be between 0.1 and 4.")
+    return f"{scale:g}"
+
+
+def _update_tikz(value: str, content: str, scale: str) -> str:
+    """Apply structured content and scale fields to a TikZ directive."""
+    lines = value.splitlines()
+    opener = _DIRECTIVE_RE.match(lines[0]) if lines else None
+    if not opener or opener.group("name") != "tikz" or len(lines) < 2:
+        raise ValueError("The edited source is not a TikZ directive.")
+    content = content.strip()
+    if not content:
+        raise ValueError("TikZ content cannot be empty.")
+    scale = _normalize_tikz_scale(scale)
+
+    content_start = 1
+    while content_start < len(lines) - 1 and lines[content_start].startswith(":"):
+        content_start += 1
+    if content_start < len(lines) - 1 and not lines[content_start].strip():
+        content_start += 1
+    header = lines[:content_start]
+    scale_line = next(
+        (index for index, line in enumerate(header) if line.startswith(":xscale:")),
+        None,
+    )
+    if scale_line is None:
+        header.insert(1, f":xscale: {scale}")
+    else:
+        header[scale_line] = f":xscale: {scale}"
+    if header[-1].strip():
+        header.append("")
+    return "\n".join([*header, *content.splitlines(), lines[-1]])
+
+
 def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
     """Return source spans that can safely round-trip from the visual editor."""
     lines = markdown.splitlines()
@@ -279,6 +319,15 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                     "directive_title", start, start + 1, item["title"], prefix
                 )
             )
+        if name == "rubric":
+            prefix = (
+                item["opener"][: len(item["opener"]) - len(item["title"])]
+                if item["title"]
+                else item["opener"] + " "
+            )
+            blocks.append(
+                EditableBlock("rubric", start, start + 1, item["title"], prefix)
+            )
         if name in {"math", "tikz"}:
             content_start = start + 1
             while content_start < end and lines[content_start].startswith(":"):
@@ -309,13 +358,16 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                     if scale_line is not None
                     else "1"
                 )
-                insertion = scale_line if scale_line is not None else start + 1
                 blocks.append(
                     EditableBlock(
-                        "tikz_scale",
-                        insertion,
-                        insertion + (scale_line is not None),
-                        value,
+                        "tikz",
+                        start,
+                        end + 1,
+                        "\n".join(lines[start : end + 1]),
+                        metadata={
+                            "content": "\n".join(lines[content_start:end]).strip(),
+                            "scale": value,
+                        },
                     )
                 )
 
@@ -366,7 +418,12 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
             )
             continue
         if _NON_PARAGRAPH_RE.match(lines[index]):
-            while index < len(lines) and lines[index].strip():
+            while (
+                index < len(lines)
+                and lines[index].strip()
+                and index not in structural
+                and index not in protected
+            ):
                 index += 1
             continue
         start = index
@@ -471,16 +528,16 @@ def apply_visual_changes(markdown: str, changes: list[dict]) -> str:
                 str(change.get("admonition_color", "")),
             )
             new_lines = value.splitlines()
-        elif block.kind == "tikz_scale":
-            try:
-                numeric_scale = float(value)
-            except ValueError as exc:
-                raise ValueError("TikZ scale must be a number.") from exc
-            if not 0.1 <= numeric_scale <= 4:
-                raise ValueError("TikZ scale must be between 0.1 and 4.")
-            value = f"{numeric_scale:g}"
-            new_lines = [f":xscale: {value}"]
-        elif block.kind in {"heading", "directive_title"}:
+        elif block.kind == "tikz" and (
+            "tikz_content" in change or "tikz_scale" in change
+        ):
+            value = _update_tikz(
+                block.value,
+                str(change.get("tikz_content", block.metadata["content"])),
+                str(change.get("tikz_scale", block.metadata["scale"])),
+            )
+            new_lines = value.splitlines()
+        elif block.kind in {"heading", "directive_title", "rubric"}:
             if not value:
                 raise ValueError(
                     f"{block.kind.replace('_', ' ').title()} cannot be empty."

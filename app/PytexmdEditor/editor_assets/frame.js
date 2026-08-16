@@ -8,8 +8,9 @@
     heading: 0,
     paragraph: 0,
     directive_title: 0,
+    rubric: 0,
     equation: 0,
-    tikz_scale: 0,
+    tikz: 0,
     admonition: 0,
     list: 0,
     page: 0,
@@ -20,10 +21,7 @@
     clone.querySelectorAll('.headerlink').forEach((link) => link.remove());
     return clone.textContent.trim();
   };
-  const value = (node) =>
-    node.dataset.pytexmdKind === 'tikz_scale'
-      ? node.dataset.pytexmdScale || '1'
-      : clean(node);
+  const value = (node) => clean(node);
   const parentAdmonitionIndex = (node) => {
     const parentBlock = node.parentElement?.closest(
       '[data-pytexmd-kind="admonition"]',
@@ -112,18 +110,21 @@
     if (
       node.closest(
         'nav,.sidebar,.math,.admonition-title,li,dd,dt,blockquote,figure,table,.topic',
-      ) || node.classList.contains('admonition-title')
+      ) || node.classList.contains('admonition-title') || node.classList.contains('rubric')
     )
       return;
     register(node, 'paragraph', true);
   });
   [...root.querySelectorAll('.pytexmd-admonition > .admonition-title')]
     .forEach((node) => register(node, 'directive_title', true));
+  root.querySelectorAll('.rubric').forEach((node) => register(node, 'rubric', true));
   root.querySelectorAll('div.math').forEach((node) => register(node, 'equation'));
-  root.querySelectorAll('img').forEach((node) => {
-    if (!/tikz-/i.test(node.getAttribute('src') || '')) return;
-    node.dataset.pytexmdScale = '1';
-    register(node, 'tikz_scale');
+  root.querySelectorAll('img,.tikz-fallback').forEach((node) => {
+    if (
+      !node.classList.contains('tikz-fallback') &&
+      !/tikz-/i.test(node.getAttribute('src') || '')
+    ) return;
+    register(node, 'tikz');
   });
   [...new Set(root.querySelectorAll('.proof,.admonition'))]
     .filter((node) => !node.classList.contains('tikz-fallback'))
@@ -185,11 +186,7 @@
       `[data-pytexmd-kind="${event.data.kind}"][data-pytexmd-index="${event.data.index}"]`,
     );
     if (!node) return;
-    if (event.data.kind === 'tikz_scale') {
-      node.dataset.pytexmdScale = event.data.value;
-      node.style.width = `${Number(event.data.value) * 100}%`;
-      node.style.height = 'auto';
-    } else if (event.data.kind === 'admonition' || event.data.kind === 'list') {
+    if (event.data.kind === 'admonition' || event.data.kind === 'list') {
       node.innerHTML = `<pre style="white-space:pre-wrap"></pre>`;
       node.querySelector('pre').textContent = event.data.value;
     } else {

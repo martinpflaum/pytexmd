@@ -90,6 +90,22 @@ function comparableText(value) {
     .toLowerCase();
 }
 
+function textSimilarity(first, second) {
+  const firstWords = comparableText(first).split(" ").filter(Boolean);
+  const secondWords = comparableText(second).split(" ").filter(Boolean);
+  if (!firstWords.length || !secondWords.length) return 0;
+  const remaining = new Map();
+  firstWords.forEach((word) => remaining.set(word, (remaining.get(word) || 0) + 1));
+  let matches = 0;
+  secondWords.forEach((word) => {
+    const count = remaining.get(word) || 0;
+    if (!count) return;
+    remaining.set(word, count - 1);
+    matches += 1;
+  });
+  return (2 * matches) / (firstWords.length + secondWords.length);
+}
+
 function sourceDisplayText(source) {
   if (source.kind === "list" && source.metadata?.items) {
     return source.metadata.items
@@ -109,9 +125,13 @@ function resolveSourceElement(message) {
   );
   if (nestedSibling) return nestedSibling;
   const rendered = comparableText(message.value);
-  const matchesByText = ["heading", "paragraph", "directive_title", "list"].includes(
-    message.kind,
-  );
+  const matchesByText = [
+    "heading",
+    "paragraph",
+    "directive_title",
+    "rubric",
+    "list",
+  ].includes(message.kind);
   if (matchesByText) {
     const textMatches = candidates.filter(
       (item) => {
@@ -127,6 +147,18 @@ function resolveSourceElement(message) {
       (item) => item.metadata?.nesting?.parent === message.parentAdmonitionIndex,
     );
     if (nestedMatches.length === 1) return nestedMatches[0];
+    if (message.kind === "paragraph") {
+      const ranked = candidates
+        .map((item) => ({
+          item,
+          score: textSimilarity(sourceDisplayText(item), message.value),
+        }))
+        .sort((first, second) => second.score - first.score);
+      if (
+        ranked[0]?.score >= 0.72 &&
+        ranked[0].score - (ranked[1]?.score || 0) >= 0.08
+      ) return ranked[0].item;
+    }
   }
   if (message.kind === "admonition" && message.admonitionTitle) {
     const titleMatches = candidates.filter(
@@ -363,15 +395,13 @@ function selectElement(message) {
     "heading",
     "paragraph",
     "directive_title",
-    "tikz_scale",
+    "rubric",
   ].includes(kind);
   $("generalValueLabel").classList.toggle("hidden", !generalText);
   if (generalText) {
     $("generalValue").value = displayedValue;
     $("generalValueLabel").firstChild.textContent =
-      kind === "tikz_scale"
-        ? "Scale "
-        : kind === "paragraph"
+      kind === "paragraph"
           ? "Content "
           : "Title ";
   }
@@ -387,10 +417,20 @@ function selectElement(message) {
     $("equationValue").value = equation.content;
     $("equationNumber").value = equation.number;
   }
+  $("tikzEditor").classList.toggle("hidden", kind !== "tikz");
+  if (kind === "tikz") {
+    $("tikzContent").value = source.metadata?.content || "";
+    $("tikzScale").value = source.metadata?.scale || "1";
+  }
   $("listEditor").classList.toggle("hidden", !structuredList);
   if (structuredList) renderListEditor(source.metadata);
   $("childTools").classList.toggle("hidden", kind !== "admonition");
-  const hasGeneral = generalText || kind === "admonition" || kind === "equation" || structuredList;
+  const hasGeneral =
+    generalText ||
+    kind === "admonition" ||
+    kind === "equation" ||
+    kind === "tikz" ||
+    structuredList;
   $("generalUnavailable").classList.toggle("hidden", hasGeneral);
 
   const nesting = source.metadata?.nesting;
@@ -412,7 +452,9 @@ function selectElement(message) {
     page: "Edit the complete page as MyST, then use Save, Rebuild, or Ctrl+S.",
     paragraph: "Edit paragraph content in General, or use Raw MyST for exact markup.",
     directive_title: "Edit here or type directly in the preview, then save from the toolbar.",
+    rubric: "Edit the rubric title here or directly in the preview.",
     equation: "Set an optional displayed number using MathJax \\tag{...} functionality.",
+    tikz: "Edit the TikZ source and rendered image scale, then save or rebuild.",
     admonition: "Edit the custom title and theme color, or use Raw for the complete block.",
     list: "Edit structured list items here or use Raw for exact MyST.",
   };
@@ -814,7 +856,7 @@ function buildInspectorChange() {
   if (state.inspectorTab === "raw") syncRawSource();
   let value = $("elementValue").value;
   if (state.inspectorTab === "general") {
-    if (["heading", "paragraph", "directive_title", "tikz_scale"].includes(kind)) {
+    if (["heading", "paragraph", "directive_title", "rubric"].includes(kind)) {
       value = $("generalValue").value;
     } else if (kind === "list" && !$("listEditor").classList.contains("hidden")) {
       value = serializeListEditor();
@@ -828,6 +870,10 @@ function buildInspectorChange() {
   if (kind === "admonition" && state.inspectorTab === "general") {
     change.admonition_title = $("admonitionTitle").value;
     change.admonition_color = $("admonitionColor").value;
+  }
+  if (kind === "tikz" && state.inspectorTab === "general") {
+    change.tikz_content = $("tikzContent").value;
+    change.tikz_scale = $("tikzScale").value;
   }
   return change;
 }

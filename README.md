@@ -157,13 +157,13 @@ python -m app.PytexmdEditor.editor path/to/output/site
 
 The editor opens locally in your browser and provides a page navigator, editable
 Sphinx preview, contextual inspector, and build log. It can
-round-trip these visual changes back to Markdown before rebuilding the HTML:
+round-trip these visual changes back to Markdown:
 
-- section headings and paragraphs
+- section headings, rubrics, and standalone paragraphs
 - theorem, definition, and proposition titles
 - complete paragraph, proof, theorem, and custom admonition blocks
 - displayed LaTeX equations, including labels and tags
-- TikZ image sizing through the directive's `:xscale:` option
+- TikZ source and image sizing through the directive's `:xscale:` option
 - complete bullet, numbered, custom-label, and definition lists
 
 PyTeXmd converts `\para`, proofs, built-in theorems, and custom theorem types to
@@ -173,10 +173,10 @@ cross-references. Both a whole block and its individual leaf content are editabl
 the editor prevents overlapping edits from being saved together.
 
 The inspector has **General** and **Raw** tabs. General presents contextual fields
-for titles, custom-admonition colors, structured lists, TikZ scale, and displayed
-equation numbers using `\tag{...}`. Raw provides a large syntax-highlighted editor
-for the exact selected MyST block. Clicking the page background opens the complete
-page source in Raw.
+for titles, custom-admonition colors, structured lists, TikZ source and scale, and
+displayed equation numbers using `\tag{...}`. Raw provides a large
+syntax-highlighted editor for the exact selected MyST block. Clicking the page
+background opens the complete page source in Raw.
 
 Pages can be created and reordered by dragging sibling entries. Right-clicking
 opens an in-app menu for copy, cut, positional paste, and deletion; paste remains
