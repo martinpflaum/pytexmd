@@ -396,6 +396,10 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                     index + 1,
                     heading.group("text"),
                     heading.group("marks") + " ",
+                    metadata={
+                        "prefix": heading.group("marks") + " ",
+                        "raw": lines[index],
+                    },
                 )
             )
             index += 1
@@ -434,6 +438,7 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                 and lines[index].strip()
                 and index not in structural
                 and index not in protected
+                and not _HEADING_RE.match(lines[index])
             ):
                 index += 1
             continue
@@ -549,6 +554,11 @@ def apply_visual_changes(markdown: str, changes: list[dict]) -> str:
                 str(change.get("tikz_scale", block.metadata["scale"])),
             )
             new_lines = value.splitlines()
+        elif block.kind == "heading" and change.get("raw_source"):
+            heading = _HEADING_RE.match(value)
+            if not heading:
+                raise ValueError("Raw heading source must start with # followed by a space.")
+            new_lines = [value]
         elif block.kind in {"heading", "directive_title", "rubric"}:
             if not value:
                 raise ValueError(
@@ -915,9 +925,8 @@ class SphinxProject:
             self._write(target_owner, updated)
             return pasted_relative, self.build()
 
-    def read_page(self, relative: str) -> dict:
-        path = self._source_path(relative)
-        markdown = path.read_text(encoding="utf-8")
+    @staticmethod
+    def _page_payload(relative: str, markdown: str) -> dict:
         elements = []
         for block in parse_editable_blocks(markdown):
             elements.append(
@@ -929,6 +938,17 @@ class SphinxProject:
                 }
             )
         return {"path": relative, "markdown": markdown, "elements": elements}
+
+    def read_page(self, relative: str) -> dict:
+        path = self._source_path(relative)
+        return self._page_payload(relative, path.read_text(encoding="utf-8"))
+
+    def preview_visual(self, relative: str, changes: list[dict]) -> dict:
+        """Compose staged edits without writing to the Markdown source."""
+        with self._lock:
+            markdown = self._source_path(relative).read_text(encoding="utf-8")
+            updated = apply_visual_changes(markdown, changes)
+            return self._page_payload(relative, updated)
 
     def _write(self, relative: str, markdown: str) -> None:
         path = self._source_path(relative)
@@ -978,6 +998,20 @@ class SphinxProject:
             with redirect_stdout(output), redirect_stderr(output):
                 make_html(str(self.root), raise_on_error=True)
             return output.getvalue()
+
+    def delete_build(self) -> str:
+        """Delete generated Sphinx output without following a build symlink."""
+        with self._lock:
+            build = self.root / "build"
+            if build.is_symlink():
+                build.unlink()
+            elif build.is_dir():
+                shutil.rmtree(build)
+            elif build.exists():
+                raise ValueError(f"Sphinx build path is not a folder: {build}")
+            else:
+                return "Sphinx build folder does not exist."
+            return "Sphinx build folder deleted."
 
 
 class EditorServer(ThreadingHTTPServer):
@@ -1085,8 +1119,17 @@ class EditorRequestHandler(BaseHTTPRequestHandler):
                 log = self.server.project.save_visual_batch(
                     list(body["pages"]), bool(body.get("rebuild", False))
                 )
+            elif self.path == "/api/visual-preview":
+                self._json(
+                    self.server.project.preview_visual(
+                        str(body["path"]), list(body["changes"])
+                    )
+                )
+                return
             elif self.path == "/api/build":
                 log = self.server.project.build()
+            elif self.path == "/api/build/delete":
+                log = self.server.project.delete_build()
             elif self.path == "/api/pages/create":
                 page, log = self.server.project.create_page(
                     str(body["title"]), str(body.get("slug", ""))

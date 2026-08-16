@@ -132,13 +132,13 @@ function resolveSourceElement(message) {
       item.metadata?.nesting?.parent === message.parentAdmonitionIndex &&
       item.metadata?.nesting?.sibling === message.siblingIndex,
   );
-  if (nestedSibling) return nestedSibling;
   const rendered = comparableText(message.value);
   const matchesByText = [
     "heading",
     "paragraph",
     "directive_title",
     "rubric",
+    "equation",
     "list",
   ].includes(message.kind);
   if (matchesByText) {
@@ -157,7 +157,10 @@ function resolveSourceElement(message) {
     );
     if (nestedMatches.length === 1) return nestedMatches[0];
     if (message.kind === "paragraph") {
-      const ranked = candidates
+      const sameParent = candidates.filter(
+        (item) => item.metadata?.nesting?.parent === message.parentAdmonitionIndex,
+      );
+      const ranked = (sameParent.length ? sameParent : candidates)
         .map((item) => ({
           item,
           score: textSimilarity(sourceDisplayText(item), message.value),
@@ -179,6 +182,7 @@ function resolveSourceElement(message) {
     );
     if (nestedTitleMatches.length === 1) return nestedTitleMatches[0];
   }
+  if (nestedSibling) return nestedSibling;
   const nestedCandidates = candidates.filter(
     (item) => item.metadata?.nesting?.parent === message.parentAdmonitionIndex,
   );
@@ -318,7 +322,14 @@ async function openPage(page, navigatePreview = true) {
   state.previewPath = null;
   state.selection = null;
   state.elements = [];
-  const data = await request(`/api/page?path=${encodeURIComponent(page.path)}`);
+  let data = await request(`/api/page?path=${encodeURIComponent(page.path)}`);
+  const pending = state.pendingEdits.get(page.path);
+  if (pending?.size) {
+    data = await post("/api/visual-preview", {
+      path: page.path,
+      changes: [...pending.values()].map((entry) => entry.change),
+    });
+  }
   if (loadSequence !== state.pageLoadSequence) return;
   state.page = page;
   state.elements = data.elements;
@@ -395,7 +406,10 @@ function selectElement(message) {
   $("inspectorForm").classList.remove("hidden");
   $("elementType").value = source.kind.replace("_", " ");
   const displayedValue = message.dirty ? message.value : source.value;
-  $("elementValue").value = displayedValue;
+  $("elementValue").value =
+    source.kind === "heading"
+      ? `${source.metadata?.prefix || ""}${displayedValue}`
+      : displayedValue;
   updateRawHighlight();
 
   const kind = source.kind;
@@ -584,6 +598,18 @@ function stageVisualChange(change) {
   return true;
 }
 
+async function refreshDraftElements() {
+  const pagePath = state.page?.path;
+  const pending = pagePath ? state.pendingEdits.get(pagePath) : null;
+  if (!pagePath || !pending?.size) return;
+  const data = await post("/api/visual-preview", {
+    path: pagePath,
+    changes: [...pending.values()].map((entry) => entry.change),
+  });
+  if (state.page?.path !== pagePath) return;
+  state.elements = data.elements;
+}
+
 async function refreshCurrentSource() {
   const pagePath = state.page?.path;
   if (!pagePath) return;
@@ -647,6 +673,29 @@ async function persistPending(rebuildAfter = false) {
     state.saveInProgress = false;
     setBusy(false);
     updatePendingStatus();
+  }
+}
+
+async function deleteBuild() {
+  if (!confirm("Delete the generated Sphinx build folder? Source files are not affected.")) {
+    return;
+  }
+  setBusy(true);
+  setStatus("Deleting Sphinx build...");
+  try {
+    const result = await post("/api/build/delete");
+    state.pages = result.pages;
+    state.buildDirty = true;
+    renderPages($("pageSearch").value);
+    showLog(result.log);
+    updatePendingStatus();
+    setStatus("Sphinx build deleted; rebuild required");
+    toast(result.log);
+  } catch (error) {
+    toast(error.message);
+    setStatus("Could not delete Sphinx build");
+  } finally {
+    setBusy(false);
   }
 }
 
@@ -879,6 +928,9 @@ function buildInspectorChange() {
     }
   }
   const change = { ...state.selection, value };
+  if (kind === "heading" && state.inspectorTab === "raw") {
+    change.raw_source = true;
+  }
   if (kind === "admonition" && state.inspectorTab === "general") {
     change.admonition_title = $("admonitionTitle").value;
     change.admonition_color = $("admonitionColor").value;
@@ -895,7 +947,11 @@ function stageInspectorChange(refreshRaw = true) {
   try {
     const change = buildInspectorChange();
     stageVisualChange(change);
-    $("elementValue").value = change.value;
+    const source = currentSourceElement(change.kind, change.index);
+    $("elementValue").value =
+      change.kind === "heading" && !change.raw_source
+        ? `${source?.metadata?.prefix || ""}${change.value}`
+        : change.value;
     if (refreshRaw) updateRawHighlight();
     setInspectorChanged(false);
     return true;
@@ -993,6 +1049,7 @@ $("insertForm").onsubmit = async (event) => {
 $("newPageButton").onclick = () => $("newPageDialog").showModal();
 $("saveButton").onclick = () => persistPending(false);
 $("buildButton").onclick = rebuild;
+$("deleteBuildButton").onclick = deleteBuild;
 $("pageSearch").oninput = (event) => renderPages(event.target.value);
 $("pageContextMenu").querySelectorAll("[data-page-action]").forEach((button) => {
   button.onclick = () => handlePageContextAction(button.dataset.pageAction);
@@ -1028,6 +1085,7 @@ window.addEventListener("message", async (event) => {
   if (event.data?.previewPath !== state.previewPath) return;
   if (event.data?.type === "pytexmd-select") {
     if (state.inspectorChanged && !stageInspectorChange()) return;
+    if (!event.data.dirty) await refreshDraftElements();
     selectElement(event.data);
     if (event.data.dirty && state.selection) {
       stageVisualChange({

@@ -45,6 +45,12 @@ class EditorRoundTripTests(unittest.TestCase):
         }
 
         self.assertEqual(elements[("heading", 0)], "Original heading")
+        heading = next(
+            block
+            for block in parse_editable_blocks(SAMPLE_MARKDOWN)
+            if block.kind == "heading"
+        )
+        self.assertEqual(heading.metadata["raw"], "# Original heading")
         self.assertEqual(elements[("paragraph", 0)], "Original paragraph.")
         self.assertEqual(elements[("directive_title", 0)], "Theorem Original title")
         self.assertIn("{admonition} Theorem", elements[("admonition", 0)])
@@ -81,6 +87,27 @@ class EditorRoundTripTests(unittest.TestCase):
         self.assertIn(":xscale: 65", updated)
         self.assertIn(r"\draw (0,0) circle (1);", updated)
         self.assertNotIn(r"\draw (0,0) -- (1,1);", updated)
+
+    def test_raw_heading_source_round_trips_without_duplicate_hashes(self):
+        markdown = """<!-- generated section -->
+(section-category)=
+## The category of topological spaces
+"""
+
+        updated = apply_visual_changes(
+            markdown,
+            [
+                {
+                    "kind": "heading",
+                    "index": 0,
+                    "value": "### Revised category",
+                    "raw_source": True,
+                }
+            ],
+        )
+
+        self.assertIn("### Revised category", updated)
+        self.assertNotIn("## ###", updated)
 
     def test_tikz_general_fields_preserve_other_directive_options(self):
         markdown = """```{tikz}
@@ -501,6 +528,134 @@ The main author of this work is \\textsc{Markus J. Pflaum}.
             self.assertTrue(
                 list((root / ".pytexmd-editor" / "backups").rglob("chapter.md"))
             )
+
+    def test_project_deletes_only_the_sphinx_build_folder(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            conf = source / "conf.py"
+            page = source / "index.md"
+            conf.write_text("project = 'Test'\n", encoding="utf-8")
+            page.write_text("# Home\n", encoding="utf-8")
+            html = root / "build" / "html"
+            html.mkdir(parents=True)
+            (html / "index.html").write_text("built", encoding="utf-8")
+            project = SphinxProject(root)
+
+            result = project.delete_build()
+
+            self.assertEqual(result, "Sphinx build folder deleted.")
+            self.assertFalse((root / "build").exists())
+            self.assertEqual(page.read_text(encoding="utf-8"), "# Home\n")
+            self.assertTrue(conf.is_file())
+            self.assertEqual(
+                project.delete_build(), "Sphinx build folder does not exist."
+            )
+
+    def test_visual_preview_propagates_nested_math_into_all_ancestors(self):
+        markdown = """::::{admonition} Outer
+:class: pytexmd-admonition theorem
+
+Outer introduction.
+
+:::{admonition} Inner
+:class: pytexmd-admonition proof
+
+:::{math}
+x = 1
+:::
+:::
+::::
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            (source / "conf.py").write_text("", encoding="utf-8")
+            page = source / "index.md"
+            page.write_text(markdown, encoding="utf-8")
+            project = SphinxProject(root)
+
+            preview = project.preview_visual(
+                "index.md",
+                [{"kind": "equation", "index": 0, "value": "y = 2"}],
+            )
+
+            admonitions = [
+                element
+                for element in preview["elements"]
+                if element["kind"] == "admonition"
+            ]
+            self.assertEqual(len(admonitions), 2)
+            self.assertIn("y = 2", admonitions[0]["value"])
+            self.assertIn("y = 2", admonitions[1]["value"])
+            self.assertIn("y = 2", preview["markdown"])
+            self.assertEqual(page.read_text(encoding="utf-8"), markdown)
+
+    def test_composed_parent_edit_preserves_a_staged_nested_edit(self):
+        markdown = """::::{admonition} Outer
+:class: pytexmd-admonition theorem
+
+:::{admonition} Inner
+:class: pytexmd-admonition proof
+
+:::{math}
+x = 1
+:::
+:::
+::::
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            (source / "conf.py").write_text("", encoding="utf-8")
+            page = source / "index.md"
+            page.write_text(markdown, encoding="utf-8")
+            project = SphinxProject(root)
+
+            child_preview = project.preview_visual(
+                "index.md",
+                [{"kind": "equation", "index": 0, "value": "y = 2"}],
+            )
+            inner = next(
+                element
+                for element in child_preview["elements"]
+                if element["kind"] == "admonition" and element["index"] == 1
+            )
+            parent_value = inner["value"].rsplit("\n:::", 1)[0]
+            parent_value += "\n\nNested parent note.\n:::"
+
+            parent_preview = project.preview_visual(
+                "index.md",
+                [{"kind": "admonition", "index": 1, "value": parent_value}],
+            )
+
+            outer = next(
+                element
+                for element in parent_preview["elements"]
+                if element["kind"] == "admonition" and element["index"] == 0
+            )
+            self.assertIn("y = 2", outer["value"])
+            self.assertIn("Nested parent note.", outer["value"])
+            project.save_visual_batch(
+                [
+                    {
+                        "path": "index.md",
+                        "changes": [
+                            {
+                                "kind": "admonition",
+                                "index": 1,
+                                "value": parent_value,
+                            }
+                        ],
+                    }
+                ]
+            )
+            saved = page.read_text(encoding="utf-8")
+            self.assertIn("y = 2", saved)
+            self.assertIn("Nested parent note.", saved)
 
     def test_project_rejects_paths_outside_source(self):
         with tempfile.TemporaryDirectory() as directory:
