@@ -288,6 +288,52 @@ chapter-two
             self.assertEqual(len(backups), 1)
             self.assertEqual(backups[0].read_text(encoding="utf-8"), SAMPLE_MARKDOWN)
 
+    def test_project_batch_saves_edits_to_their_associated_pages(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            (source / "conf.py").write_text("project = 'Test'\n", encoding="utf-8")
+            (source / "index.md").write_text("# Home\n", encoding="utf-8")
+            (source / "chapter.md").write_text(
+                "# Chapter\n\nOriginal chapter.\n", encoding="utf-8"
+            )
+            project = SphinxProject(root)
+
+            log = project.save_visual_batch(
+                [
+                    {
+                        "path": "index.md",
+                        "changes": [{"kind": "heading", "index": 0, "value": "Start"}],
+                    },
+                    {
+                        "path": "chapter.md",
+                        "changes": [
+                            {
+                                "kind": "paragraph",
+                                "index": 0,
+                                "value": "Edited chapter.",
+                            }
+                        ],
+                    },
+                ]
+            )
+
+            self.assertEqual(log, "Saved 2 Markdown pages.")
+            self.assertEqual(
+                (source / "index.md").read_text(encoding="utf-8"), "# Start\n"
+            )
+            self.assertIn(
+                "Edited chapter.",
+                (source / "chapter.md").read_text(encoding="utf-8"),
+            )
+            self.assertTrue(
+                list((root / ".pytexmd-editor" / "backups").rglob("index.md"))
+            )
+            self.assertTrue(
+                list((root / ".pytexmd-editor" / "backups").rglob("chapter.md"))
+            )
+
     def test_project_rejects_paths_outside_source(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

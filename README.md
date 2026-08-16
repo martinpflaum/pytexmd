@@ -185,7 +185,8 @@ are protected. Navigation changes create backups and trigger a Sphinx rebuild.
 
 Inspector changes write directly back to Markdown and rebuild the site; there is
 no staging step. Direct heading, paragraph, and admonition-title edits save when
-the edited element loses focus.
+the edited element loses focus. `Ctrl+S` saves the current inspector element, and
+**Rebuild** saves pending inspector changes before rebuilding.
 
 Lists use dedicated controls rather than a single raw-text field. Bullet and
 normal enumeration items can be added, removed, and edited, while custom
@@ -194,10 +195,8 @@ offer an **Add child element** control for nested paragraphs, lists, custom
 enumerations, equations, proofs, theorems, and custom admonitions. Nested
 objects can also be selected and edited independently in the preview; the
 inspector shows their nesting depth and provides a shortcut to the parent block.
-Each rendered admonition has an **Edit block** control for opening its complete
-MyST source in the inspector without competing with its clickable child objects.
-The inspector also exposes the admonition title and a persistent theme-color
-preset (default, blue, green, amber, red, or purple) as structured fields.
+The inspector exposes the admonition title and a persistent theme-color preset
+(default, blue, green, amber, red, or purple) as structured fields.
 Clicking an admonition body selects the complete block and its structured title
 and color controls. Clicking the rendered title instead makes the title
 directly editable in place; the change saves when the title loses focus.

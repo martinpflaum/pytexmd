@@ -818,11 +818,30 @@ class SphinxProject:
             return self.build() if rebuild else "Source saved without rebuilding."
 
     def save_visual(self, relative: str, changes: list[dict]) -> str:
+        return self.save_visual_batch(
+            [{"path": relative, "changes": changes}], rebuild=True
+        )
+
+    def save_visual_batch(self, pages: list[dict], rebuild: bool = False) -> str:
+        """Validate and save visual edits spanning multiple Markdown pages."""
         with self._lock:
-            path = self._source_path(relative)
-            markdown = path.read_text(encoding="utf-8")
-            self._write(relative, apply_visual_changes(markdown, changes))
-            return self.build()
+            updates = []
+            seen = set()
+            for page in pages:
+                relative = str(page["path"])
+                if relative in seen:
+                    raise ValueError(f"Duplicate page in one save request: {relative}")
+                seen.add(relative)
+                path = self._source_path(relative)
+                markdown = path.read_text(encoding="utf-8")
+                updated = apply_visual_changes(markdown, list(page["changes"]))
+                updates.append((relative, updated))
+            for relative, markdown in updates:
+                self._write(relative, markdown)
+            if rebuild:
+                return self.build()
+            count = len(updates)
+            return f"Saved {count} Markdown page{'s' if count != 1 else ''}."
 
     def build(self) -> str:
         with self._lock:
@@ -932,6 +951,10 @@ class EditorRequestHandler(BaseHTTPRequestHandler):
             elif self.path == "/api/visual-save":
                 log = self.server.project.save_visual(
                     body["path"], list(body["changes"])
+                )
+            elif self.path == "/api/visual-save-batch":
+                log = self.server.project.save_visual_batch(
+                    list(body["pages"]), bool(body.get("rebuild", False))
                 )
             elif self.path == "/api/build":
                 log = self.server.project.build()

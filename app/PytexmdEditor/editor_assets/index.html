@@ -11,6 +11,7 @@
     <div class="brand"><span class="brand-mark">P</span><div><strong>PytexmdEditor</strong><small>Sphinx project workspace</small></div></div>
     <div id="projectPath" class="project-path"></div>
     <div class="toolbar">
+      <button id="saveButton" class="button primary">Save</button>
       <button id="buildButton" class="button ghost">Rebuild</button>
     </div>
   </header>
@@ -23,7 +24,7 @@
       <div class="safety"><strong>Safe round-trip</strong><span>Every save creates a timestamped source backup.</span></div>
     </aside>
     <section class="canvas-panel">
-      <div class="canvas-bar"><div><strong id="pageTitle">Select a page</strong><span id="status">Ready</span></div><button id="reloadButton" class="icon-button" title="Reload preview">Reload</button></div>
+      <div class="canvas-bar"><div><strong id="pageTitle">Select a page</strong><span id="status">Ready</span></div></div>
       <div class="canvas"><iframe id="preview" title="Editable Sphinx preview"></iframe></div>
       <pre id="buildLog" class="build-log"></pre>
     </section>
@@ -58,7 +59,6 @@
           <div class="highlight-editor"><pre id="rawHighlight" contenteditable="true" spellcheck="false" aria-label="Raw MyST source"></pre><textarea id="elementValue" class="hidden" aria-hidden="true"></textarea></div>
         </section>
         <p id="fieldHelp" class="field-help"></p>
-        <button id="updateElement" class="button primary" type="submit">Save change now</button>
       </form>
       <select id="insertKind" class="hidden"><option value="paragraph">Paragraph</option><option value="bullet_list">Bullet list</option><option value="numbered_list">Numbered list</option><option value="custom_enumeration">Custom enumeration</option><option value="equation">Equation</option><option value="proof">Proof</option><option value="theorem">Theorem</option><option value="admonition">Admonition</option></select>
     </aside>

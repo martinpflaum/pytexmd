@@ -9,6 +9,9 @@ const state = {
   draggedPage: null,
   pageClipboard: null,
   contextPage: null,
+  pendingEdits: new Map(),
+  inspectorChanged: false,
+  saveInProgress: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -30,6 +33,26 @@ function setBusy(value) {
 
 function setStatus(text) {
   $("status").textContent = text;
+}
+
+function pendingEditCount() {
+  return [...state.pendingEdits.values()].reduce(
+    (count, edits) => count + edits.size,
+    0,
+  );
+}
+
+function updatePendingStatus() {
+  const count = pendingEditCount();
+  $("saveButton").textContent = count ? `Save (${count})` : "Save";
+  if (count || state.inspectorChanged) {
+    setStatus(`${count + (state.inspectorChanged ? 1 : 0)} unsaved change(s)`);
+  }
+}
+
+function setInspectorChanged(value) {
+  state.inspectorChanged = value;
+  updatePendingStatus();
 }
 
 function showLog(log) {
@@ -242,7 +265,8 @@ async function loadProject(selectedPath = null) {
   if (selected) await openPage(selected);
 }
 
-async function openPage(page) {
+async function openPage(page, navigatePreview = true) {
+  if (state.inspectorChanged && !stageInspectorChange()) return;
   const loadSequence = ++state.pageLoadSequence;
   state.previewPath = null;
   state.selection = null;
@@ -253,7 +277,7 @@ async function openPage(page) {
   state.elements = data.elements;
   $("pageTitle").textContent = page.title;
   state.previewPath = page.preview;
-  $("preview").src = `${page.preview}?v=${Date.now()}`;
+  if (navigatePreview) $("preview").src = `${page.preview}?v=${Date.now()}`;
   selectElement({ kind: "page", index: 0, value: data.markdown });
   renderPages($("pageSearch").value);
 }
@@ -301,9 +325,14 @@ function parseEquation(value) {
 }
 
 function selectElement(message) {
-  const source = resolveSourceElement(message);
+  const activeSource =
+    message.dirty && state.selection?.kind === message.kind
+      ? currentSourceElement(state.selection.kind, state.selection.index)
+      : null;
+  const source = activeSource || resolveSourceElement(message);
   if (!source) {
     state.selection = null;
+    setInspectorChanged(false);
     $("elementType").value = "";
     $("elementValue").value = "";
     updateRawHighlight();
@@ -318,7 +347,8 @@ function selectElement(message) {
   $("emptyInspector").innerHTML = emptyInspectorDefault;
   $("inspectorForm").classList.remove("hidden");
   $("elementType").value = source.kind.replace("_", " ");
-  $("elementValue").value = source.value;
+  const displayedValue = message.dirty ? message.value : source.value;
+  $("elementValue").value = displayedValue;
   updateRawHighlight();
 
   const kind = source.kind;
@@ -331,7 +361,7 @@ function selectElement(message) {
   ].includes(kind);
   $("generalValueLabel").classList.toggle("hidden", !generalText);
   if (generalText) {
-    $("generalValue").value = source.value;
+    $("generalValue").value = displayedValue;
     $("generalValueLabel").firstChild.textContent =
       kind === "tikz_scale"
         ? "Scale "
@@ -366,14 +396,15 @@ function selectElement(message) {
   const defaultTab = hasGeneral ? "general" : "raw";
   setInspectorTab(defaultTab);
   const help = {
-    page: "Edit the complete page as MyST. Saving rebuilds the Sphinx project.",
+    page: "Edit the complete page as MyST, then use Save, Rebuild, or Ctrl+S.",
     paragraph: "Edit paragraph content in General, or use Raw MyST for exact markup.",
-    directive_title: "Edit here or type directly in the preview; direct edits save on blur.",
+    directive_title: "Edit here or type directly in the preview, then save from the toolbar.",
     equation: "Set an optional displayed number using MathJax \\tag{...} functionality.",
     admonition: "Edit the custom title and theme color, or use Raw for the complete block.",
     list: "Edit structured list items here or use Raw for exact MyST.",
   };
   $("fieldHelp").textContent = help[kind] || "Raw contains the exact selected MyST source.";
+  setInspectorChanged(false);
 }
 
 function renderListEditor(metadata) {
@@ -410,7 +441,11 @@ function addListItemRow(item = { label: "", content: "" }) {
   remove.type = "button";
   remove.title = "Remove item";
   remove.textContent = "x";
-  remove.onclick = () => row.remove();
+  remove.onclick = () => {
+    row.remove();
+    setInspectorChanged(true);
+    stageInspectorChange();
+  };
   row.append(remove);
   $("listItems").append(row);
 }
@@ -432,46 +467,115 @@ function serializeListEditor() {
     .join("\n");
 }
 
-async function saveSingleVisual(change) {
+function sourceAncestors(source) {
+  const ancestors = [];
+  let parent = source?.metadata?.nesting?.parent;
+  while (parent !== null && parent !== undefined && !ancestors.includes(parent)) {
+    ancestors.push(parent);
+    parent = currentSourceElement("admonition", parent)?.metadata?.nesting?.parent;
+  }
+  return ancestors;
+}
+
+function editsOverlap(first, second) {
+  if (first.change.kind === "page" || second.change.kind === "page") return true;
+  if (
+    first.change.kind === second.change.kind &&
+    first.change.index === second.change.index
+  ) return true;
+  return (
+    (first.change.kind === "admonition" &&
+      second.ancestors.includes(first.change.index)) ||
+    (second.change.kind === "admonition" &&
+      first.ancestors.includes(second.change.index))
+  );
+}
+
+function stageVisualChange(change) {
   const pagePath = state.page?.path;
   if (!pagePath) return false;
-  setBusy(true);
-  setStatus("Saving change to Markdown and rebuilding...");
-  try {
-    const result = await post("/api/visual-save", {
-      path: pagePath,
-      changes: [change],
+  const source = currentSourceElement(change.kind, change.index);
+  const entry = { change, ancestors: sourceAncestors(source) };
+  const edits = state.pendingEdits.get(pagePath) || new Map();
+  for (const [key, pending] of edits) {
+    if (editsOverlap(entry, pending)) edits.delete(key);
+  }
+  edits.set(`${change.kind}:${change.index}`, entry);
+  state.pendingEdits.set(pagePath, edits);
+  updatePendingStatus();
+  return true;
+}
+
+async function refreshCurrentSource() {
+  const pagePath = state.page?.path;
+  if (!pagePath) return;
+  const selection = state.selection ? { ...state.selection } : null;
+  const data = await request(`/api/page?path=${encodeURIComponent(pagePath)}`);
+  if (state.page?.path !== pagePath) return;
+  state.elements = data.elements;
+  if (!selection) return;
+  const source = currentSourceElement(selection.kind, selection.index);
+  if (source) {
+    selectElement({
+      kind: source.kind,
+      index: source.index,
+      value: source.value,
+      parentAdmonitionIndex: source.metadata?.nesting?.parent ?? null,
+      siblingIndex: source.metadata?.nesting?.sibling ?? 0,
+      admonitionTitle: source.metadata?.title || null,
     });
+  }
+}
+
+async function persistPending(rebuildAfter = false) {
+  if (state.saveInProgress) return false;
+  if (state.inspectorChanged && !stageInspectorChange()) return false;
+  const pages = [...state.pendingEdits].map(([path, edits]) => ({
+    path,
+    changes: [...edits.values()].map((entry) => entry.change),
+  }));
+  if (!pages.length && !rebuildAfter) {
+    toast("No unsaved changes.");
+    return true;
+  }
+  state.saveInProgress = true;
+  setBusy(true);
+  setStatus(rebuildAfter ? "Saving changes and rebuilding..." : "Saving changes...");
+  try {
+    const result = pages.length
+      ? await post("/api/visual-save-batch", { pages, rebuild: rebuildAfter })
+      : await post("/api/build");
+    state.pendingEdits.clear();
+    setInspectorChanged(false);
     showLog(result.log);
-    await loadProject(pagePath);
-    toast("Change saved to Markdown.");
+    if (rebuildAfter) {
+      if (state.page) await loadProject(state.page.path);
+      toast("Changes saved and build complete.");
+    } else {
+      await refreshCurrentSource();
+      toast(pages.length ? "All changes saved." : "No unsaved changes.");
+    }
     return true;
   } catch (error) {
     toast(error.message);
-    setStatus("Save failed");
+    setStatus(rebuildAfter ? "Build failed" : "Save failed");
     return false;
   } finally {
+    state.saveInProgress = false;
     setBusy(false);
+    updatePendingStatus();
   }
 }
 
 async function rebuild() {
-  setBusy(true);
-  setStatus("Building Sphinx project...");
-  try {
-    const result = await post("/api/build");
-    showLog(result.log);
-    if (state.page) await loadProject(state.page.path);
-    toast("Build complete.");
-  } catch (error) {
-    toast(error.message);
-    setStatus("Build failed");
-  } finally {
-    setBusy(false);
-  }
+  await persistPending(true);
 }
 
 async function managePage(url, body, selectedPath) {
+  if (
+    (state.inspectorChanged || pendingEditCount()) &&
+    !(await persistPending(false))
+  ) return null;
   setBusy(true);
   setStatus("Updating navigation and rebuilding...");
   try {
@@ -674,38 +778,60 @@ function buildInsertion(kind, title, target, content) {
   }
 }
 
-$("inspectorForm").onsubmit = async (event) => {
-  event.preventDefault();
-  if (!state.selection) return;
+function buildInspectorChange() {
+  const kind = state.selection.kind;
+  if (state.inspectorTab === "raw") syncRawSource();
+  let value = $("elementValue").value;
+  if (state.inspectorTab === "general") {
+    if (["heading", "paragraph", "directive_title", "tikz_scale"].includes(kind)) {
+      value = $("generalValue").value;
+    } else if (kind === "list" && !$("listEditor").classList.contains("hidden")) {
+      value = serializeListEditor();
+    } else if (kind === "equation") {
+      const number = $("equationNumber").value.trim();
+      value = $("equationValue").value.trim();
+      if (number) value += `\n\\tag{${number}}`;
+    }
+  }
+  const change = { ...state.selection, value };
+  if (kind === "admonition" && state.inspectorTab === "general") {
+    change.admonition_title = $("admonitionTitle").value;
+    change.admonition_color = $("admonitionColor").value;
+  }
+  return change;
+}
+
+function stageInspectorChange() {
+  if (!state.selection) return false;
   try {
-    const kind = state.selection.kind;
-    if (state.inspectorTab === "raw") syncRawSource();
-    let value = $("elementValue").value;
-    if (state.inspectorTab === "general") {
-      if (["heading", "paragraph", "directive_title", "tikz_scale"].includes(kind)) {
-        value = $("generalValue").value;
-      } else if (kind === "list" && !$("listEditor").classList.contains("hidden")) {
-        value = serializeListEditor();
-      } else if (kind === "equation") {
-        const number = $("equationNumber").value.trim();
-        value = $("equationValue").value.trim();
-        if (number) value += `\n\\tag{${number}}`;
-      }
-    }
-    const change = { ...state.selection, value };
-    if (kind === "admonition" && state.inspectorTab === "general") {
-      change.admonition_title = $("admonitionTitle").value;
-      change.admonition_color = $("admonitionColor").value;
-    }
-    await saveSingleVisual(change);
+    const change = buildInspectorChange();
+    stageVisualChange(change);
+    $("elementValue").value = change.value;
+    updateRawHighlight();
+    setInspectorChanged(false);
+    return true;
   } catch (error) {
     toast(error.message);
+    return false;
   }
-};
+}
 
-$("addListItemButton").onclick = () => addListItemRow();
-$("generalTabButton").onclick = () => setInspectorTab("general");
-$("rawTabButton").onclick = () => setInspectorTab("raw");
+$("inspectorForm").onsubmit = (event) => {
+  event.preventDefault();
+};
+$("inspectorForm").addEventListener("input", () => setInspectorChanged(true));
+$("inspectorForm").addEventListener("change", () => stageInspectorChange());
+
+$("addListItemButton").onclick = () => {
+  addListItemRow();
+  setInspectorChanged(true);
+};
+$("generalTabButton").onclick = () => {
+  if (!state.inspectorChanged || stageInspectorChange()) setInspectorTab("general");
+};
+$("rawTabButton").onclick = () => {
+  if (!state.inspectorChanged || stageInspectorChange()) setInspectorTab("raw");
+};
 $("rawHighlight").oninput = syncRawSource;
 $("selectParentButton").onclick = () => {
   const index = Number($("selectParentButton").dataset.parentIndex);
@@ -757,7 +883,10 @@ $("insertForm").onsubmit = async (event) => {
       const closing = parent.match(/\n(:{3,})\s*$/);
       const value = parent.slice(0, closing.index) + `\n\n${insertion}\n` + closing[0];
       $("insertDialog").close();
-      await saveSingleVisual({ ...state.selection, value });
+      const change = { ...state.selection, value };
+      selectElement({ ...change, dirty: true });
+      stageVisualChange(change);
+      toast("Child element staged. Use Save or Rebuild to write it.");
       return;
     }
     throw new Error("Structures can only be inserted into a selected admonition.");
@@ -767,8 +896,8 @@ $("insertForm").onsubmit = async (event) => {
 };
 
 $("newPageButton").onclick = () => $("newPageDialog").showModal();
+$("saveButton").onclick = () => persistPending(false);
 $("buildButton").onclick = rebuild;
-$("reloadButton").onclick = () => state.page && openPage(state.page);
 $("pageSearch").oninput = (event) => renderPages(event.target.value);
 $("pageContextMenu").querySelectorAll("[data-page-action]").forEach((button) => {
   button.onclick = () => handlePageContextAction(button.dataset.pageAction);
@@ -777,17 +906,42 @@ document.addEventListener("pointerdown", (event) => {
   if (!event.target.closest("#pageContextMenu")) hidePageContextMenu();
 });
 document.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+    event.preventDefault();
+    persistPending(false);
+    return;
+  }
   if (event.key === "Escape") hidePageContextMenu();
 });
 document.querySelectorAll("[data-close]").forEach((button) => {
   button.onclick = () => $(button.dataset.close).close();
 });
 
-window.addEventListener("message", (event) => {
+window.addEventListener("message", async (event) => {
   if (event.origin !== location.origin || event.source !== $("preview").contentWindow)
     return;
+  if (
+    event.data?.type === "pytexmd-ready" &&
+    event.data.previewPath !== state.previewPath
+  ) {
+    const previewPage = state.pages.find(
+      (page) => page.preview === event.data.previewPath,
+    );
+    if (!previewPage) return;
+    await openPage(previewPage, false);
+  }
   if (event.data?.previewPath !== state.previewPath) return;
-  if (event.data?.type === "pytexmd-select") selectElement(event.data);
+  if (event.data?.type === "pytexmd-select") {
+    if (state.inspectorChanged && !stageInspectorChange()) return;
+    selectElement(event.data);
+    if (event.data.dirty && state.selection) {
+      stageVisualChange({
+        ...state.selection,
+        value: event.data.value,
+      });
+    }
+  }
+  if (event.data?.type === "pytexmd-save-request") persistPending(false);
   if (event.data?.type === "pytexmd-commit") {
     const source =
       state.selection?.kind === event.data.kind
@@ -797,14 +951,14 @@ window.addEventListener("message", (event) => {
       toast("This generated element is not independently editable. Select its parent block.");
       return;
     }
-    saveSingleVisual({
+    stageVisualChange({
       kind: source.kind,
       index: source.index,
       value: event.data.value,
     });
   }
   if (event.data?.type === "pytexmd-ready") {
-    setStatus("Click page content to edit; changes save immediately");
+    setStatus("Edit content, then use Save, Rebuild, or Ctrl+S");
   }
 });
 
