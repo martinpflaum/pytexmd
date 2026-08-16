@@ -2,8 +2,8 @@
 
 import argparse
 import json
-from pathlib import Path
 import webbrowser
+from pathlib import Path
 
 from pytexmd.core import process_file
 from pytexmd.sphinx_doc import make_html
@@ -66,11 +66,14 @@ def main() -> None:
     mathjax_macros = None
     if args.macros_file is not None:
         try:
-            mathjax_macros = json.loads(args.macros_file.read_text(encoding="utf-8"))
+            macros_file = args.macros_file.expanduser().resolve()
+            mathjax_macros = json.loads(macros_file.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             parser.exit(1, f"pytexmd-html: error: invalid macros file: {exc}\n")
         if not isinstance(mathjax_macros, dict):
-            parser.exit(1, "pytexmd-html: error: macros file must contain a JSON object\n")
+            parser.exit(
+                1, "pytexmd-html: error: macros file must contain a JSON object\n"
+            )
 
     try:
         index_path = generate_html(

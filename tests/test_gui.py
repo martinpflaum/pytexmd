@@ -2,7 +2,7 @@ import queue
 import unittest
 from unittest.mock import patch
 
-from app.gui import _QueueWriter, main, parse_mathjax_macros
+from app.PytexmdConverter.gui import _QueueWriter, main, parse_mathjax_macros
 from pytexmd.sphinx_doc import DEFAULT_MATHJAX_MACROS
 
 
@@ -29,7 +29,10 @@ class GuiTests(unittest.TestCase):
         self.assertEqual(events.get_nowait(), ("log", "building\n"))
 
     def test_missing_tkinter_has_linux_install_guidance(self):
-        with patch("app.gui.tk", None), self.assertRaises(SystemExit) as error:
+        with (
+            patch("app.PytexmdConverter.gui.tk", None),
+            self.assertRaises(SystemExit) as error,
+        ):
             main()
 
         self.assertIn("python3-tk", str(error.exception))

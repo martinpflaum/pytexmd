@@ -204,9 +204,12 @@ def create_config_file(output_dir: str, project_name: str, author: str, version:
         config_path = source_dir / "conf.py"
         
         config_template = load_config_template()
-        config_content = config_template.replace("XXPROJECTXX", project_name)\
-                                        .replace("XXAUTHORSXX", author)\
-                                        .replace("XXRELEASEXX", version)\
+        project_literal = repr(project_name)
+        author_literal = repr(author)
+        version_literal = repr(version)
+        config_content = config_template.replace("XXPROJECTXX", project_literal)\
+                                        .replace("XXAUTHORSXX", author_literal)\
+                                        .replace("XXRELEASEXX", version_literal)\
                                         .replace(
                                             "XXMATHJAXMACROSXX",
                                             pformat(
@@ -219,7 +222,7 @@ def create_config_file(output_dir: str, project_name: str, author: str, version:
 
         # Substitute bibtex_bibfiles with the actual copied files.
         bib_list = bib_filenames if bib_filenames else ["references.bib"]
-        bib_repr = "[" + ", ".join(f"'{f}'" for f in bib_list) + "]"
+        bib_repr = repr(bib_list)
         config_content = config_content.replace(
             "bibtex_bibfiles = ['references.bib']",
             f"bibtex_bibfiles = {bib_repr}"

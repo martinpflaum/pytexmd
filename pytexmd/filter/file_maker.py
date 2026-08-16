@@ -17,6 +17,15 @@ import re
 
 NUM_FILES = 0
 
+WINDOWS_RESERVED_FILENAMES = {
+    "con",
+    "prn",
+    "aux",
+    "nul",
+    *(f"com{number}" for number in range(1, 10)),
+    *(f"lpt{number}" for number in range(1, 10)),
+}
+
 # Section hierarchy mapping for splitting
 SECTION_HIERARCHY = {
     "\\part": 0,
@@ -181,7 +190,10 @@ def string_to_filename(name):
     # Remove special characters and replace spaces with underscores
     filename = re.sub(r'[^\w\s-]', '', name.lower())
     filename = re.sub(r'[-\s]+', '_', filename)
-    return filename.strip('_') or 'section'
+    filename = filename.strip('_') or 'section'
+    if filename.casefold() in WINDOWS_RESERVED_FILENAMES:
+        filename = "section_" + filename
+    return filename[:120].rstrip(" .") or "section"
 
 def split_by_sections(content_string, max_depth=2):
     """

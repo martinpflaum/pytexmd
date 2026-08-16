@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.cli import generate_html
+from app.PytexmdConverter.cli import generate_html
 
 
 class HtmlApplicationTests(unittest.TestCase):
@@ -17,9 +17,12 @@ class HtmlApplicationTests(unittest.TestCase):
             html_folder.mkdir(parents=True)
             (html_folder / "index.html").write_text("site", encoding="utf-8")
 
-            with patch("app.cli.process_file") as process, patch(
-                "app.cli.make_html", return_value=html_folder
-            ) as build:
+            with (
+                patch("app.PytexmdConverter.cli.process_file") as process,
+                patch(
+                    "app.PytexmdConverter.cli.make_html", return_value=html_folder
+                ) as build,
+            ):
                 result = generate_html(
                     str(input_file),
                     str(output_folder),
@@ -42,9 +45,11 @@ class HtmlApplicationTests(unittest.TestCase):
         build.assert_called_once_with(str(output_folder.resolve()), raise_on_error=True)
 
     def test_generate_html_rejects_missing_input(self):
-        with tempfile.TemporaryDirectory() as directory:
-            with self.assertRaises(FileNotFoundError):
-                generate_html(str(Path(directory) / "missing.tex"), directory)
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            self.assertRaises(FileNotFoundError),
+        ):
+            generate_html(str(Path(directory) / "missing.tex"), directory)
 
 
 if __name__ == "__main__":

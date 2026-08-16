@@ -35,10 +35,16 @@ class SphinxLayoutTests(unittest.TestCase):
             macros = {"R": [r"\mathbb{#1}", 1]}
 
             create_config_file(
-                str(root), "Macro Test", "Author", "1.0", mathjax_macros=macros
+                str(root),
+                "Macro's Test",
+                "O'Brien",
+                "1.0",
+                mathjax_macros=macros,
             )
 
-            module = ast.parse((root / "source" / "conf.py").read_text(encoding="utf-8"))
+            module = ast.parse(
+                (root / "source" / "conf.py").read_text(encoding="utf-8")
+            )
             assignment = next(
                 node
                 for node in module.body
@@ -48,7 +54,9 @@ class SphinxLayoutTests(unittest.TestCase):
                     for target in node.targets
                 )
             )
-            self.assertEqual(ast.literal_eval(assignment.value)["tex"]["macros"], macros)
+            self.assertEqual(
+                ast.literal_eval(assignment.value)["tex"]["macros"], macros
+            )
 
     def test_repeated_unnumbered_proofs_do_not_break_page_layout(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -1,3 +1,4 @@
 include README.md
 include requirements.txt
 recursive-include pytexmd/templates *.txt
+recursive-include app/PytexmdEditor/editor_assets *

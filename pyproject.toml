@@ -31,11 +31,13 @@ Repository = "https://github.com/yourusername/pytexmd"
 
 [project.scripts]
 pytexmd = "pytexmd.cli:main"
-pytexmd-html = "app.cli:main"
-pytexmd-gui = "app.gui:main"
+pytexmd-html = "app.PytexmdConverter.cli:main"
+pytexmd-gui = "app.PytexmdConverter.gui:main"
+pytexmd-editor = "app.PytexmdEditor.editor:main"
 
 [tool.setuptools.packages.find]
 include = ["pytexmd*", "app*"]
 
 [tool.setuptools.package-data]
 pytexmd = ["templates/*.txt"]
+"app.PytexmdEditor" = ["editor_assets/*"]

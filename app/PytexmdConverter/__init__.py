@@ -1,0 +1,1 @@
+"""PyTeXmd converter application."""

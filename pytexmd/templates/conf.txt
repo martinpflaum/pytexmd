@@ -1,7 +1,7 @@
-project = 'XXPROJECTXX'
-copyright = '2025, XXAUTHORSXX'
-author = 'XXAUTHORSXX'
-release = 'XXRELEASEXX'
+project = XXPROJECTXX
+copyright = '2025, ' + XXAUTHORSXX
+author = XXAUTHORSXX
+release = XXRELEASEXX
 
 import os as _pytexmd_os
 import shutil as _pytexmd_shutil
@@ -12,12 +12,15 @@ from pathlib import Path as _PytexmdPath
 # Check standard per-user and system Windows installations. Linux TeX
 # distributions install their executables on PATH and need no special case.
 if _pytexmd_sys.platform == 'win32':
-    _pytexmd_miktex_bins = [
-        _PytexmdPath(_pytexmd_os.environ.get('LOCALAPPDATA', ''))
-        / 'Programs' / 'MiKTeX' / 'miktex' / 'bin' / 'x64',
-        _PytexmdPath(_pytexmd_os.environ.get('PROGRAMFILES', ''))
-        / 'MiKTeX' / 'miktex' / 'bin' / 'x64',
-    ]
+    _pytexmd_miktex_bins = []
+    for _pytexmd_root_name, _pytexmd_parts in (
+        ('LOCALAPPDATA', ('Programs', 'MiKTeX', 'miktex', 'bin')),
+        ('PROGRAMFILES', ('MiKTeX', 'miktex', 'bin')),
+    ):
+        _pytexmd_root = _pytexmd_os.environ.get(_pytexmd_root_name)
+        if _pytexmd_root:
+            _pytexmd_base = _PytexmdPath(_pytexmd_root).joinpath(*_pytexmd_parts)
+            _pytexmd_miktex_bins.extend((_pytexmd_base / 'x64', _pytexmd_base))
     for _pytexmd_miktex_bin in _pytexmd_miktex_bins:
         if _pytexmd_miktex_bin.is_dir():
             _pytexmd_os.environ['PATH'] = (
@@ -73,7 +76,7 @@ tikz_tikzlibraries = "arrows, arrows.meta, calc, positioning, matrix, fit, quote
 if _pytexmd_shutil.which('pdf2svg'):
     tikz_proc_suite = 'pdf2svg'
 elif any(_pytexmd_shutil.which(name) for name in
-         ('ghostscript', 'gs', 'gswin64', 'gswin64c', 'mgs')):
+         ('ghostscript', 'gs', 'gswin64', 'gswin64c', 'gswin32c', 'mgs')):
     tikz_proc_suite = 'GhostScript'
 elif (_pytexmd_shutil.which('pdftoppm') and
       _pytexmd_shutil.which('pnmtopng')):
@@ -153,6 +156,7 @@ def _pytexmd_which(program):
     found = _pytexmd_tikz_which(program)
     if found is None and program in ('ghostscript', 'gs', 'gswin64'):
         return (_pytexmd_tikz_which('gswin64c') or
+                _pytexmd_tikz_which('gswin32c') or
                 _pytexmd_tikz_which('mgs'))
     return found
 

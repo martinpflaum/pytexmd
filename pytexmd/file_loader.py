@@ -8,13 +8,37 @@ Typical usage example:
     latex_file = load_tex_file("main.tex")
 """
 
-__all__ = ["load_tex_file", "LatexFile", "merge_bib_files", "convert_bbl_to_bib"]
+__all__ = [
+    "load_tex_file",
+    "LatexFile",
+    "merge_bib_files",
+    "convert_bbl_to_bib",
+    "TEX_EXTENSIONS",
+    "BIB_EXTENSIONS",
+    "IMAGE_EXTENSIONS",
+    "INPUT_PATTERN",
+]
 
 import os
 import re
 import regex
 from typing import List, Dict, Tuple, Optional, Any, NamedTuple
 from pytexmd.filter.bibtex.core import convert_bbl_to_bib
+
+TEX_EXTENSIONS = (".tex", ".sty", ".cls")
+BIB_EXTENSIONS = (".bib", ".bbl", ".bibtex", ".biblatex")
+IMAGE_EXTENSIONS = (
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".tiff",
+    ".svg",
+    ".pdf",
+    ".eps",
+)
+INPUT_PATTERN = r"\\input\{([^}]+)\}"
 
 class LatexFile(NamedTuple):
     r"""Container for loaded LaTeX project files.
@@ -147,12 +171,13 @@ def load_tex_file(file_name: str) -> LatexFile:
     
     # Get the folder where file_name resides
     #folder_path = os.path.dirname(file_name)
-    absolute_folder = os.path.dirname(os.path.abspath(file_name))
+    file_name = os.path.realpath(os.path.abspath(os.path.expanduser(file_name)))
+    absolute_folder = os.path.dirname(file_name)
 
     # Get all image files, .bib files, and .tex files in the folder (recursively)
-    image_extensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.svg', '.pdf', '.eps']
-    tex_extensions = [ '.tex', '.sty', '.cls']
-    bib_extensions = ['.bib', '.bbl',".bibtex", '.biblatex']
+    image_extensions = IMAGE_EXTENSIONS
+    tex_extensions = TEX_EXTENSIONS
+    bib_extensions = BIB_EXTENSIONS
     target_extensions = tex_extensions + image_extensions + bib_extensions
 
     all_files = []
@@ -163,9 +188,11 @@ def load_tex_file(file_name: str) -> LatexFile:
     if os.path.exists(absolute_folder):
         # Walk through all subdirectories recursively
         for root, dirs, files in os.walk(absolute_folder):
+            dirs.sort(key=str.casefold)
+            files.sort(key=str.casefold)
             for file in files:
                 file_path = os.path.join(root, file)
-                relative_path = os.path.abspath(file_path)
+                relative_path = os.path.realpath(os.path.abspath(file_path))
                 file_ext = os.path.splitext(file)[1].lower()
                 
                 if file_ext in tex_extensions:
@@ -247,14 +274,14 @@ def load_tex_file(file_name: str) -> LatexFile:
         """
         try:
             filename = input_to_filename(input_name)
-            _resolved_input_dirs.add(os.path.dirname(os.path.abspath(filename)))
+            _resolved_input_dirs.add(os.path.dirname(os.path.realpath(filename)))
             return load_file(filename)
         except (KeyError, FileNotFoundError) as exc:
             print(f"File not found for input: {input_name} ({exc})")
             return ""
     # Search for \input{filename} patterns in the content
     _resolved_input_dirs: set = set()
-    input_pattern = r'\\input\{([^}]+)\}'
+    input_pattern = INPUT_PATTERN
     content_old = content
     done_matches = []
 
@@ -275,16 +302,17 @@ def load_tex_file(file_name: str) -> LatexFile:
     for _d in _resolved_input_dirs:
         _d = os.path.normpath(_d)
         try:
-            _rel = os.path.relpath(_d, absolute_folder)
-            if not _rel.startswith('..'):
+            if os.path.commonpath((_d, absolute_folder)) == absolute_folder:
                 continue  # already covered by the initial recursive walk
         except ValueError:
             pass  # different drive on Windows — definitely outside project root
         if os.path.isdir(_d):
             for _root, _dirs, _fls in os.walk(_d):
+                _dirs.sort(key=str.casefold)
+                _fls.sort(key=str.casefold)
                 for _fl in _fls:
                     if os.path.splitext(_fl)[1].lower() in bib_extensions:
-                        _abs = os.path.abspath(os.path.join(_root, _fl))
+                        _abs = os.path.realpath(os.path.join(_root, _fl))
                         if _abs not in bib_files:
                             bib_files.append(_abs)
 
