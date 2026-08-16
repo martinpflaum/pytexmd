@@ -237,6 +237,17 @@ def _normalize_tikz_scale(value: str) -> str:
         raise ValueError("TikZ scale must be a number.") from exc
     if not 0.1 <= scale <= 4:
         raise ValueError("TikZ scale must be between 0.1 and 4.")
+    return str(round(scale * 100))
+
+
+def _tikz_editor_scale(value: str) -> str:
+    """Convert the extension's percentage to the editor's scale factor."""
+    try:
+        scale = float(value)
+    except ValueError:
+        return value or "1"
+    if scale > 4:
+        scale /= 100
     return f"{scale:g}"
 
 
@@ -366,7 +377,7 @@ def parse_editable_blocks(markdown: str) -> list[EditableBlock]:
                         "\n".join(lines[start : end + 1]),
                         metadata={
                             "content": "\n".join(lines[content_start:end]).strip(),
-                            "scale": value,
+                            "scale": _tikz_editor_scale(value),
                         },
                     )
                 )

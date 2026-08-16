@@ -11,6 +11,7 @@ const state = {
   contextPage: null,
   pendingEdits: new Map(),
   inspectorChanged: false,
+  buildDirty: false,
   saveInProgress: false,
 };
 
@@ -44,9 +45,17 @@ function pendingEditCount() {
 
 function updatePendingStatus() {
   const count = pendingEditCount();
+  const needsBuild = state.buildDirty || count > 0 || state.inspectorChanged;
   $("saveButton").textContent = count ? `Save (${count})` : "Save";
+  $("buildButton").textContent = needsBuild ? "Rebuild *" : "Rebuild";
+  $("buildButton").classList.toggle("dirty", needsBuild);
+  $("buildButton").title = needsBuild
+    ? "Changes have not been rebuilt"
+    : "Rebuild the Sphinx project";
   if (count || state.inspectorChanged) {
     setStatus(`${count + (state.inspectorChanged ? 1 : 0)} unsaved change(s)`);
+  } else if (state.buildDirty) {
+    setStatus("Saved changes pending rebuild");
   }
 }
 
@@ -342,7 +351,7 @@ function updateRawHighlight() {
 }
 
 function syncRawSource() {
-  $("elementValue").value = $("rawHighlight").textContent.replace(/\r/g, "");
+  $("elementValue").value = $("rawHighlight").innerText.replace(/\r/g, "");
 }
 
 function setInspectorTab(tab) {
@@ -615,6 +624,7 @@ async function persistPending(rebuildAfter = false) {
       ? await post("/api/visual-save-batch", { pages, rebuild: rebuildAfter })
       : await post("/api/build");
     state.pendingEdits.clear();
+    state.buildDirty = rebuildAfter ? false : state.buildDirty || pages.length > 0;
     setInspectorChanged(false);
     $("preview").contentWindow?.postMessage(
       { type: "pytexmd-mark-saved" },
@@ -655,6 +665,8 @@ async function managePage(url, body, selectedPath) {
     const result = await post(url, body);
     showLog(result.log);
     await loadProject(selectedPath || result.page);
+    state.buildDirty = false;
+    updatePendingStatus();
     toast("Page navigation updated.");
     return result;
   } catch (error) {
@@ -878,13 +890,13 @@ function buildInspectorChange() {
   return change;
 }
 
-function stageInspectorChange() {
+function stageInspectorChange(refreshRaw = true) {
   if (!state.selection) return false;
   try {
     const change = buildInspectorChange();
     stageVisualChange(change);
     $("elementValue").value = change.value;
-    updateRawHighlight();
+    if (refreshRaw) updateRawHighlight();
     setInspectorChanged(false);
     return true;
   } catch (error) {
@@ -909,7 +921,12 @@ $("generalTabButton").onclick = () => {
 $("rawTabButton").onclick = () => {
   if (!state.inspectorChanged || stageInspectorChange()) setInspectorTab("raw");
 };
-$("rawHighlight").oninput = syncRawSource;
+$("rawHighlight").oninput = (event) => {
+  event.stopPropagation();
+  syncRawSource();
+  setInspectorChanged(true);
+  stageInspectorChange(false);
+};
 $("selectParentButton").onclick = () => {
   const kind = $("selectParentButton").dataset.parentKind;
   const index = Number($("selectParentButton").dataset.parentIndex);

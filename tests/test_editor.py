@@ -78,7 +78,7 @@ class EditorRoundTripTests(unittest.TestCase):
         self.assertIn(":::{admonition} Edited title", updated)
         self.assertIn(r"y = 2 \tag{2}", updated)
         self.assertIn(":label: equation-one", updated)
-        self.assertIn(":xscale: 0.65", updated)
+        self.assertIn(":xscale: 65", updated)
         self.assertIn(r"\draw (0,0) circle (1);", updated)
         self.assertNotIn(r"\draw (0,0) -- (1,1);", updated)
 
@@ -105,8 +105,12 @@ class EditorRoundTripTests(unittest.TestCase):
         )
 
         self.assertIn(":libs: arrows.meta,calc", updated)
-        self.assertIn(":xscale: 0.8", updated)
+        self.assertIn(":xscale: 80", updated)
         self.assertIn(r"\draw (0,0) rectangle (2,1);", updated)
+        reparsed = next(
+            block for block in parse_editable_blocks(updated) if block.kind == "tikz"
+        )
+        self.assertEqual(reparsed.metadata["scale"], "0.8")
         with self.assertRaisesRegex(ValueError, "between 0.1 and 4"):
             apply_visual_changes(
                 markdown,

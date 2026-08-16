@@ -176,7 +176,8 @@ The inspector has **General** and **Raw** tabs. General presents contextual fiel
 for titles, custom-admonition colors, structured lists, TikZ source and scale, and
 displayed equation numbers using `\tag{...}`. Raw provides a large
 syntax-highlighted editor for the exact selected MyST block. Clicking the page
-background opens the complete page source in Raw.
+background opens the complete page source in Raw. Raw edits are staged as they
+are typed, with visual line breaks preserved.
 
 Pages can be created and reordered by dragging sibling entries. Right-clicking
 opens an in-app menu for copy, cut, positional paste, and deletion; paste remains
@@ -185,7 +186,8 @@ are protected. Navigation changes create backups and trigger a Sphinx rebuild.
 
 Inspector and direct preview edits are staged by their associated Markdown page.
 The toolbar's **Save** button and `Ctrl+S` write all staged pages, while
-**Rebuild** saves all staged pages and then rebuilds the site once.
+**Rebuild** saves all staged pages and then rebuilds the site once. The button is
+shown as **Rebuild \*** until all changes have been included in a successful build.
 
 Lists use dedicated controls rather than a single raw-text field. Bullet and
 normal enumeration items can be added, removed, and edited, while custom
